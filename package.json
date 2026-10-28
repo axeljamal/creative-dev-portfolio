@@ -14,7 +14,6 @@
     "build:ds": "vite build -c vite.lib.config.ts && tsc -p tsconfig.ds.json"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.118.0",
     "jose": "^6.2.13",
     "motion": "^14.7.1",
     "react": "^19.3.1",
