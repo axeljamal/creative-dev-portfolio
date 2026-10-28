@@ -1,0 +1,10 @@
+{
+  "projectId": "93cc2798-a89f-4ab0-b62f-87b3086954e1",
+  "shape": "package",
+  "pkg": "creative-dev-portfolio",
+  "globalName": "CreativeDevPortfolio",
+  "buildCmd": "npm run build:ds",
+  "cssEntry": "dist-ds/styles.css",
+  "tokensGlob": "design/tokens.css",
+  "readmeHeader": ".design-sync/conventions.md"
+}

@@ -10,7 +10,8 @@
     "deploy": "npm run build && wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply creative-dev-portfolio --local",
     "db:migrate": "wrangler d1 migrations apply creative-dev-portfolio --remote",
-    "cf-typegen": "wrangler types --strict-vars=false"
+    "cf-typegen": "wrangler types --strict-vars=false",
+    "build:ds": "vite build -c vite.lib.config.ts && tsc -p tsconfig.ds.json"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
@@ -30,5 +31,7 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "wrangler": "^4.154.0"
-  }
+  },
+  "module": "./dist-ds/index.js",
+  "types": "./dist-ds/ds/index.d.ts"
 }
