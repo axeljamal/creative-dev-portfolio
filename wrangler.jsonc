@@ -26,7 +26,7 @@
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": "",
     // where new-message alerts go; leave empty to turn alerts off
-    "NOTIFY_EMAIL": ""
+    "NOTIFY_EMAIL": "axeltaj@gmail.com"
   }
 
   // secrets (set with `npx wrangler secret put <NAME>`):
