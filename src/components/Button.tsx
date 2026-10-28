@@ -11,6 +11,9 @@ const variants: Record<Variant, string> = {
   glass: "glass-clear glass-lens text-ink hover:brightness-105",
 };
 
+// for <button>s that should look like Button
+export const buttonClass = (variant: Variant = "glass") => `${base} ${variants[variant]}`;
+
 type Props = ComponentProps<"a"> & {
   variant?: Variant;
   icon?: ReactNode;

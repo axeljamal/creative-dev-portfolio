@@ -1,0 +1,13 @@
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { Inbox } from "./Inbox";
+import { supportsRefraction } from "../components/GlassFilter";
+import "../index.css";
+
+if (supportsRefraction()) document.documentElement.classList.add("refract");
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <Inbox />
+  </StrictMode>,
+);

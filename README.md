@@ -2,14 +2,15 @@
 
 Portfolio of Axel Jamal, design engineer and AI creative technologist in Brighton.
 
-Live: https://axeljamal.github.io/creative-dev-portfolio/
+Runs on Cloudflare Workers: the site, a contact API and a private inbox at `/admin`.
 
 ## Stack
 
 - React 19 + TypeScript, built with Vite
 - Tailwind CSS 4
 - Motion for animation
-- Deployed to GitHub Pages with `gh-pages`
+- Cloudflare Workers (API + static assets), D1 (SQLite) for messages,
+  Turnstile against spam, Access to protect the inbox
 
 ## Design
 
@@ -30,14 +31,47 @@ src/
   components/  Nav, Button, Section, GlassFilter
   sections/    Hero, Work, About, Contact
   hooks/       active section and scroll behaviour
+  admin/       the /admin inbox
   index.css    design tokens and the glass material
+admin/index.html   inbox page entry
+worker/      Worker: POST /api/contact, /api/admin/messages (list, update, delete)
+migrations/  D1 schema
 ```
+
+## Backend
+
+- **POST /api/contact** validates the form, checks the Turnstile token and a
+  honeypot field, stores the message in D1 and, if configured, emails an alert
+  through Resend.
+- **/api/admin/\*** lists, updates (new / read / archived) and deletes messages.
+  Cloudflare Access guards it, and the Worker also verifies the Access JWT, so
+  it stays locked even if the Access app is removed.
 
 ## Run it
 
 ```sh
 npm install
-npm run dev      # http://localhost:5173/creative-dev-portfolio/
-npm run build    # type-check and build to dist/
-npm run deploy   # build and publish to GitHub Pages
+cp .dev.vars.example .dev.vars
+npm run db:migrate:local
+npm run dev      # http://localhost:5173, inbox at /admin/
 ```
+
+Locally, Turnstile uses Cloudflare's always-pass test keys, and `/admin` opens
+without Access (`ADMIN_DEV_BYPASS` in `.dev.vars`, honoured on localhost only).
+
+## Deploy to Cloudflare (first time)
+
+1. `npx wrangler login`
+2. `npx wrangler d1 create creative-dev-portfolio`, then paste the printed
+   `database_id` into `wrangler.jsonc`.
+3. `npm run db:migrate` to create the table in the live database.
+4. **Turnstile:** in the Cloudflare dashboard, add a Turnstile widget for your
+   Worker's hostname. Put the site key in `.env.production` and run
+   `npx wrangler secret put TURNSTILE_SECRET_KEY` with the secret key.
+5. `npm run deploy`
+6. **Access:** in Zero Trust, add a self-hosted application for your Worker's
+   hostname with the paths `/admin` and `/api/admin`, and a policy that allows
+   only your email. Copy its AUD tag and your team domain into `ACCESS_AUD` and
+   `ACCESS_TEAM_DOMAIN` in `wrangler.jsonc`, then `npm run deploy` again.
+7. **Email alerts (optional):** set `NOTIFY_EMAIL` in `wrangler.jsonc` and run
+   `npx wrangler secret put RESEND_API_KEY`.

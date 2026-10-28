@@ -18,6 +18,4 @@ export const profile = {
     linkedin: "https://www.linkedin.com/in/axeljamal",
     instagram: "https://instagram.com/axelanggara",
   },
-  // public Web3Forms key, safe to ship in the client
-  web3formsKey: "9ae252b3-fd83-4227-a036-b56eced60f81",
 };

@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { FaGithub, FaInstagram, FaLinkedin } from "react-icons/fa6";
 import { LuMail, LuPhone, LuSend } from "react-icons/lu";
 import { Reveal, Section } from "../components/Section";
+import { Turnstile } from "../components/Turnstile";
 import { profile } from "../content/profile";
 
 type Status = "idle" | "sending" | "sent" | "error";
@@ -11,26 +12,31 @@ const fieldClass =
 
 export function Contact() {
   const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState("");
+  const [token, setToken] = useState<string | null>(null);
+  // tokens are single use, so remount the widget after every attempt
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     setStatus("sending");
     try {
-      const res = await fetch("https://api.web3forms.com/submit", {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/contact`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          ...Object.fromEntries(new FormData(form)),
-          access_key: profile.web3formsKey,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...Object.fromEntries(new FormData(form)), token }),
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "");
       form.reset();
       setStatus("sent");
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "");
       setStatus("error");
+    } finally {
+      setToken(null);
+      setTurnstileKey((k) => k + 1);
     }
   }
 
@@ -59,12 +65,27 @@ export function Contact() {
               </label>
               <label className="grid gap-1.5">
                 <span className="text-sm font-semibold">Message</span>
-                <textarea name="message" required rows={5} className={`${fieldClass} resize-y`} />
+                <textarea
+                  name="message"
+                  required
+                  rows={5}
+                  maxLength={5000}
+                  className={`${fieldClass} resize-y`}
+                />
               </label>
+              {/* honeypot: hidden from people, filled in by bots */}
+              <input
+                name="company"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="absolute -left-[9999px] size-px opacity-0"
+              />
+              <Turnstile key={turnstileKey} onToken={setToken} />
               <div className="mt-2 flex flex-wrap items-center gap-4">
                 <button
                   type="submit"
-                  disabled={status === "sending"}
+                  disabled={status === "sending" || !token}
                   className="inline-flex min-h-11 items-center gap-2 rounded-full bg-accent-solid px-6 text-[15px] font-semibold text-on-accent transition active:scale-[0.96] disabled:opacity-60"
                 >
                   <LuSend aria-hidden="true" />
@@ -74,7 +95,7 @@ export function Contact() {
                   {status === "sent" && "Thanks, your message is on its way."}
                   {status === "error" && (
                     <>
-                      Something went wrong. Please email me at{" "}
+                      {error || "Something went wrong."} You can also email me at{" "}
                       <a className="underline" href={`mailto:${profile.email}`}>
                         {profile.email}
                       </a>

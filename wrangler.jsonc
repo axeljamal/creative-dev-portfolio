@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "creative-dev-portfolio",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+
+  // the built Vite site; /api/* goes to the Worker first
+  "assets": {
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "creative-dev-portfolio",
+      // replace with the id printed by `npx wrangler d1 create creative-dev-portfolio`
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  "vars": {
+    // Cloudflare Access: your team domain, e.g. "axeljamal.cloudflareaccess.com",
+    // and the Application Audience (AUD) tag of the /admin application
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+    // where new-message alerts go; leave empty to turn alerts off
+    "NOTIFY_EMAIL": ""
+  }
+
+  // secrets (set with `npx wrangler secret put <NAME>`):
+  //   TURNSTILE_SECRET_KEY  required
+  //   RESEND_API_KEY        optional, for email alerts
+}
