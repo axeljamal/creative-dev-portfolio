@@ -1,6 +1,8 @@
 import { FaLinkedin } from "react-icons/fa6";
 import { LuFileText } from "react-icons/lu";
 import { Button } from "../components/Button";
+import { Chip } from "../components/Chip";
+import { GlassPanel } from "../components/GlassPanel";
 import { Reveal, Section } from "../components/Section";
 import { profile } from "../content/profile";
 import { skills } from "../content/skills";
@@ -20,8 +22,11 @@ export function About() {
         </Reveal>
 
         <Reveal className="lg:col-span-7">
-          <div className="glass-strong flex h-full flex-col rounded-[2rem] p-6 sm:rounded-[2.5rem] sm:p-10">
-            <div className="relative z-2 flex flex-1 flex-col">
+          <GlassPanel
+            material="strong"
+            className="flex h-full flex-col rounded-[2rem] p-6 sm:rounded-[2.5rem] sm:p-10"
+          >
+            <div className="flex flex-1 flex-col">
               <div className="space-y-4 text-lg leading-relaxed">
                 {profile.bio.map((paragraph) => (
                   <p key={paragraph.slice(0, 24)}>{paragraph}</p>
@@ -41,17 +46,13 @@ export function About() {
               </h3>
               <ul className="mt-4 flex flex-wrap gap-2">
                 {skills.map(({ name, icon: Icon }) => (
-                  <li
-                    key={name}
-                    className="glass-clear inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[15px] font-medium"
-                  >
-                    <Icon aria-hidden="true" className="relative z-2 text-accent-solid" />
-                    <span className="relative z-2">{name}</span>
-                  </li>
+                  <Chip key={name} as="li" variant="glass" size="md" icon={<Icon />}>
+                    {name}
+                  </Chip>
                 ))}
               </ul>
             </div>
-          </div>
+          </GlassPanel>
         </Reveal>
       </div>
     </Section>

@@ -65,6 +65,14 @@
   pointer-events: none;
 }
 
+/* content sits above the rim (::after, z-index 1) */
+.glass > *,
+.glass-strong > *,
+.glass-clear > * {
+  position: relative;
+  z-index: 2;
+}
+
 html.refract .glass-lens {
   -webkit-backdrop-filter: url(#liquid-lens) blur(var(--glass-blur, 18px)) saturate(180%);
   backdrop-filter: url(#liquid-lens) blur(var(--glass-blur, 18px)) saturate(180%);

@@ -64,14 +64,6 @@ a {
   color: var(--ink-2);
 }
 
-/* lift text and icons above the glass rim (::after sits at z-index 1) */
-.glass > *,
-.glass-strong > *,
-.glass-clear > * {
-  position: relative;
-  z-index: 2;
-}
-
 /* ---------- buttons ---------- */
 
 .btn {

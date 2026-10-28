@@ -1,6 +1,7 @@
 import { FaGithub } from "react-icons/fa6";
 import { LuArrowUpRight, LuBox } from "react-icons/lu";
 import { Button } from "../components/Button";
+import { Chip } from "../components/Chip";
 import { Reveal, Section } from "../components/Section";
 import { caseStudies, earlierWork, type CaseStudy } from "../content/work";
 
@@ -79,12 +80,9 @@ function CaseStudyCard({ study, flip }: { study: CaseStudy; flip: boolean }) {
         <p className="mt-2 text-[15px] leading-relaxed text-ink-2">{study.role}</p>
         <ul aria-label="Tools" className="mt-4 flex flex-wrap gap-1.5">
           {study.stack.map((tool) => (
-            <li
-              key={tool}
-              className="rounded-full bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] px-3 py-1 text-[13px] font-semibold text-accent-solid"
-            >
+            <Chip key={tool} as="li">
               {tool}
-            </li>
+            </Chip>
           ))}
         </ul>
         <dl className="mt-6 space-y-4 text-[15px] leading-relaxed">

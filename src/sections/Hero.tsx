@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { FaGithub } from "react-icons/fa6";
 import { LuArrowRight, LuFileText, LuMapPin } from "react-icons/lu";
 import { Button } from "../components/Button";
+import { Chip } from "../components/Chip";
 import { profile } from "../content/profile";
 import hero from "../assets/hero.jpg";
 
@@ -25,10 +26,9 @@ export function Hero() {
             className="glass glass-lens w-full max-w-2xl rounded-[1.75rem] p-6 sm:rounded-[2.25rem] sm:p-10"
           >
             <div className="relative z-2">
-              <p className="glass-clear inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium">
-                <LuMapPin aria-hidden="true" className="relative z-2" />
-                <span className="relative z-2">{profile.location}</span>
-              </p>
+              <Chip variant="glass" icon={<LuMapPin />}>
+                {profile.location}
+              </Chip>
               <h1
                 id="home-title"
                 className="mt-5 text-5xl font-bold tracking-tighter text-balance sm:text-7xl"
