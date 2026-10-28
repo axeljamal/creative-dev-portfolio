@@ -1,6 +1,7 @@
 import { MotionConfig } from "motion/react";
 import { GlassFilter } from "./components/GlassFilter";
 import { Nav } from "./components/Nav";
+import { ThemeSwitch } from "./components/ThemeSwitch";
 import { Hero } from "./sections/Hero";
 import { Work } from "./sections/Work";
 import { About } from "./sections/About";
@@ -30,8 +31,11 @@ export default function App() {
         <About />
         <Contact />
       </main>
-      <footer className="mx-auto max-w-6xl px-4 pt-4 pb-32 text-sm text-ink-2 sm:px-6 md:pb-10">
-        © {new Date().getFullYear()} {profile.name}. Built with React, Vite and Tailwind CSS.
+      <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 pt-4 pb-32 text-sm text-ink-2 sm:px-6 md:pb-10">
+        <p>
+          © {new Date().getFullYear()} {profile.name}. Built with React, Vite and Tailwind CSS.
+        </p>
+        <ThemeSwitch />
       </footer>
     </MotionConfig>
   );

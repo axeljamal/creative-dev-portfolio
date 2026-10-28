@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTheme } from "../theme";
 
 type TurnstileApi = {
   render: (el: HTMLElement, options: Record<string, unknown>) => string;
@@ -28,8 +29,10 @@ function loadScript() {
 
 // Cloudflare's spam check. Calls onToken with a one-time token, or null when
 // it expires or fails. Remount it (change its key) to get a fresh token.
+// It re-renders in the site's theme when the visitor switches Light/Dark.
 export function Turnstile({ onToken }: { onToken: (token: string | null) => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
   const callback = useRef(onToken);
   callback.current = onToken;
 
@@ -45,7 +48,7 @@ export function Turnstile({ onToken }: { onToken: (token: string | null) => void
         if (cancelled || !ref.current || !window.turnstile) return;
         widgetId = window.turnstile.render(ref.current, {
           sitekey: siteKey,
-          theme: "auto",
+          theme,
           size: "flexible",
           callback: (token: string) => callback.current(token),
           "expired-callback": () => callback.current(null),
@@ -55,9 +58,12 @@ export function Turnstile({ onToken }: { onToken: (token: string | null) => void
       .catch(() => callback.current(null));
     return () => {
       cancelled = true;
-      if (widgetId) window.turnstile?.remove(widgetId);
+      if (widgetId) {
+        window.turnstile?.remove(widgetId);
+        callback.current(null);
+      }
     };
-  }, []);
+  }, [theme]);
 
   return <div ref={ref} className="min-h-[65px]" />;
 }

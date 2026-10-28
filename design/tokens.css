@@ -31,8 +31,13 @@
   color-scheme: light;
 }
 
+/*
+ * Dark theme. It follows the system setting unless the visitor picked Light
+ * or Dark (src/theme.ts sets data-theme on <html>). The two blocks below hold
+ * the same values: one for "system" and one for an explicit Dark choice.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --canvas: #110905;
     --ink: #fbf1e6;
     --ink-2: rgb(251 241 230 / 0.72);
@@ -53,4 +58,26 @@
 
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --canvas: #110905;
+  --ink: #fbf1e6;
+  --ink-2: rgb(251 241 230 / 0.72);
+  --accent: #ff8a1f;
+  --accent-solid: #ff8a1f;
+  --on-accent: #1a0d05;
+  --sun: #ffb300;
+  --leaf: #3c7d2c;
+
+  --glass-bg: rgb(48 30 18 / 0.34);
+  --glass-bg-strong: rgb(30 18 10 / 0.62);
+  --glass-rim: rgb(255 255 255 / 0.32);
+  --glass-rim-soft: rgb(255 255 255 / 0.08);
+  --glass-shade: rgb(0 0 0 / 0.2);
+  --glass-shadow: 0 12px 40px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --solid-surface: #21150d;
+  --field: rgb(0 0 0 / 0.25);
+
+  color-scheme: dark;
 }

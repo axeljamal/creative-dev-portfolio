@@ -7,6 +7,13 @@
     <meta name="robots" content="noindex" />
     <link rel="icon" href="/favicon.ico" />
     <title>Inbox · Axel Jamal</title>
+    <script>
+      // apply a saved Light/Dark choice before first paint (src/theme.ts manages it after)
+      try {
+        var theme = localStorage.getItem("theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
