@@ -5,9 +5,8 @@
  */
 
 :root {
-  --font-system:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui,
-    "Segoe UI", Roboto, sans-serif;
+  /* -apple-system is SF Pro on Apple devices; no web font is loaded */
+  --font-system: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
 
   --canvas: #fff5e8;
   --ink: #1a0d14;

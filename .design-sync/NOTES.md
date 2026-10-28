@@ -3,7 +3,7 @@
 - **Shape:** package. The DS entry is `src/ds/index.ts`, built by `npm run build:ds` (Vite lib mode → `dist-ds/`, plus `tsc -p tsconfig.ds.json` for the types). React, motion and react-icons stay external in the lib build; the converter inlines them into `_ds_bundle.js`.
 - **CSS:** `dist-ds/styles.css` is the whole site stylesheet (Tailwind v4 plus `design/tokens.css` and `design/glass.css`). Tailwind scans `.design-sync/previews/` because it isn't gitignored, so utility classes used only in previews still ship.
 - **Utility safelist:** Claude Design's agent writes its own Tailwind classes, but Tailwind only generates classes the site uses. Designs came out with square nav links and broken fields until `src/ds/styles.css` added a standard set via `@source inline(...)`, on 2026-10-28. That brought the DS CSS to about 229 KB, while the site's own CSS stays about 30 KB. When the agent reaches for a class that's missing, add it there; don't change `src/index.css`.
-- **Fonts:** the system stack is intentional (SF Pro → Inter → system-ui). The user chose to keep system fonts on 2026-10-28, and no web font ships.
+- **Fonts:** the system stack is intentional: `-apple-system` (SF Pro on Apple devices), then `system-ui`, Segoe UI and Roboto. The user chose system fonts on 2026-10-28, and no web font ships. Named families (`"SF Pro Text"`, `"Inter"`) were removed from the stack the same day: they changed nothing on screen, but Claude Design warned that their font files were missing.
 - **Playwright:** no bundled browser. Run validate and capture with `DS_CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`.
 - **Animated components:** `Section` and `Reveal` start at opacity 0 and fade in via motion `whileInView`. The capture doesn't wait for animations, so their previews wrap content in a `Settled` helper (`.ds-settled [style*="opacity"] { opacity:1 !important; transform:none !important }`) to show the settled state.
 - **Glass previews** sit on an inline radial-gradient backdrop built from the token colours; on a flat canvas the glass is barely visible.
@@ -11,7 +11,7 @@
 
 ## Known render warns
 
-- `[FONT_MISSING] "SF Pro Text", "SF Pro Display", "Inter"`: accepted (system font stack; see Fonts above).
+- None. A `[FONT_MISSING]` warning means a named font family was added back to `--font-system`.
 
 ## Re-sync risks
 
