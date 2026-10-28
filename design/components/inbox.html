@@ -1,0 +1,39 @@
+<!-- @dsCard group="Inbox" -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Inbox · Creative Dev Portfolio</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../glass.css" />
+    <link rel="stylesheet" href="../preview.css" />
+  </head>
+  <body>
+    <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+    <p class="page-title">Components</p>
+    <h1 class="page-heading">Inbox</h1>
+    <div class="stack" style="max-width:460px">
+      <nav class="nav-pill glass" aria-label="Folders">
+        <a class="nav-link lens-bubble" href="#" aria-current="true">New <span style="color:var(--ink-2)">2</span></a>
+        <a class="nav-link" href="#">Read <span>5</span></a>
+        <a class="nav-link" href="#">Archived <span>1</span></a>
+      </nav>
+      <section class="glass-strong" style="border-radius:2rem;padding:8px;display:grid;gap:4px">
+        <button class="inbox-row" type="button" aria-current="true">
+          <span class="inbox-head"><span class="unread-dot" aria-label="Unread"></span><strong style="font-weight:700">Ada Lovelace</strong><span class="inbox-date">28 Oct</span></span>
+          <span class="inbox-snippet">Loved the Bootcamp Connect case study. Are you open to a design engineer role?</span>
+        </button>
+        <button class="inbox-row" type="button">
+          <span class="inbox-head"><span class="unread-dot" aria-label="Unread"></span><strong style="font-weight:700">Grace Hopper</strong><span class="inbox-date">27 Oct</span></span>
+          <span class="inbox-snippet">Could we chat about a freelance prototype next month?</span>
+        </button>
+        <button class="inbox-row" type="button">
+          <span class="inbox-head"><strong style="font-weight:600">Alan Turing</strong><span class="inbox-date">24 Oct</span></span>
+          <span class="inbox-snippet">Great portfolio. The glass navigation is lovely on my phone.</span>
+        </button>
+      </section>
+    </div>
+  </body>
+</html>

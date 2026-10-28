@@ -1,0 +1,56 @@
+/*
+ * Design tokens: the single source for colour and material values.
+ * The site imports this file (src/index.css) and so do the previews in
+ * design/foundations and design/components, so they can't drift apart.
+ */
+
+:root {
+  --font-system:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui,
+    "Segoe UI", Roboto, sans-serif;
+
+  --canvas: #fff5e8;
+  --ink: #1a0d14;
+  --ink-2: rgb(26 13 20 / 0.7);
+  --accent: #e96d01;
+  /* darker orange so white button text passes WCAG AA */
+  --accent-solid: #b84f00;
+  --on-accent: #ffffff;
+  --sun: #ffc506;
+  --leaf: #4e9a3a;
+
+  --glass-bg: rgb(255 255 255 / 0.38);
+  --glass-bg-strong: rgb(255 252 247 / 0.66);
+  --glass-rim: rgb(255 255 255 / 0.85);
+  --glass-rim-soft: rgb(255 255 255 / 0.25);
+  --glass-shade: rgb(120 60 0 / 0.08);
+  --glass-shadow: 0 12px 40px -12px rgb(90 40 0 / 0.28), 0 2px 6px -2px rgb(90 40 0 / 0.12);
+  --solid-surface: #fffaf3;
+  --field: rgb(255 255 255 / 0.55);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #110905;
+    --ink: #fbf1e6;
+    --ink-2: rgb(251 241 230 / 0.72);
+    --accent: #ff8a1f;
+    --accent-solid: #ff8a1f;
+    --on-accent: #1a0d05;
+    --sun: #ffb300;
+    --leaf: #3c7d2c;
+
+    --glass-bg: rgb(48 30 18 / 0.34);
+    --glass-bg-strong: rgb(30 18 10 / 0.62);
+    --glass-rim: rgb(255 255 255 / 0.32);
+    --glass-rim-soft: rgb(255 255 255 / 0.08);
+    --glass-shade: rgb(0 0 0 / 0.2);
+    --glass-shadow: 0 12px 40px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+    --solid-surface: #21150d;
+    --field: rgb(0 0 0 / 0.25);
+
+    color-scheme: dark;
+  }
+}

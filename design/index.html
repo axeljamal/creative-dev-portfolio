@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Design system · Creative Dev Portfolio</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="glass.css" />
+    <link rel="stylesheet" href="preview.css" />
+    <style>
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+        max-width: 960px;
+      }
+      .grid a {
+        display: block;
+        padding: 18px 20px;
+        border-radius: 1.5rem;
+        color: var(--ink);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      h2 {
+        margin: 32px 0 12px;
+        font-size: 15px;
+        color: var(--ink-2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+    <p class="page-title">Creative Dev Portfolio</p>
+    <h1 class="page-heading">Design system</h1>
+
+    <h2>Foundations</h2>
+    <nav class="grid">
+      <a class="glass" href="foundations/colors.html">Colours</a>
+      <a class="glass" href="foundations/typography.html">Typography</a>
+      <a class="glass" href="foundations/spacing-radius.html">Spacing and radius</a>
+      <a class="glass" href="foundations/glass.html">Liquid Glass</a>
+    </nav>
+
+    <h2>Components</h2>
+    <nav class="grid">
+      <a class="glass" href="components/buttons.html">Buttons</a>
+      <a class="glass" href="components/chips.html">Chips</a>
+      <a class="glass" href="components/navigation.html">Navigation</a>
+      <a class="glass" href="components/cards.html">Cards</a>
+      <a class="glass" href="components/form.html">Contact form</a>
+      <a class="glass" href="components/inbox.html">Inbox</a>
+    </nav>
+  </body>
+</html>

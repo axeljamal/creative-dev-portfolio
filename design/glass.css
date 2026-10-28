@@ -1,0 +1,168 @@
+/*
+ * The Liquid Glass material and the aurora backdrop behind it.
+ * Needs design/tokens.css. Used by the site and the design previews.
+ */
+
+/* ---------- liquid glass ---------- */
+
+/*
+ * The material: a translucent tint over a blurred, saturated backdrop,
+ * a bright specular rim where light hits the top-left edge, a soft inner
+ * shade at the bottom, and a lifted shadow. Chromium also gets edge
+ * refraction from the SVG filter in GlassFilter.tsx (html.refract).
+ */
+.glass,
+.glass-strong,
+.glass-clear {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur, 18px)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur, 18px)) saturate(180%);
+  box-shadow:
+    inset 0 1px 1px var(--glass-rim),
+    inset 0 -6px 14px -8px var(--glass-shade),
+    var(--glass-shadow);
+}
+
+/* content-heavy surfaces: more frosted, for legibility */
+.glass-strong {
+  --glass-blur: 28px;
+  background: var(--glass-bg-strong);
+}
+
+/* controls over imagery: thinner, lets more through */
+.glass-clear {
+  --glass-blur: 6px;
+  background: color-mix(in srgb, var(--glass-bg) 55%, transparent);
+}
+
+/* gradient rim, brightest top-left, fading round the edge */
+.glass::after,
+.glass-strong::after,
+.glass-clear::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--glass-rim) 0%,
+    var(--glass-rim-soft) 30%,
+    transparent 50%,
+    var(--glass-rim-soft) 80%,
+    var(--glass-rim) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+html.refract .glass-lens {
+  -webkit-backdrop-filter: url(#liquid-lens) blur(var(--glass-blur, 18px)) saturate(180%);
+  backdrop-filter: url(#liquid-lens) blur(var(--glass-blur, 18px)) saturate(180%);
+}
+
+/* the pressed/selected bubble inside nav bars */
+.lens-bubble {
+  background: color-mix(in srgb, var(--glass-rim) 45%, transparent);
+  box-shadow:
+    inset 0 1px 1px var(--glass-rim),
+    0 4px 14px -6px var(--glass-shade);
+}
+
+/* inputs are cut into the glass, not raised from it */
+.glass-field {
+  background: var(--field);
+  border-radius: 1rem;
+  box-shadow:
+    inset 0 1px 3px var(--glass-shade),
+    inset 0 0 0 1px var(--glass-rim-soft);
+}
+
+/* respect people who turn transparency off or need more contrast */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .glass,
+  .glass-strong,
+  .glass-clear,
+  html.refract .glass-lens {
+    background: var(--solid-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .glass,
+  .glass-strong,
+  .glass-clear,
+  .glass-field {
+    outline: 1px solid var(--ink);
+  }
+}
+
+/* ---------- background ---------- */
+
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--canvas);
+}
+
+.aurora span {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.55;
+  animation: drift 28s ease-in-out infinite alternate;
+}
+
+.aurora span:nth-child(1) {
+  width: 55vmax;
+  height: 55vmax;
+  top: -20vmax;
+  left: -15vmax;
+  background: var(--accent);
+}
+
+.aurora span:nth-child(2) {
+  width: 45vmax;
+  height: 45vmax;
+  top: 20vh;
+  right: -20vmax;
+  background: var(--sun);
+  animation-duration: 34s;
+  animation-delay: -8s;
+}
+
+.aurora span:nth-child(3) {
+  width: 40vmax;
+  height: 40vmax;
+  bottom: -20vmax;
+  left: 20vw;
+  background: var(--leaf);
+  opacity: 0.35;
+  animation-duration: 40s;
+  animation-delay: -16s;
+}
+
+@keyframes drift {
+  to {
+    transform: translate3d(8vw, 6vh, 0) scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora span {
+    animation: none;
+  }
+}
