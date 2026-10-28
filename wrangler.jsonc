@@ -15,8 +15,7 @@
     {
       "binding": "DB",
       "database_name": "creative-dev-portfolio",
-      // replace with the id printed by `npx wrangler d1 create creative-dev-portfolio`
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "eeca63c3-cad5-4c4f-aed5-6afb33f52e69",
       "migrations_dir": "migrations"
     }
   ],
