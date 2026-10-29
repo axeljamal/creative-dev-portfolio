@@ -16,7 +16,7 @@ export function Work() {
         ))}
       </div>
 
-      <h3 className="mt-20 mb-6 text-2xl font-bold tracking-tight sm:text-3xl">Earlier work</h3>
+      <h3 className="mt-20 mb-6 font-display text-3xl font-semibold sm:text-4xl">Earlier work</h3>
       {/* swipeable rail on phones, grid on larger screens */}
       <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-6 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
         {earlierWork.map((project) => (
@@ -29,7 +29,7 @@ export function Work() {
                 className="relative z-2 aspect-[16/10] w-full rounded-[1.25rem] object-cover object-top"
               />
               <div className="relative z-2 flex flex-1 flex-col p-3.5">
-                <h4 className="text-lg font-semibold tracking-tight">{project.name}</h4>
+                <h4 className="font-display text-2xl font-semibold">{project.name}</h4>
                 <p className="mt-1.5 flex-1 text-[15px] leading-relaxed text-ink-2">
                   {project.details}
                 </p>
@@ -76,7 +76,7 @@ function CaseStudyCard({ study, flip }: { study: CaseStudy; flip: boolean }) {
       </div>
 
       <div className="relative z-2 flex flex-col p-4 sm:p-6 lg:col-span-5">
-        <h3 className="text-3xl font-bold tracking-tight">{study.name}</h3>
+        <h3 className="font-display text-4xl font-semibold">{study.name}</h3>
         <p className="mt-2 text-[15px] leading-relaxed text-ink-2">{study.role}</p>
         <ul aria-label="Tools" className="mt-4 flex flex-wrap gap-1.5">
           {study.stack.map((tool) => (

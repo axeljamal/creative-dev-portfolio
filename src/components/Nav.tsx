@@ -18,11 +18,16 @@ const spring = { type: "spring", stiffness: 420, damping: 34 } as const;
 export function Nav() {
   const active = useActiveSection(sectionIds);
   const compact = useCompactOnScroll();
+  // the welcome film has its own controls, so the nav steps aside until you scroll past it
+  const away = active === "home" ? "pointer-events-none -translate-y-4 opacity-0" : "";
 
   return (
     <>
       {/* web: floating pill at the top */}
-      <header className="fixed inset-x-0 top-4 z-50 hidden justify-center px-4 md:flex">
+      <header
+        className={`fixed inset-x-0 top-4 z-50 hidden justify-center px-4 transition duration-500 md:flex ${away}`}
+        inert={active === "home"}
+      >
         <nav
           aria-label="Main"
           className="glass glass-lens flex items-center gap-1 rounded-full py-1.5 pr-1.5 pl-1.5"
@@ -66,7 +71,8 @@ export function Nav() {
       {/* mobile: iOS-style tab bar that shrinks while you scroll down */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(env(safe-area-inset-bottom),12px)] md:hidden"
+        className={`fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(env(safe-area-inset-bottom),12px)] transition duration-500 md:hidden ${away.replace("-translate-y-4", "translate-y-4")}`}
+        inert={active === "home"}
       >
         <motion.ul
           layout

@@ -3,7 +3,9 @@
 @import "../design/glass.css";
 
 @theme inline {
-  --font-sans: var(--font-system);
+  --font-sans: var(--type-body);
+  --font-display: var(--type-display);
+  --font-mono: var(--type-mono);
   --color-canvas: var(--canvas);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
@@ -49,4 +51,19 @@ body {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* the floating Collaborate and Contact buttons bob gently, like the motifs behind them */
+.floating-bob {
+  animation: bob 4.5s ease-in-out infinite;
+}
+@keyframes bob {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .floating-bob {
+    animation: none;
+  }
 }

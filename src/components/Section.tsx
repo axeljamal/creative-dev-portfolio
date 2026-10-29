@@ -18,10 +18,10 @@ export function Section({ id, eyebrow, title, children }: Props) {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="mb-10 sm:mb-14"
       >
-        <p className="text-sm font-semibold tracking-wide text-accent-solid uppercase">{eyebrow}</p>
+        <p className="font-mono text-xs font-medium tracking-[0.14em] text-accent-solid uppercase">{eyebrow}</p>
         <h2
           id={`${id}-title`}
-          className="mt-2 text-4xl font-bold tracking-tight text-balance sm:text-5xl"
+          className="mt-2 font-display text-5xl font-semibold text-balance sm:text-6xl"
         >
           {title}
         </h2>

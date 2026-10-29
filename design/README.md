@@ -5,7 +5,7 @@ Design project.
 
 | File | What it is |
 | --- | --- |
-| `tokens.css` | Colours, light and dark, and the system font stack. **The site imports this file**, so a change here changes the site. |
+| `tokens.css` | Colours, light and dark, and the Marea Dvīpa type stack. **The site imports this file**, so a change here changes the site. |
 | `glass.css` | The Liquid Glass material (clear, regular, strong), the lens bubble, inset fields, accessibility fallbacks and the aurora backdrop. Also imported by the site. |
 | `preview.css` | Layout for the preview pages and plain-CSS versions of the components. |
 | `foundations/` | Colours, typography, spacing and radius, materials. |
