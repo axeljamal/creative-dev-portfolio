@@ -91,7 +91,7 @@ export const earlierWork: Project[] = [
     name: "Weather Dashboard",
     image:
       "https://axeljamal.github.io/s-api-js-weather-dashboard/assets/images/screenshot.jpg",
-    details: "Current weather and a five-day forecast for any city, with a responsive liquid glass design.",
+    details: "Current weather and a five-day forecast for any city, with a live 3D weather scene and an animated view of each API call.",
     pageLink: "https://axeljamal.github.io/s-api-js-weather-dashboard/",
     sourceLink: "https://github.com/axeljamal/s-api-js-weather-dashboard",
   },
