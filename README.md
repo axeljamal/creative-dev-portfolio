@@ -16,13 +16,23 @@ Runs on Cloudflare Workers: the site, a contact API and a private inbox at `/adm
 
 The page opens on a welcome film from Marea Dvīpa (`src/welcome/`): a
 full-screen 3D stage of batik motifs that land one by one at the golden angle,
-orbit each case study, then settle into a repeat, scored for synthesized
-kakula, gongs and drum at 138 bpm. It starts silent; **Play with sound** (or a
+orbit Marea Dvīpa's Pattern Studio and Media Lab, then settle into a repeat,
+scored for synthesized kakula, gongs and drum at 138 bpm. In the Work chapter
+the Bomba Rose grows its petal rings to Bunga Kaili, an original song, and you
+can play it. It starts silent; **Play with sound** (or a
 tap on any motif) turns the sound on. Move the pointer or tilt the phone to look
 around the scene, drag to turn it further, and tap a motif to ring it. Space
 plays and pauses, ← → jump chapters, F goes full screen and H hides the
 controls. The rest of the site uses the Marea Dvīpa palette (pearl, Bomba
 black, temple gold, teal) and type (Cormorant Garamond, Karla, IBM Plex Mono).
+
+Below the film, the motifs keep floating in a 3D field behind the page
+(`MotifField`). They drift, tilt with the pointer and move at their own depth
+as you scroll. Tap one where nothing else is and a random event rings out, each
+with its own sound: the motif changes colour, turns into another motif or
+floats away, or the colours behind the page shift. Floating **Collaborate** and
+**Contact** buttons lead to the message form; Collaborate starts the message
+for you.
 
 The interface uses a Liquid Glass material inspired by Apple's design language:
 translucent surfaces that blur and saturate what's behind them, specular rims,
@@ -38,8 +48,9 @@ that shrinks while you scroll.
 ```
 src/
   content/     profile, case studies, earlier work and skills (edit these to update the site)
-  components/  Nav, Button, Section, GlassFilter
-  sections/    Hero, Work, About, Contact
+  welcome/     the welcome film: timeline, stage, Bomba Rose and Web Audio sound
+  components/  Nav, Button, Chip, GlassPanel, Section, GlassFilter, MotifField, FloatingActions
+  sections/    Work, About, Contact
   hooks/       active section and scroll behaviour
   admin/       the /admin inbox
   index.css    design tokens and the glass material
