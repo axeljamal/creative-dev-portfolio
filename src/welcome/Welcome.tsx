@@ -527,7 +527,7 @@ export function Welcome() {
 
       {/* the name is always in the page for screen readers and search; the title card shows it on screen */}
       <div className={"w-title" + (view.overlay === "title" ? "" : " off")}>
-        <img src={src("ntina-mark--gold")} alt="" />
+        <img src={src("dua-pulau-medallion")} alt="" />
         <div className="w-eyebrow">{profile.location} · Portfolio</div>
         <h1 id="home-title">{profile.name}</h1>
         <p>{profile.title}</p>
