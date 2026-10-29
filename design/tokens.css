@@ -5,26 +5,30 @@
  */
 
 :root {
-  /* -apple-system is SF Pro on Apple devices; no web font is loaded */
+  /* Marea Dvīpa type: Cormorant Garamond for display, Karla for text, IBM Plex Mono for eyebrows (loaded in index.html) */
   --font-system: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+  --type-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --type-body: "Karla", var(--font-system);
+  --type-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 
-  --canvas: #fff5e8;
-  --ink: #1a0d14;
-  --ink-2: rgb(26 13 20 / 0.7);
-  --accent: #e96d01;
-  /* darker orange so white button text passes WCAG AA */
-  --accent-solid: #b84f00;
+  /* Marea Dvīpa colour: pearl ground, Bomba black ink, temple gold, Selat teal and midnight */
+  --canvas: #faf7f2;
+  --ink: #0e0c09;
+  --ink-2: rgb(14 12 9 / 0.7);
+  --accent: #c39b65;
+  /* deep gold so white button text passes WCAG AA */
+  --accent-solid: #7a5a22;
   --on-accent: #ffffff;
-  --sun: #ffc506;
-  --leaf: #4e9a3a;
+  --sun: #e0c27e;
+  --leaf: #1f5c63;
 
   --glass-bg: rgb(255 255 255 / 0.38);
   --glass-bg-strong: rgb(255 252 247 / 0.66);
   --glass-rim: rgb(255 255 255 / 0.85);
   --glass-rim-soft: rgb(255 255 255 / 0.25);
-  --glass-shade: rgb(120 60 0 / 0.08);
-  --glass-shadow: 0 12px 40px -12px rgb(90 40 0 / 0.28), 0 2px 6px -2px rgb(90 40 0 / 0.12);
-  --solid-surface: #fffaf3;
+  --glass-shade: rgb(80 60 20 / 0.08);
+  --glass-shadow: 0 12px 40px -12px rgb(40 30 10 / 0.28), 0 2px 6px -2px rgb(40 30 10 / 0.12);
+  --solid-surface: #fffdf8;
   --field: rgb(255 255 255 / 0.55);
 
   color-scheme: light;
@@ -37,22 +41,22 @@
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --canvas: #110905;
-    --ink: #fbf1e6;
-    --ink-2: rgb(251 241 230 / 0.72);
-    --accent: #ff8a1f;
-    --accent-solid: #ff8a1f;
-    --on-accent: #1a0d05;
-    --sun: #ffb300;
-    --leaf: #3c7d2c;
+    --canvas: #0e0c09;
+    --ink: #f4eee3;
+    --ink-2: rgb(244 238 227 / 0.72);
+    --accent: #e0c27e;
+    --accent-solid: #e0c27e;
+    --on-accent: #0e0c09;
+    --sun: #c39b65;
+    --leaf: #2a6f74;
 
-    --glass-bg: rgb(48 30 18 / 0.34);
-    --glass-bg-strong: rgb(30 18 10 / 0.62);
+    --glass-bg: rgb(36 30 22 / 0.34);
+    --glass-bg-strong: rgb(23 20 15 / 0.66);
     --glass-rim: rgb(255 255 255 / 0.32);
     --glass-rim-soft: rgb(255 255 255 / 0.08);
     --glass-shade: rgb(0 0 0 / 0.2);
     --glass-shadow: 0 12px 40px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
-    --solid-surface: #21150d;
+    --solid-surface: #17140f;
     --field: rgb(0 0 0 / 0.25);
 
     color-scheme: dark;
@@ -60,22 +64,22 @@
 }
 
 :root[data-theme="dark"] {
-  --canvas: #110905;
-  --ink: #fbf1e6;
-  --ink-2: rgb(251 241 230 / 0.72);
-  --accent: #ff8a1f;
-  --accent-solid: #ff8a1f;
-  --on-accent: #1a0d05;
-  --sun: #ffb300;
-  --leaf: #3c7d2c;
+  --canvas: #0e0c09;
+  --ink: #f4eee3;
+  --ink-2: rgb(244 238 227 / 0.72);
+  --accent: #e0c27e;
+  --accent-solid: #e0c27e;
+  --on-accent: #0e0c09;
+  --sun: #c39b65;
+  --leaf: #2a6f74;
 
-  --glass-bg: rgb(48 30 18 / 0.34);
-  --glass-bg-strong: rgb(30 18 10 / 0.62);
+  --glass-bg: rgb(36 30 22 / 0.34);
+  --glass-bg-strong: rgb(23 20 15 / 0.66);
   --glass-rim: rgb(255 255 255 / 0.32);
   --glass-rim-soft: rgb(255 255 255 / 0.08);
   --glass-shade: rgb(0 0 0 / 0.2);
   --glass-shadow: 0 12px 40px -12px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
-  --solid-surface: #21150d;
+  --solid-surface: #17140f;
   --field: rgb(0 0 0 / 0.25);
 
   color-scheme: dark;

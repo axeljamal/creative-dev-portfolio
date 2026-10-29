@@ -41,7 +41,7 @@ export function About() {
                 </Button>
               </div>
 
-              <h3 className="mt-auto pt-10 text-sm font-semibold tracking-wide text-accent-solid uppercase">
+              <h3 className="mt-auto pt-10 font-mono text-xs font-medium tracking-[0.14em] text-accent-solid uppercase">
                 Skills
               </h3>
               <ul className="mt-4 flex flex-wrap gap-2">

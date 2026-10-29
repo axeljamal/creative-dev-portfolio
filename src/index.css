@@ -3,7 +3,9 @@
 @import "../design/glass.css";
 
 @theme inline {
-  --font-sans: var(--font-system);
+  --font-sans: var(--type-body);
+  --font-display: var(--type-display);
+  --font-mono: var(--type-mono);
   --color-canvas: var(--canvas);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);

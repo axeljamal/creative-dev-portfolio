@@ -14,6 +14,16 @@ Runs on Cloudflare Workers: the site, a contact API and a private inbox at `/adm
 
 ## Design
 
+The page opens on a welcome film from Marea Dvīpa (`src/welcome/`): a
+full-screen 3D stage of batik motifs that land one by one at the golden angle,
+orbit each case study, then settle into a repeat, scored for synthesized
+kakula, gongs and drum at 138 bpm. It starts silent; **Play with sound** (or a
+tap on any motif) turns the sound on. Move the pointer or tilt the phone to look
+around the scene, drag to turn it further, and tap a motif to ring it. Space
+plays and pauses, ← → jump chapters, F goes full screen and H hides the
+controls. The rest of the site uses the Marea Dvīpa palette (pearl, Bomba
+black, temple gold, teal) and type (Cormorant Garamond, Karla, IBM Plex Mono).
+
 The interface uses a Liquid Glass material inspired by Apple's design language:
 translucent surfaces that blur and saturate what's behind them, specular rims,
 and, in Chromium browsers, edge refraction from an SVG displacement filter.
