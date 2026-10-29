@@ -1,5 +1,6 @@
 import bootcampConnect from "../assets/bootcamp-connect.jpg";
 import mareaDvipa from "../assets/marea-studio.jpg";
+import weatherDashboard from "../assets/weather-dashboard.jpg";
 import windfall from "../assets/windfall.jpg";
 
 export type CaseStudy = {
@@ -61,6 +62,20 @@ export const caseStudies: CaseStudy[] = [
     result: "Built to click through with stakeholders for a Brighton and Hove pilot.",
   },
   {
+    name: "Weather Dashboard",
+    image: weatherDashboard,
+    role: "Solo project, rebuilt in 2026. Front end, 3D and API design",
+    stack: ["JavaScript", "Three.js", "OpenWeather API", "CSS", "Claude Code"],
+    problem:
+      "Weather apps hide how they work: you type a city and numbers appear, with no sense of the requests going back and forth to the server.",
+    approach:
+      "I rebuilt my bootcamp weather dashboard with a liquid glass interface over a live Three.js scene, where clouds, sun, moon, rain, snow and lightning follow the real weather and wind. A floating panel animates every API call as it happens: geocoding first, then current weather and the forecast in parallel, with the real query, status and timing.",
+    result:
+      "Live on GitHub Pages and responsive on phones. Fixed the forecast breaking at month ends, wrong wind units and crashes on unknown cities, and slow replies from an old search can no longer overwrite a new one.",
+    pageLink: "https://axeljamal.github.io/s-api-js-weather-dashboard/",
+    sourceLink: "https://github.com/axeljamal/s-api-js-weather-dashboard",
+  },
+  {
     name: "3D product demo",
     role: "Team project. 25 commits",
     stack: ["Vue 3", "Vite", "Three.js"],
@@ -86,14 +101,6 @@ export const earlierWork: Project[] = [
     details: "A Node.js command-line app, built test-first, that generates a team profile page.",
     pageLink: "https://axeljamal.github.io/tdd-oop-team-profile-generator/",
     sourceLink: "https://github.com/axeljamal/tdd-oop-team-profile-generator",
-  },
-  {
-    name: "Weather Dashboard",
-    image:
-      "https://axeljamal.github.io/s-api-js-weather-dashboard/assets/images/screenshot.jpg",
-    details: "Current weather and a five-day forecast for any city, with a live 3D weather scene and an animated view of each API call.",
-    pageLink: "https://axeljamal.github.io/s-api-js-weather-dashboard/",
-    sourceLink: "https://github.com/axeljamal/s-api-js-weather-dashboard",
   },
   {
     name: "JavaScript Quiz",
