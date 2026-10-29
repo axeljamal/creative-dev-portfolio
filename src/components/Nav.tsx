@@ -3,7 +3,6 @@ import { LuFileText, LuHouse, LuLayers, LuMail, LuUser } from "react-icons/lu";
 import { profile } from "../content/profile";
 import { useActiveSection } from "../hooks/useActiveSection";
 import { useCompactOnScroll } from "../hooks/useCompactOnScroll";
-import avatar from "../assets/avatar.jpg";
 import { Medallion } from "./Medallion";
 
 export const sections = [
@@ -36,9 +35,8 @@ export function Nav() {
           <Medallion />
           <a
             href="#home"
-            className="relative z-2 mr-2 flex items-center gap-2.5 rounded-full py-0.5 pr-3 pl-0.5"
+            className="relative z-2 mr-2 flex items-center rounded-full py-2 pr-3 pl-1.5"
           >
-            <img src={avatar} alt="" className="size-9 rounded-full object-cover" />
             <span className="text-[15px] font-semibold tracking-tight">{profile.name}</span>
           </a>
           {sections.slice(1).map(({ id, label }) => (
