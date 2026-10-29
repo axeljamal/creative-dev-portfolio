@@ -1,5 +1,7 @@
 import { MotionConfig } from "motion/react";
+import { FloatingActions } from "./components/FloatingActions";
 import { GlassFilter } from "./components/GlassFilter";
+import { MotifField } from "./components/MotifField";
 import { Nav } from "./components/Nav";
 import { ThemeSwitch } from "./components/ThemeSwitch";
 import { Work } from "./sections/Work";
@@ -18,6 +20,7 @@ export default function App() {
         <span />
         <span />
       </div>
+      <MotifField />
       <a
         href="#work"
         className="glass-strong sr-only !fixed top-4 left-4 z-60 rounded-full px-4 py-2 focus:not-sr-only"
@@ -25,6 +28,7 @@ export default function App() {
         Skip to work
       </a>
       <Nav />
+      <FloatingActions />
       <Welcome />
       <main className="mx-auto max-w-6xl px-4 pb-28 sm:px-6 md:pb-0">
         <Work />

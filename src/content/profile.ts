@@ -5,17 +5,17 @@ export const profile = {
   title: "Design Engineer + AI Creative Technologist",
   location: "Brighton, UK",
   intro:
-    "I design in Figma and build in React, Vue and JavaScript, using Claude Code to go from idea to working product fast.",
+    "I design in Claude Design and Figma and build in React, Vue and JavaScript, using Claude Code to go from idea to working product fast.",
   bio: [
-    "I'm a design engineer and AI creative technologist based in Brighton. I design in Figma and build in React, Vue and JavaScript, and I use Claude Code to go from idea to working product fast, guided by specs, tests and design standards such as Apple's Human Interface Guidelines and WCAG 2.2 AA.",
-    "Before tech, I spent six years in hospitality, marketing and PR, leading teams and looking after guests. It taught me to design for the whole customer journey, not just the screen.",
+    "I'm a design engineer and AI creative technologist based in Brighton. I design in Claude Design and Figma and build in React, Vue and JavaScript, and I use Claude Code to go from idea to working product fast, guided by specs, tests, Apple's Human Interface Guidelines and WCAG 2.2 AA.",
+    "My current project, Marea Dvīpa, brings my original batik motifs, generative pattern design and original music together in one installable web app. Its interactive 3D welcome film now opens this portfolio.",
+    "Before tech, I spent six years in hospitality, marketing and PR. I raised a venue's online reputation score by 60%, grew its event-night sales by 40% with a live music programme, and helped a restaurant keep 90% of its revenue by moving it onto delivery in 2020. It taught me to design for the whole customer journey, not just the screen. I work in English, Indonesian and Malay.",
   ],
   email: "axeltaj@gmail.com",
-  phone: { display: "+44 798 544 7179", href: "tel:+447985447179" },
   cv,
   links: {
     github: "https://github.com/axeljamal",
     linkedin: "https://www.linkedin.com/in/axeljamal",
-    instagram: "https://instagram.com/axelanggara",
+    instagram: "https://www.instagram.com/la.bel.axelle",
   },
 };

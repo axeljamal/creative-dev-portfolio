@@ -1,6 +1,7 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import type { ContactIntent } from "../components/FloatingActions";
 import { FaGithub, FaInstagram, FaLinkedin } from "react-icons/fa6";
-import { LuMail, LuPhone, LuSend } from "react-icons/lu";
+import { LuMail, LuSend } from "react-icons/lu";
 import { Reveal, Section } from "../components/Section";
 import { Turnstile } from "../components/Turnstile";
 import { profile } from "../content/profile";
@@ -16,6 +17,21 @@ export function Contact() {
   const [token, setToken] = useState<string | null>(null);
   // tokens are single use, so remount the widget after every attempt
   const [turnstileKey, setTurnstileKey] = useState(0);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const messageRef = useRef<HTMLTextAreaElement>(null);
+
+  // the floating Collaborate and Contact buttons bring you here; Collaborate starts the message
+  useEffect(() => {
+    const onIntent = (event: Event) => {
+      const intent = (event as CustomEvent<ContactIntent>).detail;
+      const message = messageRef.current;
+      if (intent === "collaborate" && message && !message.value.trim()) message.value = "Hi Axel, I'd like to collaborate on ";
+      // wait for the smooth scroll to land before moving focus
+      setTimeout(() => nameRef.current?.focus({ preventScroll: true }), 700);
+    };
+    window.addEventListener("contact-intent", onIntent);
+    return () => window.removeEventListener("contact-intent", onIntent);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,7 +67,7 @@ export function Contact() {
             <div className="relative z-2 grid gap-4">
               <label className="grid gap-1.5">
                 <span className="text-sm font-semibold">Name</span>
-                <input name="name" required autoComplete="name" className={fieldClass} />
+                <input ref={nameRef} name="name" required autoComplete="name" className={fieldClass} />
               </label>
               <label className="grid gap-1.5">
                 <span className="text-sm font-semibold">Email</span>
@@ -66,6 +82,7 @@ export function Contact() {
               <label className="grid gap-1.5">
                 <span className="text-sm font-semibold">Message</span>
                 <textarea
+                  ref={messageRef}
                   name="message"
                   required
                   rows={5}
@@ -110,7 +127,6 @@ export function Contact() {
 
         <Reveal className="flex flex-col gap-4 lg:col-span-5">
           <ContactTile icon={<LuMail />} label="Email" value={profile.email} href={`mailto:${profile.email}`} />
-          <ContactTile icon={<LuPhone />} label="Phone" value={profile.phone.display} href={profile.phone.href} />
           <div className="flex gap-3">
             {[
               { href: profile.links.linkedin, label: "LinkedIn", icon: FaLinkedin },

@@ -136,8 +136,8 @@ export function buildTimeline() {
         act: "how", layout: "lattice", ground: k ? "#2A6F74" : "#0E0C09", overlay: null, card: null, dim: false, seed: 7 + k,
         caption:
           k === 0
-            ? { eyebrow: "How I work", head: "Spec first, tested, to the standard", body: "Figma to React with Claude Code, built to Apple's Human Interface Guidelines and WCAG 2.2 AA." }
-            : { eyebrow: "Tools", head: names.slice(0, 5).join(" · "), body: names.slice(5).join(" · ") || undefined },
+            ? { eyebrow: "How I work", head: "Spec first, tested, to the standard", body: "Claude Design and Figma to React with Claude Code, built to Apple's Human Interface Guidelines and WCAG 2.2 AA." }
+            : { eyebrow: "Tools", head: names.slice(0, 5).join(" · "), body: names.slice(5, 13).join(" · ") },
       },
       [
         ...(k === 0 ? [{ k: "gong", n: 0, v: 0.42 } as Strike] : []),

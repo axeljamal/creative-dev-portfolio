@@ -6,19 +6,22 @@ import { GlassPanel } from "../components/GlassPanel";
 import { Reveal, Section } from "../components/Section";
 import { profile } from "../content/profile";
 import { skills } from "../content/skills";
-import portrait from "../assets/about.jpg";
+import portrait from "../assets/portrait.jpg";
 
 export function About() {
   return (
     <Section id="about" eyebrow="About" title="Design for the whole journey">
       <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
         <Reveal className="lg:col-span-5">
-          <img
-            src={portrait}
-            alt="Axel Jamal holding a bouquet of red roses outside a flower shop"
-            loading="lazy"
-            className="aspect-[4/5] w-full rounded-[2rem] object-cover object-[45%_center] shadow-[var(--glass-shadow)] sm:rounded-[2.5rem]"
-          />
+          {/* the photo is a circle on white, so it sits in a circle, nudged larger to hide the white rim */}
+          <div className="mx-auto aspect-square w-full max-w-md overflow-hidden rounded-full shadow-[var(--glass-shadow)] ring-1 ring-[var(--glass-rim)]">
+            <img
+              src={portrait}
+              alt="Axel Jamal in a yellow turtleneck, smiling, in a sunlit room with plants"
+              loading="lazy"
+              className="size-full scale-[1.03] object-cover"
+            />
+          </div>
         </Reveal>
 
         <Reveal className="lg:col-span-7">

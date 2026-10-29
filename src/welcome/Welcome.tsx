@@ -10,6 +10,7 @@ import { profile } from "../content/profile";
 import { buildTimeline, CARDS, COUNT, GA, gseq, type Caption, type Layout, type View } from "./timeline";
 import { levels, strike, unlock, type Strike } from "./sound";
 import { roseAt } from "./bungaKaili";
+import { MOTIFS, motifSrc as src } from "./motifs";
 import { createRose, drawRoseStage, hearAll, roseDown, roseMove, roseUp } from "./rose";
 import "./welcome.css";
 
@@ -17,26 +18,7 @@ const TL = buildTimeline();
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const fmt = (s: number) => Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0");
 
-const MOTIFS: [string, string][] = [
-  ["barong-mask", "Barong"],
-  ["bomba-rose--buya", "Bomba rose"],
-  ["lotus-flower", "Lotus flower"],
-  ["cengkeh-sprig--buya", "Cengkeh sprig"],
-  ["dua-pulau-medallion--buya", "Dua Pulau medallion"],
-  ["wave-cloud-ornament", "Wave cloud"],
-  ["lotus-bud", "Lotus bud"],
-  ["bomba-rosette--buya", "Bomba rosette"],
-  ["scroll-ornament", "Scroll"],
-  ["ketupat-lattice--buya", "Ketupat lattice"],
-  ["large-floral-ornament", "Large floral"],
-  ["traditional-boat", "Perahu"],
-  ["ntina-tile--gold", "Ntina tile"],
-  ["lotus-floral-motif", "Lotus floral"],
-  ["split-gate-candi-bentar", "Candi bentar"],
-  ["border-filler-ornament", "Border filler"],
-];
 const motifAt = (i: number) => MOTIFS[i === 0 ? 0 : 1 + ((i - 1) % (MOTIFS.length - 1))];
-const src = (m: string) => `/motifs/${m}.png`;
 
 function viewAt(t: number): View {
   let v = {} as View;
