@@ -4,6 +4,7 @@ import { profile } from "../content/profile";
 import { useActiveSection } from "../hooks/useActiveSection";
 import { useCompactOnScroll } from "../hooks/useCompactOnScroll";
 import avatar from "../assets/avatar.jpg";
+import { Medallion } from "./Medallion";
 
 export const sections = [
   { id: "home", label: "Home", icon: LuHouse },
@@ -32,6 +33,7 @@ export function Nav() {
           aria-label="Main"
           className="glass glass-lens flex items-center gap-1 rounded-full py-1.5 pr-1.5 pl-1.5"
         >
+          <Medallion />
           <a
             href="#home"
             className="relative z-2 mr-2 flex items-center gap-2.5 rounded-full py-0.5 pr-3 pl-0.5"

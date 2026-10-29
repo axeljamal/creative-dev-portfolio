@@ -5,6 +5,10 @@
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
 
+  // axelle.marea-dvipa.uk; the workers.dev address stays on so older links keep working
+  "routes": [{ "pattern": "axelle.marea-dvipa.uk", "custom_domain": true }],
+  "workers_dev": true,
+
   // the built Vite site; /api/* goes to the Worker first
   "assets": {
     "not_found_handling": "404-page",
