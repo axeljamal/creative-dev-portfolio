@@ -34,7 +34,7 @@ export const caseStudies: CaseStudy[] = [
       "An installable studio in two rooms, built around my own Dua Pulau and Ntina motifs. The Pattern Studio rebuilds repeats and Fibonacci flows live from master motifs, with an Albers colour test and a stencil check. The Media Lab shows, step by step, how the Ntina mark and the Bomba Rose were made, scored with Bunga Kaili, my original song for a synthesized Kaili kakula ensemble. Every motif is drawn by hand and every sound is made with Web Audio; there are no samples.",
     result:
       "Live as an installable PWA that works offline, opening on its own 3D welcome film: 34 motifs landing at the golden angle, timed to the 138 bpm of the Bomba Rose score. The welcome film at the top of this page runs on its motifs, its Bomba Rose and its score. Press Play with sound, then spin the rose and tap its rings.",
-    pageLink: "https://marea-dvipa.axeltaj.workers.dev",
+    pageLink: "https://marea-dvipa.uk",
     sourceLink: "https://github.com/axeljamal/marea-dvipa",
   },
   {

@@ -2,6 +2,8 @@
 
 Portfolio of Axel Jamal, design engineer and AI creative technologist in Brighton.
 
+**Live:** https://axelle.marea-dvipa.uk
+
 Runs on Cloudflare Workers: the site, a contact API and a private inbox at `/admin`.
 
 ## Stack
