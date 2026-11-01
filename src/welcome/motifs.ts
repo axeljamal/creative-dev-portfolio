@@ -18,4 +18,5 @@ export const MOTIFS: [string, string][] = [
   ["border-filler-ornament", "Border filler"],
 ];
 
-export const motifSrc = (m: string) => `/motifs/${m}.png`;
+/** the motif's file for the ground it sits on: the gold-on-black "buya" versions on a dark ground, the Dua Pulau and black inks on a light one */
+export const motifSrc = (m: string, theme: "light" | "dark" = "dark") => `/motifs/${theme === "light" ? m.replace(/--buya$/, "").replace(/--gold$/, "--black") : m}.png`;

@@ -12,7 +12,34 @@ import { levels, strike, unlock, type Strike } from "./sound";
 import { roseAt } from "./bungaKaili";
 import { MOTIFS, motifSrc as src } from "./motifs";
 import { createRose, drawRoseStage, hearAll, roseDown, roseMove, roseUp } from "./rose";
+import { LiveLogo, type Guide, type Live } from "./LiveLogo";
+import { LAYERS, MAREA_SECS, composeMarea, logoReveal, tune } from "./marea";
+import { setSong, songReset, songTick } from "./song";
+import { useTheme } from "../theme";
 import "./welcome.css";
+
+const SONG = composeMarea();
+const ALL: Record<string, number> = Object.fromEntries(LAYERS.concat("wordmark").map((k) => [k, 1]));
+const ZERO7 = [0, 0, 0, 0, 0, 0, 0];
+// every part of the mark is a door into the portfolio
+const GUIDE: Record<string, Guide> = {
+  pavilion: { to: "Work", blurb: "Selected case studies: Marea Dvīpa, Windfall and the Weather Dashboard.", href: "#work" },
+  "gate-left": { to: "About", blurb: "Who I am and how I work.", href: "#about" },
+  "gate-right": { to: "About", blurb: "Who I am and how I work.", href: "#about" },
+  pier: { to: "Contact", blurb: "Say hello: a note lands in my inbox.", href: "#contact" },
+  railing: { to: "CV", blurb: "The CV, as a PDF.", href: profile.cv, external: true },
+  "bird-a": { to: "GitHub", blurb: "The code, in the open.", href: profile.links.github, external: true },
+  "bird-b": { to: "GitHub", blurb: "The code, in the open.", href: profile.links.github, external: true },
+  "bird-c": { to: "GitHub", blurb: "The code, in the open.", href: profile.links.github, external: true },
+  "palm-left": { to: "Craft", blurb: "The film’s next chapter: motif by motif, at the golden angle.", act: "motifs" },
+  "palm-right": { to: "Craft", blurb: "The film’s next chapter: motif by motif, at the golden angle.", act: "motifs" },
+  "flower-left": { to: "Marea Dvīpa", blurb: "The Work chapter: the Pattern Studio, the Bomba Rose and the Media Lab.", act: "work" },
+  "flower-right": { to: "Marea Dvīpa", blurb: "The Work chapter: the Pattern Studio, the Bomba Rose and the Media Lab.", act: "work" },
+  mountains: { to: "How I work", blurb: "Spec first, tested, to the standard.", act: "how" },
+  "wave-left": { to: "Sound", blurb: "Hear the mark’s own gamelan, Marea.", sound: true },
+  "wave-right": { to: "Sound", blurb: "Hear the mark’s own gamelan, Marea.", sound: true },
+  pebbles: { to: "Enter", blurb: "Into the portfolio.", href: "#work" },
+};
 
 const TL = buildTimeline();
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -61,6 +88,13 @@ function place(layout: Layout, w: number, h: number, seed: number): Item[] {
       const col = i % cols;
       const row = Math.floor(i / cols);
       out.push({ x: cw * (col + 0.5), y: ch * (row + 0.5) + (col % 2 ? ch / 2 : 0) - ch / 4, s: Math.min(cw, ch) * 0.78, rot: col % 2 ? 180 : 0, z: 0 });
+    } else if (layout === "sarong") {
+      // the Dua Pulau sarong: two tumpal bands across the cloth, the signature flowers in the field between them, the rest small along the edges
+      const bands = [9, 15, 14, 12, 8], field = [1, 16, 7, 3, 18, 4, 19];
+      const bi = bands.indexOf(i), fi = field.indexOf(i);
+      if (bi >= 0) { const row = bi % 2, col = Math.floor(bi / 2); out.push({ x: w * (0.18 + col * 0.32) + (row ? w * 0.16 : 0), y: h * (row ? 0.8 : 0.2), s: m * 0.2, rot: row ? 180 : 0, z: 0 }); }
+      else if (fi >= 0) { const a = fi * GA + seed, r = m * 0.14 + (fi % 3) * m * 0.1; out.push({ x: w / 2 + Math.cos(a) * r * (w > h ? 1.9 : 1), y: h * 0.5 + Math.sin(a) * r * 0.75, s: m * (0.09 + (fi % 2) * 0.03), rot: (rnd(i) - 0.5) * 24, z: 0 }); }
+      else { const edge = i % 2 ? 0.05 : 0.95; out.push({ x: w * ((i * 0.37 + 0.1) % 1), y: h * edge + (rnd(i) - 0.5) * h * 0.06, s: m * 0.06, rot: (rnd(i + 5) - 0.5) * 40, z: 0 }); }
     } else {
       // stream: three drifting rows, tossed
       const row = i % 3;
@@ -122,6 +156,10 @@ export function Welcome() {
   const [active, setActive] = useState(true);
   const [tapped, setTapped] = useState<{ name: string; x: number; y: number; id: number } | null>(null);
   const T = useRef({ t: 0, next: 0, last: 0, playing: false, sound: false });
+  const { theme } = useTheme();
+  const [nameOn, setNameOn] = useState(false);
+  const LV = useRef<Live | null>(null), nameRef = useRef(false), holdRef = useRef(false), MK = useRef([0, 0, 0, 0, 0, 0, 0, 0, 0]), songPos = useRef(0);
+  useEffect(() => { setSong(SONG, MAREA_SECS); }, []);
   const P = useRef({ tx: 0, ty: 0, rx: 0, ry: 0, down: null as [number, number] | null, moved: false, lastPointer: 0, tilt: false });
   const K = useRef({ items: [] as TickState[], id: 0 });
 
@@ -138,7 +176,7 @@ export function Welcome() {
 
   const fire = (b: (typeof TL.beats)[number]) => {
     if (Object.keys(b.view).length) setView((v) => ({ ...v, ...b.view }));
-    if (b.sound && T.current.sound) strike(b.sound);
+    // the film's own beat sounds stay silent: Marea leads the whole way
   };
   function seek(t: number) {
     const S = T.current;
@@ -147,6 +185,8 @@ export function Welcome() {
     K.current.items = [];
     setTicks([]);
     setView(viewAt(S.t));
+    songPos.current = S.t % MAREA_SECS;
+    songReset(songPos.current);
   }
   function play(on: boolean) {
     T.current.playing = on;
@@ -227,12 +267,37 @@ export function Welcome() {
       const S = T.current;
       const dt = S.last ? Math.min(0.25, (now - S.last) / 1000) : 0;
       if (S.playing) {
-        S.t += dt;
+        const markEnd = TL.markAct.start + TL.markAct.dur;
+        S.t += holdRef.current && S.t >= markEnd ? 0 : dt;
+        songPos.current = (songPos.current + dt) % MAREA_SECS;
         while (S.next < TL.beats.length && TL.beats[S.next].t <= S.t) fire(TL.beats[S.next++]);
         if (S.t >= TL.total) {
           S.t = 0;
           S.next = 0;
+          songPos.current = 0;
+          songReset(0);
         }
+        songTick(songPos.current, S.sound);
+      }
+      // the living mark builds from the reel on the first pass, then is whole and moves to the song; the name arrives with the wordmark
+      const lv = S.sound ? levels() : null;
+      const rv = S.t < TL.markAct.start + TL.markAct.dur ? logoReveal(S.t - TL.markAct.start) : null;
+      LV.current = rv ? { R: rv.R, ghost: rv.ghost, breath: rv.breath, lv } : { R: ALL, ghost: 0, breath: true, lv };
+      const wantName = rv ? (rv.R.wordmark ?? 0) > 0 : S.t > 1;
+      if (wantName !== nameRef.current) { nameRef.current = wantName; setNameOn(wantName); }
+      // the page dances: every motif on its own kettle, the isen ground on the gongs; a slow sway when the song is quiet
+      const M = MK.current, kt = lv ? lv.kettle : ZERO7, gg = lv ? lv.gong : [0, 0];
+      for (let i = 0; i < 7; i++) M[i] += (kt[i] - M[i]) * 0.3;
+      M[7] += ((lv ? lv.drum : 0) - M[7]) * 0.3;
+      M[8] += (Math.max(gg[0], gg[1]) - M[8]) * 0.2;
+      const sc = sceneRef.current;
+      if (sc && !reduceMotion) {
+        sc.querySelectorAll<HTMLElement>(".w-m:not(.hide) .w-mi").forEach((el) => {
+          const i = Number(el.parentElement?.dataset.i) || 0, k = M[i % 7], sway = Math.sin(now / 900 + i * 1.7) * 1.5;
+          el.style.transform = `translateY(${(sway - k * 8).toFixed(1)}px) scale(${(1 + k * 0.07).toFixed(3)})`;
+        });
+        const tx = sc.querySelector<HTMLElement>(".w-texture");
+        if (tx) tx.style.opacity = (0.35 + M[8] * 0.3).toFixed(2);
       }
       S.last = now;
       if (barRef.current) barRef.current.style.width = (S.t / TL.total) * 100 + "%";
@@ -358,7 +423,18 @@ export function Welcome() {
       setSoundOn(true); // playing the rose is a fine moment to start the sound
       setCtaGone(true);
     }
-    strike(evs);
+    strike(evs.map(tune)); // every touch rings in the song's own scale
+  };
+  // the living mark: a touch rings; its doors lead into the portfolio or along the film
+  const liveLogo = () => LV.current;
+  const onLogoTap = (_name: string, _label: string, evs: Strike[]) => ring(evs);
+  const onLogoGo = (g: Guide) => {
+    if (g.sound) { setSoundOn(!T.current.sound); setCtaGone(true); return; }
+    if (g.act) { const a = TL.acts.find((x) => x.id === g.act); if (a) { seek(a.start + 0.01); if (!T.current.playing) play(true); } return; }
+    if (!g.href) return;
+    if (g.external) { window.open(g.href, "_blank", "noopener,noreferrer"); return; }
+    const el = document.querySelector(g.href);
+    if (el) el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" }); else location.hash = g.href;
   };
   const onPointerMove = (e: RPointerEvent) => {
     if (RS.current.drag) {
@@ -385,7 +461,7 @@ export function Welcome() {
       return;
     }
     const target = e.target as HTMLElement;
-    if (target.closest("button, a, .w-dock, .w-rose-ui")) return;
+    if (target.closest("button, a, .w-dock, .w-rose-ui, .w-live")) return;
     if (inRose()) {
       const [x, y] = local(e);
       const evs = roseUp(RS.current, x, y, roseMotif()); // kettles and gongs around the rose
@@ -403,10 +479,10 @@ export function Welcome() {
         setSoundOn(true); // a tap is a fine moment to start the sound
         setCtaGone(true);
       }
-      strike([
+      strike(([
         { k: "kettle", n: gseq(i), v: 0.42, oct: i % 2 === 1 },
         { k: "kettle", n: gseq(i + 2), v: 0.22, at: 0.14, soft: true },
-      ]);
+      ] as Strike[]).map(tune));
       const r = stageRef.current!.getBoundingClientRect();
       setTapped({ name: motifAt(i)[1], x: e.clientX - r.left, y: e.clientY - r.top, id: Date.now() });
       return;
@@ -417,6 +493,8 @@ export function Welcome() {
   const actIdx = Math.max(0, TL.acts.findIndex((a) => a.id === view.act));
   const veil = view.overlay === "rose" ? 0.94 : view.dim ? (view.overlay === "card" ? 0.5 : 0.62) : 0;
   const card = view.overlay === "card" && view.card != null ? CARDS[view.card] : null;
+  const ground = theme === "light" && view.ground === "#0E0C09" ? "#faf7f2" : view.ground; // on a light page, Bomba black turns to pearl
+  const mode = view.overlay === "title" ? "hero" : view.overlay === "end" ? "end" : "corner";
 
   return (
     <section
@@ -425,11 +503,11 @@ export function Welcome() {
       aria-labelledby="home-title"
       tabIndex={-1}
       className={"welcome w-stage" + (dock ? "" : " undocked")}
-      style={{ "--ground": view.ground } as CSSProperties}
+      style={{ "--ground": ground } as CSSProperties}
       onPointerMove={onPointerMove}
       onPointerDown={(e) => {
         P.current.moved = false;
-        if (inRose() && !(e.target as HTMLElement).closest("button, a, .w-dock, .w-rose-ui")) {
+        if (inRose() && !(e.target as HTMLElement).closest("button, a, .w-dock, .w-rose-ui, .w-live")) {
           const [x, y] = local(e);
           if (roseDown(RS.current, x, y)) {
             e.currentTarget.setPointerCapture(e.pointerId);
@@ -469,7 +547,7 @@ export function Welcome() {
                   className={"w-m" + (hidden ? " hide" : "")}
                   style={{ left: it.x, top: it.y, width: it.s, height: it.s, transform: `translate(-50%,-50%) translateZ(${it.z}px) rotate(${it.rot.toFixed(1)}deg)` }}
                 >
-                  <img src={src(m)} alt="" draggable={false} />
+                  <span className="w-mi"><img src={src(m, theme)} alt="" draggable={false} /></span>
                 </div>
               );
             })}
@@ -477,6 +555,9 @@ export function Welcome() {
         </div>
       </div>
       <div className="w-veil" style={{ opacity: veil }} />
+      <div className={"w-live " + mode}>
+        <LiveLogo set={theme === "light" ? "day" : "night"} live={liveLogo} guide={GUIDE} onTap={onLogoTap} onHold={(on) => { holdRef.current = on; }} onGo={onLogoGo} />
+      </div>
 
       <div className={"w-3d w-rose-wrap" + (view.overlay === "rose" ? " on" : "")} aria-hidden="true">
         <canvas ref={canvasRef} className="w-rose" />
@@ -526,8 +607,7 @@ export function Welcome() {
       </p>
 
       {/* the name is always in the page for screen readers and search; the title card shows it on screen */}
-      <div className={"w-title" + (view.overlay === "title" ? "" : " off")}>
-        <img src={src("dua-pulau-medallion")} alt="" />
+      <div className={"w-title" + (view.overlay === "title" ? "" : " off") + (nameOn ? " named" : "")}>
         <div className="w-eyebrow">{profile.location} · Portfolio</div>
         <h1 id="home-title">{profile.name}</h1>
         <p>{profile.title}</p>

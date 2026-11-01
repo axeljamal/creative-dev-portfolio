@@ -40,10 +40,10 @@ export default function App() {
           © {new Date().getFullYear()} {profile.name}. Built with React, Vite and Tailwind CSS.
         </p>
         <p className="w-full max-w-3xl text-xs">
-          The welcome comes from Marea Dvīpa. Dua Pulau and Ntina are original designs inspired by the Bomba flower
-          of the Kaili people and the taiganja of the Kaili and Kulawi peoples of Central Sulawesi, and by Balinese
-          ornament. The score is an original piece for a synthesized ensemble inspired by kakula; no traditional
-          piece is quoted.
+          The welcome comes from Marea Dvīpa. Its mark is a pavilion by the sea; Dua Pulau and Ntina are original designs
+          inspired by the Bomba flower of the Kaili people and the taiganja of the Kaili and Kulawi peoples of Central
+          Sulawesi, and by Balinese ornament. Marea, the music, is an original piece in the manner of Balinese gong kebyar,
+          synthesized in the browser; no traditional piece is quoted.
         </p>
         <ThemeSwitch />
       </footer>

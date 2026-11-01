@@ -7,6 +7,7 @@ import { skills } from "../content/skills";
 import { KAILI_BARS, ringScore } from "./bungaKaili";
 import type { Strike } from "./sound";
 import { BAR, BEAT, GA } from "./tempo";
+import { MAREA_SECS } from "./marea";
 import mareaStudio from "../assets/marea-studio.jpg";
 import mareaLab from "../assets/marea-lab.jpg";
 
@@ -22,7 +23,7 @@ export const CARDS = [
   { image: mareaLab, eyebrow: "Marea Dvīpa · Canvas · Web Audio", name: "Media Lab" },
 ];
 
-export type Layout = "stream" | "bloom" | "orbit" | "lattice";
+export type Layout = "stream" | "bloom" | "orbit" | "lattice" | "sarong";
 export type Caption = { eyebrow: string; head: string; body?: string };
 export type View = {
   act: string;
@@ -41,7 +42,7 @@ export type Act = { id: string; label: string; bars: number; start: number; dur:
 export function buildTimeline() {
   // the Work chapter: 2 bars of the Pattern Studio, the ring section of Bunga Kaili with the rose, 2 bars of the Media Lab
   const acts: Act[] = [
-    { id: "title", label: "Welcome", bars: 3 },
+    { id: "mark", label: "The mark", bars: MAREA_SECS / BAR }, // the living mark builds itself to Marea, its own gamelan
     { id: "motifs", label: "Craft", bars: 7 },
     { id: "work", label: "Work", bars: 2 + KAILI_BARS + 2 },
     { id: "how", label: "How I work", bars: 4 },
@@ -59,13 +60,8 @@ export function buildTimeline() {
   const beats: Beat[] = [];
   const add = (t: number, view: Partial<View>, sound: Strike[] | null = null) => beats.push({ t, view, sound });
 
-  // 1 · Title: the Ntina mark and the name over a drifting stream on Bomba black
-  add(
-    A.title.start,
-    { act: "title", layout: "stream", ground: "#0E0C09", overlay: "title", dim: true, reveal: null, card: null, seed: 1, caption: null },
-    [{ k: "gong", n: 0, v: 0.5, at: 0.05 }, ...[0, 2, 4, 5].map((n, i): Strike => ({ k: "kettle", n, v: 0.4, at: BAR + i * E8 }))],
-  );
-  add(A.title.start + 2 * BAR, {}, [{ k: "gong", n: 1, v: 0.35 }]);
+  // 1 · The mark: the living logo builds itself to Marea over the Dua Pulau sarong on Bomba black; the song then leads the whole film
+  add(A.mark.start, { act: "mark", layout: "sarong", ground: "#0E0C09", overlay: "title", dim: true, reveal: null, card: null, seed: 1, caption: null });
 
   // 2 · Motif by motif: a Fibonacci bloom, each motif landing on a kakula note
   const m0 = A.motifs.start;
@@ -158,5 +154,5 @@ export function buildTimeline() {
   );
 
   beats.sort((a, b) => a.t - b.t);
-  return { acts, beats, total, roseAct };
+  return { acts, beats, total, roseAct, markAct: A.mark };
 }

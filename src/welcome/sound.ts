@@ -3,9 +3,11 @@
 // reverb. Nothing loads; it all runs on oscillators and noise.
 
 export type Strike =
-  | { k: "kettle"; n: number; v: number; at?: number; oct?: boolean; soft?: boolean; f?: number; d?: number }
+  | { k: "kettle"; n: number; v: number; at?: number; oct?: boolean; soft?: boolean; f?: number; d?: number; pairHz?: number }
   | { k: "gong"; n: 0 | 1; v: number; at?: number; f?: number }
-  | { k: "drum"; n: "dum" | "tak"; v: number; at?: number }
+  | { k: "drum"; n: "dum" | "tak" | "mute"; v: number; at?: number }
+  | { k: "tatali"; f: number; v: number; d: number; at?: number }
+  | { k: "clap" | "shaker"; v: number; at?: number }
   | { k: "kolintang"; n: number; f: number; v: number; at?: number }
   | { k: "bassgong"; f: number; v: number; at?: number }
   | { k: "beater" | "shuttle"; v: number; at?: number };
@@ -142,7 +144,8 @@ function play(e: Strike, when: number) {
     const d = e.d ?? 1.5;
     const atk = e.soft ? 0.012 : 0.004;
     tone(when, f, v * 0.5, atk, d, "sine", f * 1.004);
-    tone(when, f * 1.0035, v * 0.22, atk, d * 0.9);
+    if (e.pairHz) tone(when, f + e.pairHz, v * 0.4, atk, d * 0.95, "sine", (f + e.pairHz) * 1.004); // ombak: the paired instrument a few hertz above
+    else tone(when, f * 1.0035, v * 0.22, atk, d * 0.9);
     tone(when, f * 2.76, v * (e.soft ? 0.06 : 0.14), 0.002, d * 0.35);
     if (!e.soft) tone(when, f * 5.4, v * 0.05, 0.002, d * 0.15);
     noiseHit(when, v * (e.soft ? 0.035 : 0.12), 0.025, "bandpass", e.soft ? 1800 : 2600, 1.2);
@@ -154,16 +157,39 @@ function play(e: Strike, when: number) {
     tone(when, f * 2.01, v * 0.3, 0.015, 3.4);
     tone(when, f * 2.98, v * 0.18, 0.01, 2.2);
     tone(when, f * 4.1, v * 0.09, 0.01, 1.4);
-  } else if (e.k === "drum" && e.n === "dum") {
-    tone(when, 72, v * 0.9, 0.003, 0.36, "sine", 150);
-    tone(when, 180, v * 0.3, 0.003, 0.18, "triangle", 260);
+  } else if (e.k === "drum" && (e.n === "dum" || e.n === "mute")) {
+    const dd = e.n === "mute" ? 0.12 : 0.36;
+    tone(when, 72, v * 0.9, 0.003, dd, "sine", 150);
+    tone(when, 180, v * 0.3, 0.003, dd * 0.5, "triangle", 260);
     noiseHit(when, v * 0.22, 0.05, "lowpass", 900, 0.7);
+  } else if (e.k === "tatali") {
+    // a breathy bamboo flute: sines with a little vibrato, a low-pass, and breath noise
+    const c = ctx!, out = c.createGain(), dur = e.d;
+    out.gain.setValueAtTime(0, when); out.gain.linearRampToValueAtTime(v * 0.55, when + 0.05); out.gain.setValueAtTime(v * 0.5, when + Math.max(0.08, dur - 0.08)); out.gain.linearRampToValueAtTime(0, when + dur + 0.06); out.connect(bus!);
+    const vib = c.createOscillator(), vg = c.createGain(); vib.frequency.value = 4.8; vg.gain.setValueAtTime(0, when); vg.gain.linearRampToValueAtTime(e.f * 0.005, when + Math.min(0.45, dur * 0.6)); vib.connect(vg);
+    const lpf = c.createBiquadFilter(); lpf.type = "lowpass"; lpf.frequency.value = 2400; lpf.connect(out);
+    ([["sine", 1, 0.8], ["sine", 2, 0.1], ["triangle", 1, 0.12]] as [OscillatorType, number, number][]).forEach(([type, mul, lvl]) => { const o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(e.f * mul, when); vg.connect(o.frequency); const og = c.createGain(); og.gain.value = lvl; o.connect(og).connect(lpf); o.start(when); o.stop(when + dur + 0.15); });
+    vib.start(when); vib.stop(when + dur + 0.15);
+    noiseHit(when, v * 0.12, dur * 0.9, "bandpass", e.f * 2, 6);
+  } else if (e.k === "clap") {
+    [0, 0.009, 0.019].forEach((dt, i) => noiseHit(when + dt, v * (i === 2 ? 1 : 0.7), i === 2 ? 0.13 : 0.012, "bandpass", 1150, 0.9));
+  } else if (e.k === "shaker") {
+    noiseHit(when, v, 0.045, "highpass", 6500, 0.7);
   } else if (e.k === "drum") {
     tone(when, 210, v * 0.5, 0.002, 0.12, "sine", 330);
     noiseHit(when, v * 0.3, 0.06, "bandpass", 1800, 1.4);
   }
 }
 
+/** the audio clock, or null while there is no running output: what the song player schedules against */
+export function audioTime(): number | null {
+  return ctx && bus && ctx.state === "running" ? ctx.currentTime : null;
+}
+/** play one strike at an absolute audio time (the song player's way in) */
+export function playAt(e: Strike, when: number) {
+  if (!ctx || !bus || ctx.state !== "running") return;
+  play(e, when);
+}
 /** Ring these now, each `at` seconds later. Silent until unlock() has run. */
 export function strike(evs: Strike[]) {
   if (!ctx || !bus || ctx.state !== "running") return;
