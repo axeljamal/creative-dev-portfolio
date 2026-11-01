@@ -55,8 +55,10 @@ export const caseStudies: CaseStudy[] = [
     approach:
       "An installable app where software and business developers join real opportunities, run them as projects with a team chat, and earn verified experience. Built spec-first with Claude Code, to Apple's Human Interface Guidelines and WCAG 2.2 AA.",
     result:
-      "Working alpha with Google sign-in, a ranked feed with post menus, a LinkedIn-style profile page and form, AI-powered CV and LinkedIn import with a review step, browser tests and CI. Every product, design and technical decision is logged, fifty-one so far.",
+      "Live at bootcampconnect.co.uk as an installable app: Google sign-in, a ranked feed with post menus, a LinkedIn-style profile page and form, AI-powered CV and LinkedIn import with a review step, browser tests and CI. Every product, design and technical decision is logged, fifty-one so far.",
+    pageLink: "https://bootcampconnect.co.uk",
     sourceLink: "https://github.com/jennyshenstudio/bootcamp-connect",
+    preview: { url: "https://bootcampconnect.co.uk/", frame: "desktop" },
   },
   {
     name: "Windfall",
