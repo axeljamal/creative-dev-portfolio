@@ -19,8 +19,10 @@ import { buttonClass } from "../components/Button";
 import {
   NotSignedIn,
   deleteMessage,
+  getToken,
   listMessages,
   setStatus,
+  setToken,
   type Message,
   type MessageStatus,
 } from "./api";
@@ -149,7 +151,7 @@ export function Inbox() {
         </header>
 
         {state === "signed-out" ? (
-          <SignedOut />
+          <SignedOut onToken={() => { setState("loading"); void load(); }} />
         ) : (
           <>
             {error && (
@@ -352,19 +354,27 @@ function ActionButton(props: { icon: ReactNode; onClick: () => void; children: s
   );
 }
 
-function SignedOut() {
+function SignedOut({ onToken }: { onToken: () => void }) {
+  const [value, setValue] = useState("");
+  const wrong = !!getToken(); // a token was tried and refused
   return (
     <div className="grid flex-1 place-items-center">
-      <div className="glass-strong max-w-sm rounded-[2rem] p-8 text-center">
+      <form
+        className="glass-strong w-full max-w-sm rounded-[2rem] p-8 text-center"
+        onSubmit={(e) => { e.preventDefault(); setToken(value.trim()); onToken(); }}
+      >
         <div className="relative z-2">
           <LuLock aria-hidden="true" className="mx-auto size-8 text-accent-solid" />
-          <h2 className="mt-4 text-2xl font-bold tracking-tight">Sign in required</h2>
-          <p className="mt-2 text-ink-2">The inbox is protected by Cloudflare Access.</p>
-          <a href="" className={`${buttonClass("primary")} mt-6`}>
-            Sign in
-          </a>
+          <h2 className="mt-4 text-2xl font-bold tracking-tight">Your inbox</h2>
+          <p className="mt-2 text-ink-2">{wrong ? "That token was not accepted. Try again." : "Enter the admin token to open it. It is kept for this tab only."}</p>
+          <label className="mt-5 block text-left">
+            <span className="text-sm font-semibold">Admin token</span>
+            <input type="password" autoComplete="current-password" required value={value} onChange={(e) => setValue(e.target.value)} className="glass-field mt-1.5 w-full px-4 py-3 text-base text-ink" />
+          </label>
+          <button type="submit" className={`${buttonClass("primary")} mt-5 w-full`}>Open the inbox</button>
+          <p className="mt-4 text-xs text-ink-2">With Cloudflare Access set up, you are signed in by Cloudflare instead and need no token.</p>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

@@ -1,4 +1,9 @@
+import { EmailMessage } from "cloudflare:email";
+import { createMimeMessage } from "mimetext";
 import { requireAdmin } from "./access";
+
+// the alert binding is optional until Email Routing is on for the domain (see wrangler.jsonc)
+type EnvWithMail = Env & { ALERTS?: { send(message: EmailMessage): Promise<void> }; ADMIN_TOKEN?: string };
 
 const STATUSES = ["new", "read", "archived"];
 const LIMITS = { name: 200, email: 320, message: 5000 };
@@ -78,9 +83,25 @@ async function verifyTurnstile(token: string, secret: string, ip: string | null)
   return outcome.success;
 }
 
-// email alert through Resend; skipped until RESEND_API_KEY and NOTIFY_EMAIL are set
-async function notify(env: Env, msg: { name: string; email: string; message: string }) {
-  if (!env.RESEND_API_KEY || !env.NOTIFY_EMAIL) return;
+// an email alert for every message: through Cloudflare Email Routing when the ALERTS binding is set, else through Resend
+// when RESEND_API_KEY is set; nothing is sent until one of them is, but the message is already safe in the database
+async function notify(env: EnvWithMail, msg: { name: string; email: string; message: string }) {
+  if (!env.NOTIFY_EMAIL) return;
+  if (env.ALERTS) {
+    try {
+      const mime = createMimeMessage();
+      mime.setSender({ name: "Portfolio", addr: "portfolio@marea-dvipa.uk" });
+      mime.setRecipient(env.NOTIFY_EMAIL);
+      mime.setHeader("Reply-To", msg.email);
+      mime.setSubject(`New message from ${msg.name}`);
+      mime.addMessage({ contentType: "text/plain", data: `${msg.message}\n\n${msg.name} <${msg.email}>\n\nReply to this email to answer, or open the inbox at https://axelle.marea-dvipa.uk/admin` });
+      await env.ALERTS.send(new EmailMessage("portfolio@marea-dvipa.uk", env.NOTIFY_EMAIL, mime.asRaw()));
+      return;
+    } catch (err) {
+      console.error("Alert email through Email Routing failed", err);
+    }
+  }
+  if (!env.RESEND_API_KEY) return;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
