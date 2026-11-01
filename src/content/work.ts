@@ -16,7 +16,8 @@ export type CaseStudy = {
   /** the live project runs inside the card: as a desktop window, or in a phone for a mobile-first one */
   preview?: { url: string; frame: "desktop" | "phone" };
   /** several live pages to switch between in the card (the first shows first) */
-  previews?: { label: string; url: string; frame: "desktop" | "phone"; blurb?: string }[];
+  /** reel: the app runs itself, with sound, when asked (?reel=1 and a message), and says when each screen is done */
+  previews?: { label: string; url: string; frame: "desktop" | "phone"; blurb?: string; reel?: boolean; screens?: { label: string; path: string }[] }[];
   /** more places to go, beside View and Source */
   links?: { label: string; href: string }[];
 };
@@ -30,6 +31,30 @@ export type Project = {
 };
 
 export const caseStudies: CaseStudy[] = [
+  {
+    name: "Windfall",
+    image: windfall,
+    role: "Team project, 2026. Service and interaction design, then the React Native build",
+    stack: ["React Native", "Expo", "TypeScript", "Zustand", "Supabase", "Claude Code"],
+    problem: "Good food goes to waste while many people eat alone.",
+    approach:
+      "Windfall turns surplus food into small hosted suppers for three to eight neighbours. It began as a clickable prototype and is now a finished React Native app with Expo Router: discover a supper, take a chair, host your own table, chat with your table, with an ID check and a trust and safety layer. Dark mode follows the phone, sound chimes when switched on, and the mark is a sketch logo with a stippled gust.",
+    result:
+      "The finished app is live at windfall.marea-dvipa.uk and windfall.expo.app. The Windfall Story tells how it went from an idea to a working app, scroll by scroll, with the real app playing beside each chapter; the demo is the same app on the pilot’s sample data, for showing people. Types, app tests and database security tests run in CI. Piloting in Brighton and Hove. Try it here: jump the demo to any screen, play the day’s windfall, take a chair at a supper, host a table.",
+    pageLink: "https://windfall.marea-dvipa.uk",
+    previews: [
+      { label: "Demo", url: "https://demo.marea-dvipa.uk", frame: "phone", blurb: "A teaser: the demo plays itself, with sound; tap a screen to jump there", reel: true, screens: [
+        { label: "Welcome", path: "/" }, { label: "Today: play the windfall", path: "/today" }, { label: "Suppers", path: "/home" }, { label: "A supper", path: "/supper/weald" },
+        { label: "Host a table", path: "/host" }, { label: "Album", path: "/album" }, { label: "How it works", path: "/how" }, { label: "Impact", path: "/impact" },
+      ] },
+      { label: "Story", url: "https://demo.marea-dvipa.uk/story/", frame: "desktop", blurb: "From a glut to a table" },
+      { label: "App", url: "https://windfall.marea-dvipa.uk", frame: "phone", blurb: "The finished app, live" },
+    ],
+    links: [
+      { label: "Story", href: "https://demo.marea-dvipa.uk/story/" },
+      { label: "Demo", href: "https://demo.marea-dvipa.uk/" },
+    ],
+  },
   {
     name: "Marea Dvīpa",
     image: mareaDvipa,
@@ -59,27 +84,6 @@ export const caseStudies: CaseStudy[] = [
     pageLink: "https://bootcampconnect.co.uk",
     sourceLink: "https://github.com/jennyshenstudio/bootcamp-connect",
     preview: { url: "https://bootcampconnect.co.uk/", frame: "desktop" },
-  },
-  {
-    name: "Windfall",
-    image: windfall,
-    role: "Team project, 2026. Service and interaction design, then the React Native build",
-    stack: ["React Native", "Expo", "TypeScript", "Zustand", "Supabase", "Claude Code"],
-    problem: "Good food goes to waste while many people eat alone.",
-    approach:
-      "Windfall turns surplus food into small hosted suppers for three to eight neighbours. It began as a clickable prototype and is now a finished React Native app with Expo Router: discover a supper, take a chair, host your own table, chat with your table, with an ID check and a trust and safety layer. Dark mode follows the phone, sound chimes when switched on, and the mark is a sketch logo with a stippled gust.",
-    result:
-      "The finished app is live at windfall.marea-dvipa.uk and windfall.expo.app. The Windfall Story tells how it went from an idea to a working app, scroll by scroll, with the real app playing beside each chapter; the demo is the same app on the pilot’s sample data, for showing people. Types, app tests and database security tests run in CI. Piloting in Brighton and Hove. Switch between the app, the story and the demo in the card.",
-    pageLink: "https://windfall.marea-dvipa.uk",
-    previews: [
-      { label: "App", url: "https://windfall.marea-dvipa.uk", frame: "phone", blurb: "The finished app" },
-      { label: "Story", url: "https://demo.marea-dvipa.uk/story/", frame: "desktop", blurb: "From a glut to a table" },
-      { label: "Demo", url: "https://demo.marea-dvipa.uk/", frame: "phone", blurb: "On the pilot’s sample data" },
-    ],
-    links: [
-      { label: "Story", href: "https://demo.marea-dvipa.uk/story/" },
-      { label: "Demo", href: "https://demo.marea-dvipa.uk/" },
-    ],
   },
   {
     name: "Weather Dashboard",

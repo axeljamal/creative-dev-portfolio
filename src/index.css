@@ -71,3 +71,14 @@ body {
 /* a screenshot that pans slowly on its own, for a project with no live page */
 @keyframes preview-pan { 0% { transform: scale(1.04) translate(0, 0); } 50% { transform: scale(1.12) translate(-2%, -3%); } 100% { transform: scale(1.04) translate(0, 0); } }
 .preview-pan { animation: preview-pan 26s ease-in-out infinite; transform-origin: 50% 40%; }
+
+/* the demo's tour: the active screen's chip fills while its screen shows; the phone floats, and turns a little as each screen arrives */
+@keyframes tour-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.tour-bar { transform-origin: left; animation: tour-bar linear forwards; }
+@keyframes phone-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -1.2%; } }
+.phone-float { animation: phone-float 6s ease-in-out infinite; }
+@keyframes phone-turn { from { rotate: y -14deg; opacity: 0.6; } to { rotate: y 0deg; opacity: 1; } }
+/* two names for one animation: switching between them restarts the turn without touching the screens inside */
+.phone-turn-a { animation: phone-float 6s ease-in-out infinite, phone-turn 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes phone-turn-2 { from { rotate: y -14deg; opacity: 0.6; } to { rotate: y 0deg; opacity: 1; } }
+.phone-turn-b { animation: phone-float 6s ease-in-out infinite, phone-turn-2 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }

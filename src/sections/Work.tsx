@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FaGithub } from "react-icons/fa6";
-import { LuArrowUpRight } from "react-icons/lu";
+import { LuArrowUpRight, LuPause, LuPlay } from "react-icons/lu";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
 import { Reveal, Section } from "../components/Section";
 import { caseStudies, earlierWork, type CaseStudy } from "../content/work";
-import { CubeDemo, ImageExplorer, LivePreview } from "../components/LivePreview";
+import { CubeDemo, ImageExplorer, LivePreview, PREVIEWS_RUN, type ReelMessage } from "../components/LivePreview";
 
 export function Work() {
   return (
@@ -108,22 +108,78 @@ function CaseStudyCard({ study, flip }: { study: CaseStudy; flip: boolean }) {
   );
 }
 
-// a card with several live pages: tabs above the frame switch between them
+// a card with several live pages: tabs above the frame switch between them. A page with screens tours them: a reel page (the
+// Windfall demo) is one frame in which the app moves itself from screen to screen, a teaser, and the chips follow it; any other
+// page loads each screen in turn. A tap on a chip jumps there and hands you the pointer, which pauses the motion until Done.
+const DWELL = 8000; // ms on each screen, unless the app says how long its own motion takes
+const MAX_DWELL = 45000;
 function PreviewTabs({ study }: { study: CaseStudy }) {
   const [i, setI] = useState(0);
+  const [k, setK] = useState(0); // which screen
+  const [touring, setTouring] = useState(PREVIEWS_RUN);
+  const [hands, setHands] = useState(false);
+  const [handsRequest, setHandsRequest] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const [lap, setLap] = useState(0); // restarts the chip's progress bar
+  const [dwell, setDwell] = useState(DWELL);
+  const [go, setGo] = useState<{ n: number; path: string } | null>(null); // a chip tapped on a reel page: the app is sent there
+  const box = useRef<HTMLDivElement>(null);
   const p = study.previews![i];
+  const reel = !!p.reel;
+  const screens = p.screens ?? [];
+  const sc = screens[k] ?? null;
+  const url = reel || !sc ? p.url : p.url.replace(/\/$/, "") + sc.path;
+  const running = touring && visible && !hands && screens.length > 1;
+  const next = useCallback(() => { setK((v) => (v + 1) % screens.length); setLap((l) => l + 1); setDwell(DWELL); }, [screens.length]);
+  // the app in the frame says which screen it is on and how long its motion there takes; the chips follow
+  const onReel = useCallback((m: ReelMessage) => {
+    if (m.windfallReel !== "running" || typeof m.path !== "string") return;
+    const path = m.path.startsWith("/play/") ? "/today" : m.path;
+    const j = screens.findIndex((s2) => s2.path === path);
+    if (j >= 0) setK(j);
+    setLap((l) => l + 1);
+    setDwell(Math.min(MAX_DWELL, Math.max(4000, (m.eta ?? DWELL) + 1500)));
+  }, [screens]);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setVisible(e.intersectionRatio >= 0.4), { threshold: [0, 0.4] });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!running || reel) return;
+    const tm = window.setTimeout(next, dwell);
+    return () => window.clearTimeout(tm);
+  }, [running, reel, k, lap, dwell, next]);
+  const onHands = useCallback((on: boolean) => setHands(on), []);
+  const jump = (j: number) => { setK(j); setLap((l) => l + 1); setDwell(DWELL); setHandsRequest((r) => r + 1); if (reel) setGo((g) => ({ n: (g?.n ?? 0) + 1, path: screens[j].path })); };
   return (
-    <div className="flex flex-col">
+    <div ref={box} className="flex flex-col">
       <div role="tablist" aria-label={`${study.name} pages`} className="flex gap-1.5 bg-[#17140f] px-2.5 pt-2.5 pb-2">
-        {study.previews!.map((t, k) => (
-          <button key={t.label} role="tab" type="button" aria-selected={k === i} onClick={() => setI(k)}
-            className={"min-h-9 rounded-full px-3.5 text-[13px] font-semibold transition " + (k === i ? "bg-[#e0c27e] text-[#0e0c09]" : "text-white/75 hover:bg-white/10 hover:text-white")}>
+        {study.previews!.map((t, j) => (
+          <button key={t.label} role="tab" type="button" aria-selected={j === i} onClick={() => { setI(j); setK(0); setLap((l) => l + 1); setDwell(DWELL); setGo(null); }}
+            className={"min-h-9 rounded-full px-3.5 text-[13px] font-semibold transition " + (j === i ? "bg-[#e0c27e] text-[#0e0c09]" : "text-white/75 hover:bg-white/10 hover:text-white")}>
             {t.label}
           </button>
         ))}
         {p.blurb && <span className="ml-auto hidden self-center text-[12px] text-white/60 sm:inline">{p.blurb}</span>}
       </div>
-      <LivePreview key={p.url} name={`${study.name} · ${p.label}`} image={study.image!} url={p.url} frame={p.frame} />
+      {screens.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#17140f] px-2.5 pb-2.5" aria-label={`${p.label} screens`}>
+          {screens.map((s2, j) => (
+            <button key={s2.path} type="button" aria-pressed={k === j} onClick={() => jump(j)}
+              className={"relative min-h-8 overflow-hidden rounded-full border px-3 text-[12px] font-medium transition " + (k === j ? "border-[#e0c27e] bg-[#e0c27e]/15 text-[#e0c27e]" : "border-white/15 text-white/70 hover:border-white/40 hover:text-white")}>
+              {k === j && running && <i key={lap + ":" + dwell} className="tour-bar absolute inset-x-0 bottom-0 h-0.5 bg-[#e0c27e]" style={{ animationDuration: dwell + "ms" }} aria-hidden="true" />}
+              <span className="relative">{s2.label}</span>
+            </button>
+          ))}
+          <button type="button" onClick={() => setTouring((t) => !t)} aria-pressed={touring} className="ml-auto inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium text-white/70 hover:text-white" title={touring ? "Pause the teaser" : "Play the teaser"}>
+            {touring ? <LuPause aria-hidden="true" /> : <LuPlay aria-hidden="true" />}{hands ? "Paused while you use it" : touring ? "Teaser" : "Teaser paused"}
+          </button>
+        </div>
+      )}
+      <LivePreview name={`${study.name} · ${p.label}${sc ? " · " + sc.label : ""}`} image={study.image!} url={url} frame={p.frame} handsRequest={handsRequest} onHands={onHands} reel={reel} active={touring && visible} go={go} onReel={onReel} />
     </div>
   );
 }

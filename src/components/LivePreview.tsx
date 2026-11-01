@@ -26,15 +26,27 @@ function useWidth<T extends HTMLElement>() {
 const domainOf = (url: string) => { try { return new URL(url).host.replace(/^www\./, ""); } catch { return url; } };
 
 export type Frame = "desktop" | "phone";
-type LiveProps = { name: string; image: string; url: string; frame?: Frame; alt?: string };
+export type ReelMessage = { windfallReel: boolean | "running" | "done"; path?: string; eta?: number };
+type LiveProps = { name: string; image: string; url: string; frame?: Frame; alt?: string; handsAtStart?: boolean; handsRequest?: number; onHands?: (on: boolean) => void; reel?: boolean; active?: boolean; go?: { n: number; path: string } | null; onReel?: (m: ReelMessage) => void };
+/** the app is asked to run itself, with sound (it reads this from its address) */
+/** the app runs itself (a teaser, screen to screen, with sound) and is told the screen to jump to */
+const reelSrc = (u: string) => u.replace(/\/$/, "") + "/?reel=1&sound=1";
+// in development, VITE_DEMO_ORIGIN=http://localhost:8083 shows a local build of the demo in its place
+const DEMO_DEV = import.meta.env.DEV ? (import.meta.env.VITE_DEMO_ORIGIN as string | undefined) : undefined;
+const devSrc = (u: string) => (DEMO_DEV && u.startsWith("https://demo.marea-dvipa.uk") ? DEMO_DEV + u.slice("https://demo.marea-dvipa.uk".length) : u);
+type Slot = { id: number; url: string; loaded: boolean };
 
 /** the project itself, live in the card */
-export function LivePreview({ name, image, url, frame = "desktop", alt }: LiveProps) {
+export function LivePreview({ name, image, url, frame = "desktop", alt, handsAtStart = false, handsRequest = 0, onHands, reel = false, active = true, go = null, onReel }: LiveProps) {
+  const src = devSrc(reel ? reelSrc(url) : url);
   const [ref, width] = useWidth<HTMLDivElement>();
-  const [wanted, setWanted] = useState(false); // the card is on screen (or the app was asked for)
+  const [wanted, setWanted] = useState(handsAtStart); // the card is on screen (or the app was asked for)
   const [up, setUp] = useState(false); // the app has loaded
-  const [hands, setHands] = useState(false); // the pointer belongs to the app
+  const [hands, setHands] = useState(handsAtStart); // the pointer belongs to the app
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [slots, setSlots] = useState<Slot[]>([{ id: 0, url: src, loaded: false }]); // the page showing, and the next one loading behind it
+  const [turn, setTurn] = useState(0); // the phone turns a little each time a new page arrives
+  const phone = useRef<HTMLDivElement>(null);
   const height = Math.round(width * 0.625); // 16:10, like the screenshots
   const base = frame === "phone" ? { w: 390, h: 780 } : { w: 1280, h: 800 };
   const scale = frame === "phone" ? ((height - BAR) * 0.94) / base.h : width / base.w;
@@ -44,10 +56,37 @@ export function LivePreview({ name, image, url, frame = "desktop", alt }: LivePr
   useEffect(() => {
     const el = ref.current;
     if (!el || !AUTO) return;
-    const io = new IntersectionObserver(([e]) => { if (e.intersectionRatio >= 0.4) setWanted(true); else if (e.intersectionRatio === 0) { setWanted(false); setUp(false); setHands(false); } }, { threshold: [0, 0.4] });
+    const io = new IntersectionObserver(([e]) => { if (e.intersectionRatio >= 0.4) setWanted(true); else if (e.intersectionRatio === 0) { setWanted(false); setUp(false); setHands(false); setSlots((s) => [{ ...s[s.length - 1], loaded: false }]); } }, { threshold: [0, 0.4] });
     io.observe(el);
     return () => io.disconnect();
   }, [ref]);
+  // a new page: load it behind the current one, then cross-fade when it is up
+  useEffect(() => { setSlots((s) => (s[s.length - 1].url === src ? s : [...s.slice(-1), { id: s[s.length - 1].id + 1, url: src, loaded: false }])); }, [src]);
+  // the app runs itself while the teaser is on and the pointer is the page's, and stops while you have it; it reports its own timing back
+  const origin = (() => { try { return new URL(devSrc(url)).origin; } catch { return ""; } })();
+  useEffect(() => {
+    if (!reel || !origin) return;
+    ref.current?.querySelectorAll("iframe").forEach((f) => { try { f.contentWindow?.postMessage({ windfallReel: active && !hands, sound: true }, origin); } catch { /* not up yet */ } });
+  }, [reel, origin, active, hands, slots, ref]);
+  // a screen chip: the app is sent to that screen in place, no reload
+  useEffect(() => {
+    if (!reel || !origin || !go) return;
+    ref.current?.querySelectorAll("iframe").forEach((f) => { try { f.contentWindow?.postMessage({ windfallGo: go.path }, origin); } catch { /* not up yet */ } });
+  }, [reel, origin, go, ref]);
+  useEffect(() => {
+    if (!reel || !origin || !onReel) return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== origin || !e.data || !("windfallReel" in e.data)) return;
+      const mine = ref.current ? [...ref.current.querySelectorAll("iframe")].some((f) => f.contentWindow === e.source) : false; // this card's frame, not another card's
+      if (mine) onReel(e.data as ReelMessage);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [reel, origin, onReel, ref]);
+  const arrived = (id: number) => { setSlots((s) => s.map((x) => (x.id === id ? { ...x, loaded: true } : x))); setUp(true); setTurn((t) => t + 1); window.setTimeout(() => setSlots((s) => s.filter((x) => x.id >= id)), 700); };
+  // the pointer is asked for (a screen chip was tapped)
+  useEffect(() => { if (handsRequest) { setWanted(true); setHands(true); } }, [handsRequest]);
+  useEffect(() => { if (onHands) onHands(hands); }, [hands, onHands]);
   // Escape anywhere on the page gives the pointer back (keys pressed inside the app stay with the app)
   useEffect(() => {
     if (!hands) return;
@@ -56,21 +95,20 @@ export function LivePreview({ name, image, url, frame = "desktop", alt }: LivePr
     return () => window.removeEventListener("keydown", onKey);
   }, [hands]);
   const onMove = (e: RPointerEvent<HTMLDivElement>) => {
-    if (reduceMotion || e.pointerType === "touch" || up) return;
+    if (reduceMotion || e.pointerType === "touch") return;
     const r = e.currentTarget.getBoundingClientRect();
     setTilt({ x: (e.clientX - r.left) / r.width - 0.5, y: (e.clientY - r.top) / r.height - 0.5 });
   };
   const sandbox = "allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock";
-  const iframe = frame === "phone" ? (
-    <div className="absolute top-[3%] left-1/2 overflow-hidden rounded-[36px] border-[6px] border-[#2a241b] bg-black shadow-2xl" style={{ width: base.w, height: base.h, transform: `translateX(-50%) scale(${scale})`, transformOrigin: "top center" }}>
-      <iframe title={`${name}, live`} src={url} width={base.w} height={base.h} className="block border-0" style={{ width: base.w, height: base.h, pointerEvents: hands ? "auto" : "none" }} sandbox={sandbox} allow="autoplay; fullscreen" onLoad={() => setUp(true)} />
-    </div>
-  ) : (
-    <iframe title={`${name}, live`} src={url} width={base.w} height={frameH} className="absolute top-0 left-0 border-0" style={{ width: base.w, height: frameH, transform: `scale(${scale})`, transformOrigin: "0 0", pointerEvents: hands ? "auto" : "none" }} sandbox={sandbox} allow="autoplay; fullscreen" onLoad={() => setUp(true)} />
-  );
+  const iframes = (w: number, h: number) => slots.map((sl, i) => (
+    <iframe key={sl.id} title={`${name}, live`} src={sl.url} width={w} height={h} className="absolute top-0 left-0 border-0 transition-opacity duration-700"
+      style={{ width: w, height: h, opacity: sl.loaded || i === 0 ? 1 : 0, zIndex: i, pointerEvents: hands && i === slots.length - 1 ? "auto" : "none" }}
+      sandbox={sandbox} allow="autoplay; fullscreen" onLoad={() => arrived(sl.id)} />
+  ));
+  const phoneTilt = reduceMotion ? "" : ` rotateY(${(tilt.x * 10).toFixed(2)}deg) rotateX(${(-tilt.y * 6).toFixed(2)}deg)`;
   return (
     <div ref={ref} className={"group relative aspect-[16/10] w-full overflow-hidden bg-[#0e0c09] transition-shadow " + (hands ? "ring-2 ring-[#e0c27e]" : "")} data-state={hands ? "hands" : up ? "live" : wanted ? "loading" : "idle"}
-      onKeyDown={(e) => { if (e.key === "Escape" && hands) setHands(false); }}>
+      onPointerMove={onMove} onPointerLeave={() => setTilt({ x: 0, y: 0 })} onKeyDown={(e) => { if (e.key === "Escape" && hands) setHands(false); }}>
       {/* the frame: an address bar and the app, scaled */}
       {wanted && (
         <div className="absolute inset-0 flex flex-col">
@@ -80,11 +118,19 @@ export function LivePreview({ name, image, url, frame = "desktop", alt }: LivePr
             <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-7 items-center gap-1 rounded-full px-2 hover:bg-white/10" aria-label={`Open ${name} in a new tab`}><LuArrowUpRight aria-hidden="true" /> Open</a>
             {hands && <button type="button" onClick={() => setHands(false)} className="inline-flex min-h-7 items-center gap-1 rounded-full bg-white/10 px-2 hover:bg-white/20" aria-label="Give the pointer back to the page"><LuX aria-hidden="true" /> Done</button>}
           </div>
-          <div className="relative flex-1 overflow-hidden bg-[#0e0c09]">{iframe}</div>
+          <div className="relative flex-1 overflow-hidden bg-[#0e0c09]" style={{ perspective: 1200 }}>
+            {frame === "phone" ? (
+              <div ref={phone} className={"absolute top-[3%] left-1/2 " + (reduceMotion ? "" : turn % 2 ? "phone-turn-a" : "phone-turn-b")} style={{ width: base.w, height: base.h, transform: `translateX(-50%) scale(${scale})${phoneTilt}`, transformOrigin: "top center", transformStyle: "preserve-3d" }}>
+                <div className="relative size-full overflow-hidden rounded-[36px] border-[6px] border-[#2a241b] bg-black shadow-2xl">{iframes(base.w, base.h)}</div>
+              </div>
+            ) : (
+              <div className="absolute top-0 left-0" style={{ width: base.w, height: frameH, transform: `scale(${scale})`, transformOrigin: "0 0" }}>{iframes(base.w, frameH)}</div>
+            )}
+          </div>
         </div>
       )}
       {/* the poster: the screenshot, leaning with the pointer, until the app is up */}
-      <div className={"absolute inset-0 transition-opacity duration-700 " + (up ? "pointer-events-none opacity-0" : "opacity-100")} onPointerMove={onMove} onPointerLeave={() => setTilt({ x: 0, y: 0 })} aria-hidden={up}>
+      <div className={"absolute inset-0 transition-opacity duration-700 " + (up ? "pointer-events-none opacity-0" : "opacity-100")} aria-hidden={up}>
         <img src={image} alt={alt ?? `Screenshot of ${name}`} loading="lazy" className="size-full object-cover object-top transition-transform duration-700 ease-out" style={{ transform: `translate(${(-tilt.x * 2).toFixed(2)}%, ${(-tilt.y * 2).toFixed(2)}%) scale(1.04)` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" aria-hidden="true" />
         {!wanted && (
@@ -105,6 +151,7 @@ export function LivePreview({ name, image, url, frame = "desktop", alt }: LivePr
     </div>
   );
 }
+export const PREVIEWS_RUN = AUTO;
 
 /** a screenshot that pans slowly on its own, with a magnifier that follows the pointer (a tap toggles it on touch) */
 export function ImageExplorer({ name, image, alt }: { name: string; image: string; alt?: string }) {
