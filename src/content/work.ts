@@ -13,6 +13,12 @@ export type CaseStudy = {
   result: string;
   pageLink?: string;
   sourceLink?: string;
+  /** the live project runs inside the card: as a desktop window, or in a phone for a mobile-first one */
+  preview?: { url: string; frame: "desktop" | "phone" };
+  /** several live pages to switch between in the card (the first shows first) */
+  previews?: { label: string; url: string; frame: "desktop" | "phone"; blurb?: string }[];
+  /** more places to go, beside View and Source */
+  links?: { label: string; href: string }[];
 };
 
 export type Project = {
@@ -32,11 +38,12 @@ export const caseStudies: CaseStudy[] = [
     problem:
       "Batik and ikat motifs from Bali and Central Sulawesi are usually seen as flat images, cut off from how they are drawn, the colours they are dyed in and the music around them.",
     approach:
-      "An installable studio in two rooms, built around my own Dua Pulau and Ntina motifs. The Pattern Studio rebuilds repeats and Fibonacci flows live from master motifs, with an Albers colour test and a stencil check. The Media Lab shows, step by step, how the Ntina mark and the Bomba Rose were made, scored with Bunga Kaili, my original song for a synthesized Kaili kakula ensemble. Every motif is drawn by hand and every sound is made with Web Audio; there are no samples.",
+      "An installable studio in two rooms, built around my own Dua Pulau and Ntina motifs. The Pattern Studio rebuilds repeats and Fibonacci flows live from master motifs, with an Albers colour test and a stencil check. The Media Lab shows, step by step, how each motif was made, and has a stage where a pattern is made in the centre of the screen to its own score, or a whole reel plays with its captions running underneath. The mark, a pavilion by the sea, is drawn by its own gamelan: Marea, an original piece in the manner of Balinese gong kebyar, synthesized in the browser.",
     result:
-      "Live as an installable PWA that works offline, opening on its own 3D welcome film: 34 motifs landing at the golden angle, timed to the 138 bpm of the Bomba Rose score. The welcome film at the top of this page runs on its motifs, its Bomba Rose and its score. Press Play with sound, then spin the rose and tap its rings.",
+      "Live as an installable PWA that works offline, in dark and light mode. It opens on its living mark building itself to Marea, then the film carries on with every motif dancing to the music. Drop in a picture and the lab composes a score from it. The welcome at the top of this page is the same film, with the same mark as its menu.",
     pageLink: "https://marea-dvipa.uk",
     sourceLink: "https://github.com/axeljamal/marea-dvipa",
+    preview: { url: "https://marea-dvipa.uk/#welcome", frame: "desktop" },
   },
   {
     name: "Bootcamp Connect",
@@ -48,18 +55,29 @@ export const caseStudies: CaseStudy[] = [
     approach:
       "An installable app where software and business developers join real opportunities, run them as projects with a team chat, and earn verified experience. Built spec-first with Claude Code, to Apple's Human Interface Guidelines and WCAG 2.2 AA.",
     result:
-      "Working alpha with Google sign-in, a ranked feed, AI-powered CV and LinkedIn import with a review step, browser tests and CI.",
+      "Working alpha with Google sign-in, a ranked feed with post menus, a LinkedIn-style profile page and form, AI-powered CV and LinkedIn import with a review step, browser tests and CI. Every product, design and technical decision is logged, fifty-one so far.",
     sourceLink: "https://github.com/jennyshenstudio/bootcamp-connect",
   },
   {
     name: "Windfall",
     image: windfall,
-    role: "Team prototype, 2026. Service and interaction design",
-    stack: ["Prototype", "HTML", "CSS", "JavaScript"],
+    role: "Team project, 2026. Service and interaction design, then the React Native build",
+    stack: ["React Native", "Expo", "TypeScript", "Zustand", "Supabase", "Claude Code"],
     problem: "Good food goes to waste while many people eat alone.",
     approach:
-      "A clickable mobile prototype for small hosted suppers built around surplus food: discover a gathering, RSVP, host your own, with a trust and safety layer.",
-    result: "Built to click through with stakeholders for a Brighton and Hove pilot.",
+      "Windfall turns surplus food into small hosted suppers for three to eight neighbours. It began as a clickable prototype and is now a finished React Native app with Expo Router: discover a supper, take a chair, host your own table, chat with your table, with an ID check and a trust and safety layer. Dark mode follows the phone, sound chimes when switched on, and the mark is a sketch logo with a stippled gust.",
+    result:
+      "The finished app is live at windfall.marea-dvipa.uk and windfall.expo.app. The Windfall Story tells how it went from an idea to a working app, scroll by scroll, with the real app playing beside each chapter; the demo is the same app on the pilot’s sample data, for showing people. Types, app tests and database security tests run in CI. Piloting in Brighton and Hove. Switch between the app, the story and the demo in the card.",
+    pageLink: "https://windfall.marea-dvipa.uk",
+    previews: [
+      { label: "App", url: "https://windfall.marea-dvipa.uk", frame: "phone", blurb: "The finished app" },
+      { label: "Story", url: "https://demo.marea-dvipa.uk/story/", frame: "desktop", blurb: "From a glut to a table" },
+      { label: "Demo", url: "https://demo.marea-dvipa.uk/", frame: "phone", blurb: "On the pilot’s sample data" },
+    ],
+    links: [
+      { label: "Story", href: "https://demo.marea-dvipa.uk/story/" },
+      { label: "Demo", href: "https://demo.marea-dvipa.uk/" },
+    ],
   },
   {
     name: "Weather Dashboard",
@@ -74,14 +92,15 @@ export const caseStudies: CaseStudy[] = [
       "Live on GitHub Pages and responsive on phones. Fixed the forecast breaking at month ends, wrong wind units and crashes on unknown cities, and slow replies from an old search can no longer overwrite a new one.",
     pageLink: "https://axeljamal.github.io/s-api-js-weather-dashboard/",
     sourceLink: "https://github.com/axeljamal/s-api-js-weather-dashboard",
+    preview: { url: "https://axeljamal.github.io/s-api-js-weather-dashboard/", frame: "desktop" },
   },
   {
     name: "3D product demo",
-    role: "Team project. 25 commits",
-    stack: ["Vue 3", "Vite", "Three.js"],
-    problem: "Static product images do not let people explore a product.",
-    approach: "An interactive 3D scene in the browser, built with Vue and Three.js.",
-    result: "A responsive 3D experience that runs in any modern browser.",
+    role: "Team project, 2023. Front end",
+    stack: ["Vue 3", "Vite", "Three.js", "Bootstrap"],
+    problem: "Static product images do not let people explore a product before they buy it.",
+    approach: "An interactive 3D product scene in the browser, built with Vue and Three.js, with a cart and a checkout page wired through the router.",
+    result: "A responsive 3D shopping demo that runs in any modern browser. The cube on the left is its own small demo: drag it.",
   },
 ];
 

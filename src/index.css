@@ -67,3 +67,7 @@ body {
     animation: none;
   }
 }
+
+/* a screenshot that pans slowly on its own, for a project with no live page */
+@keyframes preview-pan { 0% { transform: scale(1.04) translate(0, 0); } 50% { transform: scale(1.12) translate(-2%, -3%); } 100% { transform: scale(1.04) translate(0, 0); } }
+.preview-pan { animation: preview-pan 26s ease-in-out infinite; transform-origin: 50% 40%; }
