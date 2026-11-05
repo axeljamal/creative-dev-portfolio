@@ -1,5 +1,5 @@
 import { EmailMessage } from "cloudflare:email";
-import { createMimeMessage } from "mimetext";
+import { createMimeMessage, Mailbox } from "mimetext";
 import { requireAdmin } from "./access";
 
 // the alert binding is optional until Email Routing is on for the domain (see wrangler.jsonc)
@@ -85,23 +85,26 @@ async function verifyTurnstile(token: string, secret: string, ip: string | null)
 
 // an email alert for every message: through Cloudflare Email Routing when the ALERTS binding is set, else through Resend
 // when RESEND_API_KEY is set; nothing is sent until one of them is, but the message is already safe in the database
-async function notify(env: EnvWithMail, msg: { name: string; email: string; message: string }) {
-  if (!env.NOTIFY_EMAIL) return;
+// returns what happened, so /api/admin/test-alert can report it
+async function notify(env: EnvWithMail, msg: { name: string; email: string; message: string }): Promise<string> {
+  if (!env.NOTIFY_EMAIL) return "alerts off: NOTIFY_EMAIL is empty";
+  let routingError = "";
   if (env.ALERTS) {
     try {
       const mime = createMimeMessage();
       mime.setSender({ name: "Portfolio", addr: "portfolio@marea-dvipa.uk" });
       mime.setRecipient(env.NOTIFY_EMAIL);
-      mime.setHeader("Reply-To", msg.email);
+      mime.setHeader("Reply-To", new Mailbox(msg.email));
       mime.setSubject(`New message from ${msg.name}`);
       mime.addMessage({ contentType: "text/plain", data: `${msg.message}\n\n${msg.name} <${msg.email}>\n\nReply to this email to answer, or open the inbox at https://axelle.marea-dvipa.uk/admin` });
       await env.ALERTS.send(new EmailMessage("portfolio@marea-dvipa.uk", env.NOTIFY_EMAIL, mime.asRaw()));
-      return;
+      return "sent through Email Routing";
     } catch (err) {
       console.error("Alert email through Email Routing failed", err);
+      routingError = `Email Routing failed: ${err instanceof Error ? err.message : String(err)}`;
     }
   }
-  if (!env.RESEND_API_KEY) return;
+  if (!env.RESEND_API_KEY) return routingError || "alerts off: no ALERTS binding or RESEND_API_KEY";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -116,12 +119,21 @@ async function notify(env: EnvWithMail, msg: { name: string; email: string; mess
       text: `${msg.message}\n\n${msg.name} <${msg.email}>`,
     }),
   });
-  if (!res.ok) console.error("Alert email failed", res.status, await res.text());
+  if (res.ok) return "sent through Resend";
+  const detail = `Resend failed: ${res.status} ${await res.text()}`;
+  console.error("Alert email failed", detail);
+  return [routingError, detail].filter(Boolean).join("; ");
 }
 
 // ---------- admin: inbox ----------
 
 async function handleAdmin(request: Request, env: Env, pathname: string) {
+  // sends a sample alert and reports what happened, to check alerts without the public form
+  if (pathname === "/api/admin/test-alert" && request.method === "POST") {
+    const result = await notify(env, { name: "Test alert", email: "hello@marea-dvipa.uk", message: "This is a test alert from /api/admin/test-alert." });
+    return json({ result });
+  }
+
   if (pathname === "/api/admin/messages" && request.method === "GET") {
     const { results } = await env.DB.prepare(
       "SELECT id, created_at, name, email, message, status FROM messages ORDER BY created_at DESC LIMIT 500",
