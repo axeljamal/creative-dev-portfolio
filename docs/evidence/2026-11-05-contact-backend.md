@@ -8,7 +8,7 @@ Browser form → Turnstile spam check → `POST /api/contact` on the Cloudflare 
 
 ## Evidence
 
-**Form:** after Send, the page showed "Success!" in the Turnstile box and "Thanks, your message is on its way."
+**Form:** after Send, the page showed "Success!" in the Turnstile box and "Thanks, your message is on its way." ([2026-11-05-contact-form-success.png](2026-11-05-contact-form-success.png), the live site in Safari, after the 13:54 test)
 
 **Worker logs** (`wrangler tail`):
 
@@ -18,6 +18,7 @@ POST https://axelle.marea-dvipa.uk/api/admin/test-alert - Ok @ 05/11/2026, 13:04
 POST https://axelle.marea-dvipa.uk/api/admin/test-alert - Ok @ 05/11/2026, 13:05:40
 POST https://axelle.marea-dvipa.uk/api/contact - Ok @ 05/11/2026, 13:06:38
 POST https://axelle.marea-dvipa.uk/api/contact - Ok @ 05/11/2026, 13:10:39
+POST https://axelle.marea-dvipa.uk/api/contact - Ok @ 05/11/2026, 13:54:12
 ```
 
 The first line is the bug before the fix (commit 43c1cc3). Every request after it ran with no errors.
@@ -32,6 +33,7 @@ The first line is the bug before the fix (commit 43c1cc3). Every request after i
 
 | created_at (UTC)         | status |
 | ------------------------ | ------ |
+| 2026-11-05T13:54:12.267Z | new    |
 | 2026-11-05T13:10:39.235Z | new    |
 | 2026-11-05T13:06:38.537Z | new    |
 
