@@ -12,7 +12,7 @@ export const profile = {
     "Across both, the method is the same: a spec first, a design system, the front end and the backend built together, tests and CI before every deploy, and Claude Code as the pair that keeps the pace. The welcome film at the top of this page is Marea Dvīpa’s own, and each Work card runs the real app.",
     "Before tech, I spent six years in hospitality, marketing and PR. I raised a venue's online reputation score by 60%, grew its event-night sales by 40% with a live music programme, and helped a restaurant keep 90% of its revenue by moving it onto delivery in 2020. It taught me to design for the whole customer journey, not just the screen. I work in English, Indonesian and Malay.",
   ],
-  email: "axeltaj@gmail.com",
+  email: "hello@marea-dvipa.uk",
   cv,
   links: {
     github: "https://github.com/axeljamal",

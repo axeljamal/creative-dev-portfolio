@@ -30,7 +30,7 @@
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": "",
     // where new-message alerts go; leave empty to turn alerts off
-    "NOTIFY_EMAIL": "axeltaj@gmail.com"
+    "NOTIFY_EMAIL": "hello@marea-dvipa.uk"
   },
 
   // secrets (set with `npx wrangler secret put <NAME>`):
@@ -38,6 +38,6 @@
   //   ADMIN_TOKEN           opens /admin with a token (instead of, or as well as, Cloudflare Access)
   //   RESEND_API_KEY        optional, email alerts through Resend
 
-  // email alerts through Cloudflare Email Routing on marea-dvipa.uk; axeltaj@gmail.com is a verified destination
-  "send_email": [{ "name": "ALERTS", "destination_address": "axeltaj@gmail.com" }]
+  // email alerts through Cloudflare Email Routing on marea-dvipa.uk; hello@marea-dvipa.uk (Google Workspace) is a verified destination
+  "send_email": [{ "name": "ALERTS", "destination_address": "hello@marea-dvipa.uk" }]
 }
