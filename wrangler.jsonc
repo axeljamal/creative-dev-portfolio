@@ -31,14 +31,13 @@
     "ACCESS_AUD": "",
     // where new-message alerts go; leave empty to turn alerts off
     "NOTIFY_EMAIL": "axeltaj@gmail.com"
-  }
+  },
 
   // secrets (set with `npx wrangler secret put <NAME>`):
   //   TURNSTILE_SECRET_KEY  required
   //   ADMIN_TOKEN           opens /admin with a token (instead of, or as well as, Cloudflare Access)
   //   RESEND_API_KEY        optional, email alerts through Resend
-  //
-  // email alerts through Cloudflare itself: in the dashboard, Email > Email Routing on marea-dvipa.uk, turn it on,
-  // add axeltaj@gmail.com as a destination and verify it, then uncomment this binding and deploy:
-  // "send_email": [{ "name": "ALERTS", "destination_address": "axeltaj@gmail.com" }]
+
+  // email alerts through Cloudflare Email Routing on marea-dvipa.uk; axeltaj@gmail.com is a verified destination
+  "send_email": [{ "name": "ALERTS", "destination_address": "axeltaj@gmail.com" }]
 }
