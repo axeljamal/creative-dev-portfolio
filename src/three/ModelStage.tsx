@@ -13,7 +13,7 @@ type Finish = "gold" | "teal" | "lacquer" | "pearl" | "painted";
 type Piece = { label: string; url: string; /** turn that brings its face to the camera */ face: number; /** it carries its drawing as a texture */ painted: boolean; blurb: string };
 
 const PIECES: Piece[] = [
-  { label: "Barong", url: "/models/barong-sculpt.glb", face: Math.PI / 2, painted: false, blurb: "Sculpted from the Barong motif" },
+  { label: "Barong", url: "/models/barong-sculpt.glb", face: -Math.PI / 2, painted: false, blurb: "Sculpted from the Barong motif" },
   { label: "Perahu", url: "/models/perahu.glb", face: 0, painted: true, blurb: "The Perahu motif as a painted relief" },
 ];
 const FINISHES: { id: Finish; label: string; swatch: string }[] = [
