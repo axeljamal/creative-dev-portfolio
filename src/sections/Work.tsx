@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { FaGithub } from "react-icons/fa6";
 import { LuArrowUpRight, LuPause, LuPlay } from "react-icons/lu";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
 import { Reveal, Section } from "../components/Section";
+import { Tilt } from "../components/Tilt";
 import { caseStudies, earlierWork, type CaseStudy } from "../content/work";
 import { CubeDemo, ImageExplorer, LivePreview, PREVIEWS_RUN, type ReelMessage } from "../components/LivePreview";
+
+// three.js and the models arrive with this card, not with the page
+const ModelStage = lazy(() => import("../three/ModelStage"));
 
 export function Work() {
   return (
@@ -13,7 +17,10 @@ export function Work() {
       <div className="flex flex-col gap-6 sm:gap-10">
         {caseStudies.map((study, i) => (
           <Reveal key={study.name}>
-            <CaseStudyCard study={study} flip={i % 2 === 1} />
+            {/* the big cards stay flat, to read and to use; only the light moves across them */}
+            <Tilt lean={0} className="rounded-[2rem] sm:rounded-[2.5rem]">
+              <CaseStudyCard study={study} flip={i % 2 === 1} />
+            </Tilt>
           </Reveal>
         ))}
       </div>
@@ -23,6 +30,7 @@ export function Work() {
       <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-6 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
         {earlierWork.map((project) => (
           <li key={project.name} className="w-[82%] shrink-0 snap-center sm:w-auto">
+            <Tilt className="h-full rounded-[1.75rem]">
             <article className="glass flex h-full flex-col rounded-[1.75rem] p-2.5">
               <div className="relative z-2 overflow-hidden rounded-[1.25rem]">
                 <LivePreview name={project.name} image={project.image} url={project.pageLink} frame="desktop" />
@@ -42,6 +50,7 @@ export function Work() {
                 </div>
               </div>
             </article>
+            </Tilt>
           </li>
         ))}
       </ul>
@@ -62,7 +71,9 @@ function CaseStudyCard({ study, flip }: { study: CaseStudy; flip: boolean }) {
         ) : study.image ? (
           <ImageExplorer name={study.name} image={study.image} />
         ) : (
-          <CubeDemo name={study.name} />
+          <Suspense fallback={<div className="aspect-[16/10] w-full bg-[#0e0c09]" />}>
+            <ModelStage name={study.name} fallback={<CubeDemo name={study.name} />} />
+          </Suspense>
         )}
       </div>
 

@@ -82,3 +82,69 @@ body {
 .phone-turn-a { animation: phone-float 6s ease-in-out infinite, phone-turn 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes phone-turn-2 { from { rotate: y -14deg; opacity: 0.6; } to { rotate: y 0deg; opacity: 1; } }
 .phone-turn-b { animation: phone-float 6s ease-in-out infinite, phone-turn-2 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* ---------- 3D ---------- */
+
+/* Marea, the tide (src/three/Tide.tsx): a WebGL sea of points between the aurora and the motifs; it fades in once drawn,
+   and thins toward the top so the horizon has no edge */
+.tide {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.6s ease;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 22%, #000 48%);
+  mask-image: linear-gradient(to bottom, transparent 22%, #000 48%);
+}
+.tide-on {
+  opacity: 1;
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .tide {
+    display: none;
+  }
+}
+
+/* a surface that leans toward the pointer, with a light that follows it (src/components/Tilt.tsx) */
+.tilt {
+  position: relative;
+  isolation: isolate;
+}
+.tilt-lean {
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tilt-lean[data-lit] {
+  transform: perspective(1100px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition-duration: 0.12s;
+}
+.tilt-light {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(
+    circle at var(--light-x, 50%) var(--light-y, 0%),
+    color-mix(in srgb, var(--sun) 26%, transparent),
+    transparent 42%
+  );
+  mix-blend-mode: plus-lighter;
+}
+.tilt[data-lit] > .tilt-light {
+  opacity: 1;
+}
+
+/* a section title arrives word by word, each one turning up from flat */
+.title-3d {
+  perspective: 700px;
+}
+.title-3d > span {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  backface-visibility: hidden;
+}

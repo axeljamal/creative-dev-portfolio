@@ -11,6 +11,7 @@ Runs on Cloudflare Workers: the site, a contact API and a private inbox at `/adm
 - React 19 + TypeScript, built with Vite
 - Tailwind CSS 4
 - Motion for animation
+- Three.js (WebGL) for the tide behind the page and the 3D pieces, loaded on demand
 - Cloudflare Workers (API + static assets), D1 (SQLite) for messages,
   Turnstile against spam, Access to protect the inbox
 
@@ -36,6 +37,17 @@ floats away, or the colours behind the page shift. Floating **Collaborate** and
 **Contact** buttons lead to the message form; Collaborate starts the message
 for you.
 
+Behind the motifs runs Marea, the tide (`src/three/Tide.tsx`): a WebGL sea of
+gold points that swells on its own, rises under the pointer, sends a ring out
+from every tap and rolls toward you as you scroll. The 3D product demo's card
+holds a small Three.js studio (`src/three/ModelStage.tsx`): the Barong and the
+Perahu motifs, lifted from the flat drawings into meshes with Higgsfield
+image-to-3D (`public/models/`). Drag a piece to turn it, throw it, change its
+finish; the key light follows the pointer. Section titles turn up word by word,
+cards rise in from a tilt, and the earlier-work cards and the portrait lean
+toward the pointer with a light that follows it (`Tilt`). Three.js is its own
+chunk and loads after first paint; none of this moves with **Reduce motion**.
+
 The interface uses a Liquid Glass material inspired by Apple's design language:
 translucent surfaces that blur and saturate what's behind them, specular rims,
 and, in Chromium browsers, edge refraction from an SVG displacement filter.
@@ -51,7 +63,8 @@ that shrinks while you scroll.
 src/
   content/     profile, case studies, earlier work and skills (edit these to update the site)
   welcome/     the welcome film: timeline, stage, Bomba Rose and Web Audio sound
-  components/  Nav, Button, Chip, GlassPanel, Section, GlassFilter, MotifField, FloatingActions
+  components/  Nav, Button, Chip, GlassPanel, Section, GlassFilter, MotifField, FloatingActions, Tilt
+  three/       WebGL: the tide backdrop and the 3D model stage
   sections/    Work, About, Contact
   hooks/       active section and scroll behaviour
   admin/       the /admin inbox

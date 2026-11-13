@@ -106,7 +106,7 @@ export const caseStudies: CaseStudy[] = [
     stack: ["Vue 3", "Vite", "Three.js", "Bootstrap"],
     problem: "Static product images do not let people explore a product before they buy it.",
     approach: "An interactive 3D product scene in the browser, built with Vue and Three.js, with a cart and a checkout page wired through the router.",
-    result: "A responsive 3D shopping demo that runs in any modern browser. The cube on the left is its own small demo: drag it.",
+    result: "A responsive 3D shopping demo that runs in any modern browser. The piece beside this is its own small demo, in Three.js: my Barong motif, lifted from the flat drawing into a mesh with Higgsfield image-to-3D. Drag it, throw it, change its finish.",
   },
 ];
 

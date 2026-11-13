@@ -1,3 +1,4 @@
+import { lazy, Suspense, useEffect, useState } from "react";
 import { MotionConfig } from "motion/react";
 import { FloatingActions } from "./components/FloatingActions";
 import { GlassFilter } from "./components/GlassFilter";
@@ -10,7 +11,20 @@ import { Contact } from "./sections/Contact";
 import { profile } from "./content/profile";
 import { Welcome } from "./welcome/Welcome";
 
+// the tide is WebGL: three.js is fetched once the page has painted and is idle, never before
+const Tide = lazy(() => import("./three/Tide"));
+
 export default function App() {
+  const [tide, setTide] = useState(false);
+  useEffect(() => {
+    const start = () => setTide(true);
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(start, { timeout: 2500 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(start, 1200);
+    return () => clearTimeout(id);
+  }, []);
   return (
     // follow the visitor's "reduce motion" setting for every animation
     <MotionConfig reducedMotion="user">
@@ -20,6 +34,11 @@ export default function App() {
         <span />
         <span />
       </div>
+      {tide && (
+        <Suspense fallback={null}>
+          <Tide />
+        </Suspense>
+      )}
       <MotifField />
       <a
         href="#work"
