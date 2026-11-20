@@ -7,7 +7,17 @@ export type Message = {
   email: string;
   message: string;
   status: MessageStatus;
+  reply_draft: string | null;
+  proposal_url: string | null;
+  replied_at: string | null;
 };
+
+export type MessageUpdate = Partial<{
+  status: MessageStatus;
+  reply_draft: string | null;
+  proposal_url: string | null;
+  replied: boolean;
+}>;
 
 export class NotSignedIn extends Error {}
 
@@ -33,5 +43,8 @@ export const listMessages = () =>
 
 export const setStatus = (id: string, status: MessageStatus) =>
   request(`messages/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+
+export const updateMessage = (id: string, update: MessageUpdate) =>
+  request(`messages/${id}`, { method: "PATCH", body: JSON.stringify(update) });
 
 export const deleteMessage = (id: string) => request(`messages/${id}`, { method: "DELETE" });

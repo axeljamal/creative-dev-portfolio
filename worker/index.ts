@@ -6,7 +6,9 @@ import { requireAdmin } from "./access";
 type EnvWithMail = Env & { ALERTS?: { send(message: EmailMessage): Promise<void> }; ADMIN_TOKEN?: string };
 
 const STATUSES = ["new", "read", "archived"];
-const LIMITS = { name: 200, email: 320, message: 5000 };
+const LIMITS = { name: 200, email: 320, message: 5000, draft: 10000, url: 500 };
+// proposal links may only point at the studio's own pages
+const PROPOSAL_HOSTS = ["marea-dvipa.uk", "axelle.marea-dvipa.uk"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const json = (data: unknown, status = 200) => Response.json(data, { status });
@@ -61,6 +63,16 @@ async function handleContact(request: Request, env: Env, ctx: ExecutionContext) 
 
   ctx.waitUntil(notify(env, { name, email, message }));
   return json({ ok: true }, 201);
+}
+
+function isProposalUrl(value: unknown) {
+  if (typeof value !== "string" || value.length > LIMITS.url) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && PROPOSAL_HOSTS.includes(url.hostname);
+  } catch {
+    return false;
+  }
 }
 
 // trimmed string, or "" when missing or too long
@@ -136,7 +148,7 @@ async function handleAdmin(request: Request, env: Env, pathname: string) {
 
   if (pathname === "/api/admin/messages" && request.method === "GET") {
     const { results } = await env.DB.prepare(
-      "SELECT id, created_at, name, email, message, status FROM messages ORDER BY created_at DESC LIMIT 500",
+      "SELECT id, created_at, name, email, message, status, reply_draft, proposal_url, replied_at FROM messages ORDER BY created_at DESC LIMIT 500",
     ).all();
     return json({ messages: results });
   }
@@ -145,11 +157,40 @@ async function handleAdmin(request: Request, env: Env, pathname: string) {
   if (!id) return json({ error: "Not found" }, 404);
 
   if (request.method === "PATCH") {
-    const body = await request.json<{ status?: string }>().catch(() => null);
-    const status = body?.status;
-    if (!status || !STATUSES.includes(status)) return json({ error: "Invalid status" }, 400);
-    const result = await env.DB.prepare("UPDATE messages SET status = ? WHERE id = ?")
-      .bind(status, id)
+    const body = await request.json<Record<string, unknown>>().catch(() => null);
+    if (!body) return json({ error: "Invalid request" }, 400);
+    const sets: string[] = [];
+    const values: (string | null)[] = [];
+
+    if ("status" in body) {
+      if (typeof body.status !== "string" || !STATUSES.includes(body.status)) return json({ error: "Invalid status" }, 400);
+      sets.push("status = ?");
+      values.push(body.status);
+    }
+    if ("reply_draft" in body) {
+      if (body.reply_draft !== null && (typeof body.reply_draft !== "string" || body.reply_draft.length > LIMITS.draft)) {
+        return json({ error: "The draft is too long" }, 400);
+      }
+      sets.push("reply_draft = ?");
+      values.push((body.reply_draft as string | null) || null);
+    }
+    if ("proposal_url" in body) {
+      const url = body.proposal_url;
+      if (url !== null && url !== "" && !isProposalUrl(url)) {
+        return json({ error: "Proposal links must be https pages on marea-dvipa.uk" }, 400);
+      }
+      sets.push("proposal_url = ?");
+      values.push((url as string | null) || null);
+    }
+    if ("replied" in body) {
+      if (typeof body.replied !== "boolean") return json({ error: "Invalid replied flag" }, 400);
+      sets.push("replied_at = ?");
+      values.push(body.replied ? new Date().toISOString() : null);
+    }
+    if (sets.length === 0) return json({ error: "Nothing to update" }, 400);
+
+    const result = await env.DB.prepare(`UPDATE messages SET ${sets.join(", ")} WHERE id = ?`)
+      .bind(...values, id)
       .run();
     return result.meta.changes ? json({ ok: true }) : json({ error: "Not found" }, 404);
   }

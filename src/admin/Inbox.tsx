@@ -4,6 +4,9 @@ import {
   LuArchive,
   LuArchiveRestore,
   LuArrowUpRight,
+  LuCheck,
+  LuCopy,
+  LuFileText,
   LuChevronLeft,
   LuInbox,
   LuLock,
@@ -23,9 +26,12 @@ import {
   listMessages,
   setStatus,
   setToken,
+  updateMessage,
+  type MessageUpdate,
   type Message,
   type MessageStatus,
 } from "./api";
+import { draftReply, proposalFor, proposals, replySubject } from "./proposals";
 
 type LoadState = "loading" | "ready" | "signed-out" | "error";
 
@@ -85,6 +91,27 @@ export function Inbox() {
       await setStatus(id, status);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update the message");
+      load();
+    }
+  }
+
+  // save draft, proposal link or replied flag; the list shows the change straight away
+  async function update(id: string, change: MessageUpdate) {
+    setMessages((all) =>
+      all.map((m) => {
+        if (m.id !== id) return m;
+        const next = { ...m };
+        if ("reply_draft" in change) next.reply_draft = change.reply_draft ?? null;
+        if ("proposal_url" in change) next.proposal_url = change.proposal_url ?? null;
+        if ("replied" in change) next.replied_at = change.replied ? new Date().toISOString() : null;
+        if (change.status) next.status = change.status;
+        return next;
+      }),
+    );
+    try {
+      await updateMessage(id, change);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save the reply");
       load();
     }
   }
@@ -220,6 +247,7 @@ export function Inbox() {
                     message={selected}
                     onBack={() => setSelectedId(null)}
                     onStatus={(status) => changeStatus(selected.id, status)}
+                    onUpdate={(change) => update(selected.id, change)}
                     onDelete={() => remove(selected.id)}
                   />
                 ) : (
@@ -265,9 +293,16 @@ function MessageList(props: {
               <span className={`truncate ${m.status === "new" ? "font-bold" : "font-semibold"}`}>
                 {m.name}
               </span>
+              {m.replied_at ? (
+                <span className="ml-auto shrink-0 rounded-full bg-[color-mix(in_srgb,var(--glass-rim)_45%,transparent)] px-2 py-0.5 text-xs font-semibold">
+                  Replied
+                </span>
+              ) : m.reply_draft ? (
+                <span className="ml-auto shrink-0 text-xs font-semibold text-accent-solid">Draft</span>
+              ) : null}
               <time
                 dateTime={m.created_at}
-                className="ml-auto shrink-0 text-sm text-ink-2 tabular-nums"
+                className={`${m.replied_at || m.reply_draft ? "" : "ml-auto "}shrink-0 text-sm text-ink-2 tabular-nums`}
               >
                 {shortDate.format(new Date(m.created_at))}
               </time>
@@ -284,10 +319,10 @@ function MessageDetail(props: {
   message: Message;
   onBack: () => void;
   onStatus: (status: MessageStatus) => void;
+  onUpdate: (change: MessageUpdate) => void;
   onDelete: () => void;
 }) {
   const m = props.message;
-  const reply = `mailto:${m.email}?subject=${encodeURIComponent("Re: your message")}`;
 
   return (
     <article className="glass-strong rounded-[2rem] p-6 sm:p-8">
@@ -310,11 +345,9 @@ function MessageDetail(props: {
 
         <p className="mt-6 text-[17px] leading-relaxed break-words whitespace-pre-wrap">{m.message}</p>
 
+        <ReplyPanel key={m.id} message={m} onUpdate={props.onUpdate} />
+
         <div className="mt-8 flex flex-wrap gap-2">
-          <a href={reply} className={buttonClass("primary")}>
-            <LuReply aria-hidden="true" />
-            Reply
-          </a>
           {m.status === "archived" ? (
             <ActionButton icon={<LuArchiveRestore />} onClick={() => props.onStatus("read")}>
               Move to read
@@ -340,6 +373,119 @@ function MessageDetail(props: {
         </div>
       </div>
     </article>
+  );
+}
+
+const NO_PROPOSAL = "";
+
+function ReplyPanel(props: { message: Message; onUpdate: (change: MessageUpdate) => void }) {
+  const m = props.message;
+  const matched = proposalFor(m);
+  const [proposalUrl, setProposalUrl] = useState(m.proposal_url ?? matched?.url ?? NO_PROPOSAL);
+  const proposal = proposals.find((p) => p.url === proposalUrl);
+  const [draft, setDraft] = useState(m.reply_draft ?? draftReply(m, proposal));
+  const [copied, setCopied] = useState(false);
+  const saved = draft === (m.reply_draft ?? "") && proposalUrl === (m.proposal_url ?? "");
+  const subject = replySubject(m);
+  const mailto = `mailto:${m.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(draft)}`;
+
+  function chooseProposal(url: string) {
+    const next = proposals.find((p) => p.url === url);
+    // swap the link in the draft, or start a fresh draft when the link isn't in it
+    setDraft((d) => (proposalUrl && d.includes(proposalUrl) && url ? d.replace(proposalUrl, url) : draftReply(m, next)));
+    setProposalUrl(url);
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(draft);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked; the text can still be selected by hand */
+    }
+  }
+
+  const save = () => props.onUpdate({ reply_draft: draft, proposal_url: proposalUrl || null });
+
+  return (
+    <section aria-labelledby={`reply-${m.id}`} className="mt-8 border-t border-[var(--glass-rim)] pt-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 id={`reply-${m.id}`} className="text-lg font-bold tracking-tight">
+          Your reply
+        </h3>
+        {m.replied_at && (
+          <span className="text-sm text-ink-2">
+            Replied {fullDate.format(new Date(m.replied_at))}
+          </span>
+        )}
+      </div>
+
+      <label className="mt-4 block">
+        <span className="text-sm font-semibold">Proposal page</span>
+        <select
+          value={proposalUrl}
+          onChange={(e) => chooseProposal(e.target.value)}
+          className="glass-field mt-1.5 w-full px-4 py-3 text-base text-ink"
+        >
+          <option value={NO_PROPOSAL}>No proposal yet: link the guide and quote builder</option>
+          {proposals.map((p) => (
+            <option key={p.url} value={p.url}>
+              {p.title}
+              {p === matched ? " (matches their email)" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
+      {proposal && (
+        <a
+          href={proposal.url}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-accent-solid underline-offset-2 hover:underline"
+        >
+          <LuFileText aria-hidden="true" />
+          Open the proposal
+          <LuArrowUpRight aria-hidden="true" />
+        </a>
+      )}
+
+      <label className="mt-4 block">
+        <span className="text-sm font-semibold">Draft</span>
+        <span className="block text-sm text-ink-2">To {m.email} · {subject}</span>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={14}
+          className="glass-field mt-1.5 w-full px-4 py-3 text-[15px] leading-relaxed text-ink"
+        />
+      </label>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <a href={mailto} onClick={save} className={buttonClass("primary")}>
+          <LuReply aria-hidden="true" />
+          Open in email
+        </a>
+        <ActionButton icon={copied ? <LuCheck /> : <LuCopy />} onClick={copy}>
+          {copied ? "Copied" : "Copy text"}
+        </ActionButton>
+        <ActionButton icon={<LuFileText />} onClick={save}>
+          {saved ? "Draft saved" : "Save draft"}
+        </ActionButton>
+        <ActionButton
+          icon={<LuCheck />}
+          onClick={() => props.onUpdate({ replied: !m.replied_at, reply_draft: draft, proposal_url: proposalUrl || null })}
+        >
+          {m.replied_at ? "Mark not replied" : "Mark as replied"}
+        </ActionButton>
+        <ActionButton icon={<LuRefreshCw />} onClick={() => setDraft(draftReply(m, proposal))}>
+          Reset draft
+        </ActionButton>
+      </div>
+      <p className="mt-3 text-sm text-ink-2">
+        Nothing is sent from here. "Open in email" starts the reply in your mail app, ready to check and send.
+      </p>
+    </section>
   );
 }
 
