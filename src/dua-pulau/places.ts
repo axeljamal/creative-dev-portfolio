@@ -45,7 +45,11 @@ export const PLACES: Place[] = [
     name: "The gamelan bale",
     holds: "Media Lab",
     blurb: "Seven kettles and two gongs under an open roof. The Media Lab shows how each motif was made and scores it for this ensemble, synthesized in the browser. The music you hear in these waters is played on the same instruments.",
-    links: [{ label: "Open the Media Lab", href: "https://marea-dvipa.uk" }],
+    links: [
+      // the Media Lab as a room: this same bale, with the reels on a hung cloth and the gamelan playing each score
+      { label: "Step inside the bale", href: "https://marea-dvipa.uk/bale" },
+      { label: "Open the Media Lab", href: "https://marea-dvipa.uk/#lab" },
+    ],
   },
   {
     id: "guesthouse",

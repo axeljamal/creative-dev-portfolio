@@ -5,7 +5,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { earlierWork } from "../content/work";
 import { profile } from "../content/profile";
 import { ISLAND_NAME, PLACES, place, type Island, type Place, type PlaceId } from "./places";
-import type { World } from "./world/engine";
+import type { Weather, World } from "./world/engine";
 
 const ModelStage = lazy(() => import("../three/ModelStage"));
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -25,6 +25,7 @@ export function App() {
   const [muted, setMuted] = useState(false);
   const [menu, setMenu] = useState(false);
   const [bound, setBound] = useState<PlaceId | null>(null);
+  const [weather, setWeather] = useState<Weather | null>(null);
 
   const moor = useCallback((id: PlaceId | null) => {
     setOpen(id);
@@ -38,7 +39,7 @@ export function App() {
     import("./world/engine")
       .then(({ createWorld }) => {
         if (gone || !canvas.current) return;
-        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound });
+        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather });
         setState("ready");
       })
       .catch((e) => {
@@ -168,7 +169,7 @@ export function App() {
               <button ref={closeBtn} type="button" className="dp-x" onClick={() => moor(null)} aria-label="Cast off and close">×</button>
             </header>
             <div className="dp-panel-body">
-              <PlaceBody p={here} />
+              <PlaceBody p={here} weather={weather} />
             </div>
             <footer>
               <button type="button" className="dp-btn dp-btn-line" onClick={() => moor(null)}>Cast off</button>
@@ -213,11 +214,18 @@ export function App() {
 
 const ext = { target: "_blank", rel: "noreferrer" } as const;
 
-function PlaceBody({ p }: { p: Place }) {
+const COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+
+function PlaceBody({ p, weather }: { p: Place; weather: Weather | null }) {
   const s = p.study;
   return (
     <>
       <p className="dp-blurb">{p.blurb}</p>
+      {p.id === "lighthouse" && weather && (
+        <p className="dp-live" aria-live="polite">
+          Brighton now: {Math.round(weather.temp)}°C, wind {Math.round(weather.wind)} km/h from the {COMPASS[Math.round(weather.from / 45) % 8]}. The vane up there is turned into it, and the cups spin at its speed.
+        </p>
+      )}
       {p.id === "barong" && (
         <div className="dp-stage">
           <Suspense fallback={null}>

@@ -184,6 +184,7 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
 .dp-panel-body { overflow-y: auto; padding: 20px 24px; display: grid; gap: 14px; align-content: start; font-size: 15.5px; line-height: 1.6; color: rgba(244, 238, 227, 0.84); overscroll-behavior: contain; }
 .dp-panel-body p, .dp-panel-body dl, .dp-panel-body ul, .dp-panel-body h3 { margin: 0; }
 .dp-blurb { font-family: var(--font-display); font-size: 21px; line-height: 1.32; color: var(--dp-pearl); }
+.dp-live { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; color: var(--dp-teal); border: 1px solid rgba(127, 196, 200, 0.35); border-radius: 12px; padding: 10px 12px; }
 .dp-shot { width: 100%; border-radius: 14px; border: 1px solid var(--dp-line); display: block; }
 .dp-stage { border-radius: 14px; overflow: hidden; border: 1px solid var(--dp-line); min-height: 240px; background: #17140f; }
 .dp-role { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.02em; color: var(--dp-gold); }

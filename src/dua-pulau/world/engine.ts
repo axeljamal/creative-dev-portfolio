@@ -12,7 +12,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PlaceId } from "../places";
 import * as audio from "./audio";
 import { buildBale, buildBuoy, buildGate, buildGuestHouse, buildHuts, buildLamp, buildLighthouse, buildPalms, buildPavilion, buildPier, buildPinisi, buildPip, buildPlinth, buildRocks, buildSupper, buildTrees, glow } from "./models";
-import { ISLANDS, addPad, buildTerrain, dockFor, heightAt, nearestIsland, scatter, smooth } from "./terrain";
+import { ISLANDS, addPad, buildShore, buildTerrain, dockFor, heightAt, nearestIsland, scatter, smooth } from "./terrain";
 
 export type WorldEvents = {
   /** the boat is close enough to moor at this place, or has left it */
@@ -21,7 +21,11 @@ export type WorldEvents = {
   onArrive: (id: PlaceId) => void;
   onWaters: (w: "md" | "wf" | "strait" | "open") => void;
   onFound: (ids: PlaceId[]) => void;
+  /** the weather in Brighton now, once the lighthouse has asked for it */
+  onWeather?: (w: Weather) => void;
 };
+/** temp in °C, wind in km/h, from: the compass bearing the wind blows from */
+export type Weather = { temp: number; wind: number; from: number };
 export type World = {
   /** light the lamp: must be called inside a tap, so sound may start */
   light: () => void;
@@ -209,10 +213,12 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   // ---------- land ----------
   SITES.forEach((s) => s.pad && addPad({ x: s.x, z: s.z, r: s.pad[0], h: s.pad[1] }));
   scene.add(buildTerrain());
+  const shore = buildShore();
+  scene.add(shore);
   const [MD, WF] = ISLANDS;
   scene.add(buildPalms([...scatter(MD, 110, 1.3, 6, 0.5, 2), ...scatter(WF, 26, 1.4, 4, 0.4, 5)]));
-  scene.add(buildTrees(scatter(MD, 150, 4.5, 30, 0.7, 9), true));
-  scene.add(buildTrees(scatter(WF, 60, 4.5, 20, 0.6, 14), false));
+  scene.add(buildTrees(scatter(MD, 170, 3.2, 30, 0.7, 9), true));
+  scene.add(buildTrees(scatter(WF, 70, 3.4, 20, 0.6, 14), false));
   scene.add(buildRocks([...scatter(MD, 46, -0.9, 1.1, 2, 21), ...scatter(WF, 60, -0.9, 1.3, 2, 23)]));
 
   const site = (id: PlaceId) => SITES.find((s) => s.id === id)!;
@@ -228,17 +234,21 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     scene.add(o);
     return o;
   }
-  stand("gate", buildGate());
-  stand("pavilion", buildPavilion());
+  const gate = buildGate();
+  stand("gate", gate.group);
+  const pav = buildPavilion();
+  stand("pavilion", pav.group);
   const bale = buildBale();
   stand("bale", bale.group);
-  stand("guesthouse", buildGuestHouse());
+  const guest = buildGuestHouse();
+  stand("guesthouse", guest.group);
   const plinth = buildPlinth();
   stand("barong", plinth.group);
   const pier = buildPier(PIER_LEN);
   stand("pier", pier.group);
   pier.group.position.y = 0;
-  stand("table", buildSupper(), Math.PI / 2);
+  const supper = buildSupper();
+  stand("table", supper.group, Math.PI / 2);
   const pip = buildPip();
   pip.group.scale.setScalar(0.8);
   {
@@ -246,7 +256,8 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     pip.group.position.set(s.x + d.x * 8.5, heightAt(s.x, s.z) + 0.16, s.z + d.y * 8.5);
     scene.add(pip.group);
   }
-  stand("huts", buildHuts(), -Math.PI / 2);
+  const huts = buildHuts();
+  stand("huts", huts.group, Math.PI / 2); // doors to the sea
   const lighthouse = buildLighthouse();
   stand("lighthouse", lighthouse.group);
   const buoy = buildBuoy();
@@ -370,7 +381,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   const st = { x: -8, z: 128, yaw: Math.PI / 2, v: 0, roll: 0 };
   let phase: "dark" | "lighting" | "sailing" = "dark";
   let litAt = 0, lit = 0, elev = NIGHT;
-  let auto: Site | null = null, autoSide = 0, moored: Site | null = null, near: PlaceId | null = null;
+  let auto: Site | null = null, autoSide = 0, autoIsle: (typeof ISLANDS)[number] | null = null, moored: Site | null = null, near: PlaceId | null = null;
   let waters = "";
   const found = new Set<PlaceId>();
   const keys: Record<string, boolean> = {};
@@ -408,14 +419,18 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   document.addEventListener("visibilitychange", onVis);
 
   const ray = new THREE.Raycaster(), seaPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit = new THREE.Vector3(), ndc = new THREE.Vector2();
+  /** the island that stands between two points at sea, if one does: the first land the straight course meets */
   const blocked = (x0: number, z0: number, x1: number, z1: number) => {
     const n = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 6);
-    for (let i = 1; i < n; i++) if (heightAt(x0 + ((x1 - x0) * i) / n, z0 + ((z1 - z0) * i) / n) > -3.6) return true;
-    return false;
+    for (let i = 1; i < n; i++) {
+      const x = x0 + ((x1 - x0) * i) / n, z = z0 + ((z1 - z0) * i) / n;
+      if (heightAt(x, z) > -3.6) return ISLANDS.reduce((a, b) => (Math.hypot(x - a.x, z - a.z) / a.r < Math.hypot(x - b.x, z - b.z) / b.r ? a : b));
+    }
+    return null;
   };
 
   function sail(dt: number) {
-    let turn = 0, thrust = 0;
+    let turn = 0, thrust = 0, swing = 0; // swing: under her own pilot she may turn smartly even with little way on
     if (auto) {
       // steer for the mooring; if an island is in the way, follow its coast round until the way is clear
       const d = auto.dock!, dx = d.x - st.x, dz = d.z - st.z, dist = Math.hypot(dx, dz);
@@ -427,16 +442,24 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
         ev.onArrive(here.id);
         return;
       }
-      if (blocked(st.x, st.z, d.x, d.z)) {
-        const I = nearestIsland(st.x), rx = st.x - I.x, rz = st.z - I.z, r = Math.hypot(rx, rz), ring = I.r * 1.5 + 12;
+      const I = blocked(st.x, st.z, d.x, d.z);
+      if (I) {
+        // round the island that is in the way (not merely the nearest one), keeping to one side of it until the way is clear
+        const rx = st.x - I.x, rz = st.z - I.z, r = Math.hypot(rx, rz), ring = I.r * 1.5 + 12;
         const tx = -rz / r, tz = rx / r;
-        if (!autoSide) autoSide = tx * vx + tz * vz >= 0 ? 1 : -1;
+        if (autoIsle !== I) {
+          autoIsle = I;
+          autoSide = tx * vx + tz * vz >= 0 ? 1 : -1;
+        }
         const pull = clamp((ring - r) / 22, -1, 1);
         vx = tx * autoSide + (rx / r) * pull;
         vz = tz * autoSide + (rz / r) * pull;
-      } else autoSide = 0;
-      turn = clamp(wrap(Math.atan2(-vz, vx) - st.yaw) * 2.2, -1, 1);
-      thrust = dist < 45 ? 0.45 : Math.abs(turn) > 0.8 ? 0.5 : 1;
+      } else autoIsle = null;
+      const off = wrap(Math.atan2(-vz, vx) - st.yaw);
+      turn = clamp(off * 2.2, -1, 1);
+      // her course lies astern (she has just cast off, bows to the shore): back away and swing round before making sail
+      thrust = Math.abs(off) > 1.25 ? -0.4 : dist < 45 ? 0.45 : Math.abs(turn) > 0.8 ? 0.5 : 1;
+      swing = Math.abs(off) > 0.5 ? 0.85 : 0;
     } else if (steering()) {
       if (keys.arrowleft || keys.a) turn += 1;
       if (keys.arrowright || keys.d) turn -= 1;
@@ -460,7 +483,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
       }
     }
     turn = clamp(turn, -1, 1);
-    st.yaw += turn * dt * 0.3 * (0.35 + Math.min(1, Math.abs(st.v) / 7)); // a 28 m schooner turns slowly
+    st.yaw += turn * dt * 0.3 * Math.max(swing * 1.6, 0.35 + Math.min(1, Math.abs(st.v) / 7)); // a 28 m schooner turns slowly
     st.v += (thrust * 13 - st.v) * dt * (thrust ? 0.55 : 0.4);
     st.roll += (turn * Math.min(1, Math.abs(st.v) / 9) * 0.1 - st.roll) * Math.min(1, dt * 2);
     const fx = Math.cos(st.yaw), fz = -Math.sin(st.yaw);
@@ -525,7 +548,10 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
       // moored: stand off the shore and look at the place
       const s = moored, d = s.island === "strait" ? new THREE.Vector2(0.3, 1).normalize() : out(s), [dist, h] = s.view, far = tall ? 1.45 : 1;
       const cx = s.x + d.x * (s.focus ?? 0), cz = s.z + d.y * (s.focus ?? 0), ground = Math.max(0, heightAt(cx, cz));
-      wantPos.set(cx + d.x * dist * far - d.y * dist * 0.35, h * far + ground * 0.6, cz + d.y * dist * far + d.x * dist * 0.35);
+      // stand well off to one side of her: the boat lies on the line from the place straight out to sea, and seen from
+      // astern her sails would hide what she has come to see. From the quarter she frames it instead.
+      const ca = Math.cos(0.72), sa = Math.sin(0.72), ox = d.x * ca - d.y * sa, oz = d.y * ca + d.x * sa;
+      wantPos.set(cx + ox * dist * far, h * far + ground * 0.6, cz + oz * dist * far);
       wantPos.y = Math.max(wantPos.y, heightAt(wantPos.x, wantPos.z) + 4);
       // on a phone the panel rises over the lower half, so aim low and the place sits in the clear upper part
       wantLook.set(cx, ground + h * 0.42 - (tall ? dist * 0.42 : 0), cz);
@@ -549,6 +575,118 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     shift += (wantShift - shift) * (reduce ? 1 : Math.min(1, dt * 2));
     if (shift > 0.5) camera.setViewOffset(w, h, shift, 0, w, h);
     else if (camera.view) camera.clearViewOffset();
+  }
+
+  // ---------- life: each place wakes a little as she comes near, and fully when she moors ----------
+  const awake = {} as Record<PlaceId, number>;
+  SITES.forEach((s) => (awake[s.id] = 0));
+  const WARM: [number, number, number] = [3.2, 2.1, 0.9];
+  const dim = (m: THREE.MeshBasicMaterial, r: number, g: number, b: number, k: number) => m.color.setRGB(r * k, g * k, b * k);
+  /** lights or doors that come on one after another as a place wakes */
+  const seq = (a: number, i: number, n: number) => clamp(a * (n + 0.6) - i, 0, 1);
+  const flick = (t: number, i: number) => (reduce ? 1 : 0.92 + 0.08 * Math.sin(t * 9 + i * 2.1));
+  let spinBarong = 0, spinBuoy = 0, spinBeam = 0, spinCups = 0, shuttleSide = -1, lastPick = 0;
+  const pipY = pip.group.position.y, seatY = plinth.seat.position.y;
+  const barongLight = new THREE.PointLight(0xffc870, 0, 16, 1.6);
+  barongLight.position.y = 2;
+  plinth.seat.add(barongLight);
+  // the Pattern Studio's own motifs rise round the pavilion and turn about it, as they do in the welcome film
+  const pavAt = site("pavilion"), pavY = heightAt(pavAt.x, pavAt.z);
+  const motifs = ["bomba-rose--buya", "ketupat-lattice--buya", "cengkeh-sprig--buya", "dua-pulau-medallion--buya", "bomba-rosette--buya", "ntina-mark--gold", "rebung-border--buya"].map((name) => {
+    const tx = new THREE.TextureLoader().load(`/motifs/${name}.png`);
+    tx.colorSpace = THREE.SRGBColorSpace;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, opacity: 0, depthWrite: false }));
+    sp.visible = false;
+    scene.add(sp);
+    return sp;
+  });
+  // the lighthouse shows the weather over Brighton as it is now: the vane turns into the wind, the cups spin at its speed
+  let weather: Weather | null = null, weatherAsked = false;
+  function askWeather() {
+    weatherAsked = true;
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=50.82&longitude=-0.14&current=temperature_2m,wind_speed_10m,wind_direction_10m")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((j: { current?: { temperature_2m?: number; wind_speed_10m?: number; wind_direction_10m?: number } }) => {
+        const c = j.current;
+        if (!c || typeof c.wind_speed_10m !== "number" || typeof c.wind_direction_10m !== "number" || typeof c.temperature_2m !== "number") return;
+        weather = { temp: c.temperature_2m, wind: c.wind_speed_10m, from: c.wind_direction_10m };
+        ev.onWeather?.(weather);
+      })
+      .catch(() => {}); // no weather, no harm: the vane keeps its idle swing
+  }
+  function life(t: number, dt: number, bob: number) {
+    for (const s of SITES) {
+      const want = moored?.id === s.id ? 1 : near === s.id ? 0.4 : 0;
+      awake[s.id] += (want - awake[s.id]) * Math.min(1, dt * (want > awake[s.id] ? 1.3 : 0.7));
+    }
+    const still = reduce ? 0 : 1;
+    // the gate: stone lamps light in pairs down the path to the water
+    gate.lamps.forEach((m, i) => dim(m, ...WARM, (0.12 + 0.88 * seq(awake.gate, i, gate.lamps.length)) * flick(t, i)));
+    // the pavilion: its lamps come up and the motifs rise and circle it
+    dim(pav.lampM, ...WARM, 0.25 + 0.75 * awake.pavilion);
+    motifs.forEach((sp, i) => {
+      const a = clamp(awake.pavilion * 1.7 - i * 0.09, 0, 1), ang = t * 0.22 * still + (i / motifs.length) * Math.PI * 2, r = 11.5 + (i % 2) * 2.6;
+      sp.visible = a > 0.01;
+      if (!sp.visible) return;
+      sp.position.set(pavAt.x + Math.cos(ang) * r, pavY + 4 + a * (4 + (i % 3) * 3.4) + Math.sin(t * 0.6 + i) * 0.5 * still, pavAt.z + Math.sin(ang) * r);
+      sp.scale.setScalar(3.4 * (0.5 + 0.5 * a));
+      sp.material.opacity = a;
+      sp.material.rotation = Math.sin(t * 0.4 + i) * 0.14 * still;
+    });
+    // the bale: its gongs stir (the kettles ring when she moors)
+    bale.gongs.forEach((g, i) => (g.rotation.y = Math.sin(t * 2.2 + i) * 0.12 * awake.bale * still));
+    // the guest house: windows and lanterns come on, the door opens, and the loom on the veranda weaves
+    const home = smooth(0.4, 1, awake.guesthouse);
+    guest.glass.emissiveIntensity = awake.guesthouse * 1.8;
+    dim(guest.lanternM, ...WARM, 0.2 + 0.8 * awake.guesthouse);
+    guest.door.rotation.y = -1.25 * home;
+    const pick = Math.floor(t * 1.5), beat = (t * 1.5) % 1;
+    guest.beater.rotation.x = home * (beat < 0.2 ? Math.sin((beat / 0.2) * Math.PI) * 0.24 : 0) * still;
+    if (home > 0.5 && pick !== lastPick) {
+      lastPick = pick;
+      shuttleSide = -shuttleSide;
+      if (moored?.id === "guesthouse") audio.loom();
+    }
+    guest.shuttle.position.x += ((home > 0.5 ? shuttleSide * 0.55 : -0.55) - guest.shuttle.position.x) * Math.min(1, dt * 9);
+    // the Barong: lifts off its plinth, turns faster and glows
+    spinBarong += dt * (0.3 + awake.barong * 1.5) * still;
+    if (barong) barong.rotation.y = reduce ? -Math.PI / 2 : spinBarong;
+    plinth.seat.position.y = seatY + smooth(0.4, 1, awake.barong) * 0.5 + Math.sin(t * 1.3) * 0.06 * awake.barong * still;
+    barongLight.intensity = awake.barong * 40;
+    // the pier: its lamps come on one standard at a time from the shore, then the kiosk lights
+    const head = smooth(0.6, 1, awake.pier);
+    pier.lamps.forEach((m, i) => dim(m, ...WARM, (0.12 + 0.88 * seq(awake.pier, i, pier.lamps.length)) * flick(t, i)));
+    dim(pier.kioskM, ...WARM, 0.15 + 0.85 * head);
+    pier.kioskGlass.emissiveIntensity = head * 2;
+    pier.flag.rotation.y = Math.sin(t * (2.6 + awake.pier * 3)) * 0.3 * bob;
+    // the supper table: the festoon comes on and twinkles, the candles catch, and Pip jumps for joy
+    dim(supper.festoonM, 3.4, 2.3, 1.0, (0.1 + 0.9 * awake.table) * (awake.table > 0.3 && !reduce ? 0.86 + 0.14 * Math.sin(t * 13) : 1));
+    supper.candles.forEach((c, i) => c.scale.setScalar(0.3 + awake.table * (0.9 + 0.2 * Math.sin(t * 17 + i * 3) * still)));
+    pip.group.position.y = pipY + Math.abs(Math.sin(t * 5)) * 0.45 * smooth(0.5, 1, awake.table) * still;
+    // the beach huts: the doors swing open along the terrace, a light in each
+    const open = smooth(0.3, 1, awake.huts);
+    huts.huts.forEach((h, i) => {
+      const k = seq(open, i, huts.huts.length);
+      h.doors.forEach((d, n) => (d.rotation.y = (n ? 1 : -1) * 1.75 * k));
+      dim(h.inside, ...WARM, 0.15 + 0.85 * k);
+    });
+    // the lighthouse: the lamp brightens and the beam strengthens; vane and cups show Brighton's wind as it is now
+    if (awake.lighthouse > 0.2 && !weatherAsked) askWeather();
+    const wind = weather ? clamp(weather.wind / 40, 0.08, 1.6) : 0.4;
+    spinCups += dt * (1.5 + wind * 11) * still;
+    spinBeam += dt * (0.5 + awake.lighthouse * 0.4) * still;
+    lighthouse.cups.rotation.y = spinCups;
+    lighthouse.beam.rotation.y = reduce ? 0.8 : spinBeam;
+    lighthouse.beamM.opacity = 0.045 + 0.1 * awake.lighthouse;
+    dim(lighthouse.lampM, 5, 4.2, 2.4, 0.5 + 0.9 * awake.lighthouse);
+    // north is -z and east is +x: the arrow points to where the wind comes from
+    const from = weather ? THREE.MathUtils.degToRad(weather.from) : 0;
+    const into = weather ? Math.atan2(Math.cos(from), Math.sin(from)) - lighthouse.group.rotation.y : 0.6;
+    lighthouse.vane.rotation.y += wrap(into + Math.sin(t * 0.3) * 0.12 * bob - lighthouse.vane.rotation.y) * Math.min(1, dt * 1.5);
+    // the medallion: turns faster and its lantern beats
+    spinBuoy += dt * (0.35 + awake.buoy * 1.8) * still;
+    buoy.spin.rotation.y = reduce ? 0.6 : spinBuoy;
+    dim(buoy.lightM, ...WARM, 0.4 + awake.buoy * (0.6 + 0.5 * Math.max(0, Math.sin(t * 6)) * still));
   }
 
   // ---------- the loop ----------
@@ -591,20 +729,17 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
       (w.m.material as THREE.MeshBasicMaterial).opacity = 0.5 * (1 - age) * Math.min(1, age * 8);
     });
     water.material.uniforms.time.value = t * 0.45;
+    shore.material.uniforms.time.value = reduce ? 0 : t;
+    shore.material.uniforms.light.value = smooth(NIGHT, 6, elev);
     buoy.group.position.y = Math.sin(t * 1.1 + 2) * 0.14 * bob;
-    buoy.spin.rotation.y = reduce ? 0.6 : t * 0.35;
     markers.forEach((m, id) => {
       m.g.position.y = Math.sin(t * 1.3 + m.g.position.x) * 0.12 * bob;
       // the beam calls from far off and bows out as the boat comes near
       m.beam.visible = !found.has(id) && Math.hypot(camPos.x - m.g.position.x, camPos.z - m.g.position.z) > 70;
     });
-    lighthouse.beam.rotation.y = reduce ? 0.8 : t * 0.5;
-    lighthouse.cups.rotation.y = reduce ? 0 : t * 5;
-    lighthouse.vane.rotation.y = 0.6 + Math.sin(t * 0.3) * 0.25 * bob;
-    pier.flag.rotation.y = Math.sin(t * 2.6) * 0.3 * bob;
+    life(t, dt, bob);
     pip.group.rotation.y = Math.atan2(st.x - pip.group.position.x, st.z - pip.group.position.z);
     pip.update(t, reduce);
-    if (barong) barong.rotation.y = reduce ? -Math.PI / 2 : t * 0.3;
     bale.kettles.forEach((k, i) => {
       const a = Math.max(0, 1 - (t - flash[i]) / 0.7);
       (k.material as THREE.MeshStandardMaterial).emissive.setRGB(a * 1.6, a * 1.0, a * 0.3);
@@ -661,7 +796,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
       if (phase !== "sailing") return;
       moored = null;
       auto = site(id);
-      autoSide = 0;
+      autoIsle = null;
     },
     moor(id) {
       moored = id ? site(id) : null;

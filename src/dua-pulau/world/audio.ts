@@ -88,6 +88,8 @@ export const kettle = (n: number, v = 0.4, at = 0) => live() && strike([{ k: "ke
 export const gong = (v = 0.5, at = 0) => live() && strike([{ k: "gong", n: 0, v, at }]);
 export const bar = (i: number, v = 0.4, at = 0) => live() && strike([{ k: "kolintang", n: i % 7, f: WF[i % 7], v, at }]);
 export const bump = () => live() && strike([{ k: "drum", n: "dum", v: 0.7 }]);
+/** one pick of the loom: the beater falls, the shuttle crosses */
+export const loom = () => live() && strike([{ k: "beater", v: 0.42 }, { k: "shuttle", v: 0.3, at: 0.14 }]);
 
 /** the lamp catches: a gong, then the kettles climb */
 export function lampLit() {

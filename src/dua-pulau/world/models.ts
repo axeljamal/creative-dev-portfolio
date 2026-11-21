@@ -508,7 +508,16 @@ export function buildGate() {
   });
   tedung(g, 3.6, 3.4, 0xf4eee3);
   tedung(g, 3.6, -3.4, 0xf4eee3);
-  return g;
+  // stone lamps down the path to the water: they light in pairs, from the gate outward, when someone comes
+  const lamps = [0, 1, 2, 3].map((i) => {
+    const m = glow(3.2, 2.1, 0.9);
+    [-1, 1].forEach((s) => {
+      mesh(box(0.4, 0.9, 0.4), M.stone, 6.4 + i * 1.7, 0.45 - i * 0.12, s * 2.3, g);
+      mesh(ball(0.17), m, 6.4 + i * 1.7, 1.08 - i * 0.12, s * 2.3, g).castShadow = false;
+    });
+    return m;
+  });
+  return { group: g, lamps };
 }
 
 /** the studio's mark made solid: a meru, five roofs of black ijuk thatch over a brick shrine. It faces +x. */
@@ -548,12 +557,13 @@ export function buildPavilion() {
   tedung(g, 8.3, 3.2, 0xe0c27e);
   tedung(g, 8.3, -3.2, 0xe0c27e);
   // lamps by the steps
+  const lampM = glow(3.2, 2.1, 0.9);
   const lamps = [-1, 1].map((s) => {
     mesh(box(0.5, 1.3, 0.5), M.stone, 9.4, 2.3 - 1.6 + 0.65, s * 2.6, g);
-    return mesh(ball(0.2), M.warm, 9.4, 1.6, s * 2.6, g);
+    return mesh(ball(0.2), lampM, 9.4, 1.6, s * 2.6, g);
   });
   lamps.forEach((l) => (l.castShadow = false));
-  return g;
+  return { group: g, lampM };
 }
 
 /** an open bale with the gamelan set out under it: seven kettles and two hanging gongs. Open side faces +x. */
@@ -607,9 +617,15 @@ export function buildGuestHouse() {
   const y0 = 0.9;
   mesh(box(10, 3.3, 8), M.plaster, -1.5, y0 + 1.65, 0, g);
   [-1, 1].forEach((a) => [-1, 1].forEach((b) => mesh(box(0.3, 3.4, 0.3), M.darkWood, -1.5 + a * 5, y0 + 1.7, b * 4, g)));
-  mesh(box(0.12, 2.3, 1.2), M.wood, 3.56, y0 + 1.15, 0, g);
+  mesh(box(0.06, 2.3, 1.2), new THREE.MeshBasicMaterial({ color: 0x2a1a0c }), 3.52, y0 + 1.15, 0, g); // the dark of the doorway
+  const door = new THREE.Group(); // hinged on its left edge
+  door.position.set(3.58, y0, -0.6);
+  g.add(door);
+  mesh(box(0.1, 2.3, 1.2), M.wood, 0, 1.15, 0.6, door);
+  mesh(ball(0.05, 8, 6), M.brass, 0.07, 1.1, 1.05, door);
+  const glass = new THREE.MeshStandardMaterial({ color: 0x1a2a30, roughness: 0.15, metalness: 0.5, emissive: 0xffb45a, emissiveIntensity: 0 });
   [-2.6, 2.6].forEach((z) => {
-    mesh(box(0.1, 1.5, 1.3), std({ color: 0x1a2a30, rough: 0.15, metal: 0.5 }), 3.54, y0 + 1.75, z, g);
+    mesh(box(0.1, 1.5, 1.3), glass, 3.54, y0 + 1.75, z, g);
     [-1, 1].forEach((s) => mesh(box(0.08, 1.6, 0.62), M.teal, 3.6, y0 + 1.75, z + s * 0.98, g));
   });
   // veranda
@@ -632,14 +648,41 @@ export function buildGuestHouse() {
     l.rotation.y = Math.PI / 2;
     mesh(box(1.9, 0.1, 0.65), M.cream, 0, 0.1, 0, l);
   });
-  const lamps = [[7.2, 5], [7.2, -5], [15.6, 3.2], [15.6, -3.2]].map(([x, z]) => {
+  const lanternM = glow(3.2, 2.1, 0.9);
+  [[7.2, 5], [7.2, -5], [15.6, 3.2], [15.6, -3.2]].forEach(([x, z]) => {
     mesh(cyl(0.05, 0.06, 1.5, 6), M.iron, x, y0 + 0.75, z, g);
-    const l = mesh(box(0.3, 0.42, 0.3), M.warm, x, y0 + 1.65, z, g);
-    l.castShadow = false;
-    return l;
+    mesh(box(0.3, 0.42, 0.3), lanternM, x, y0 + 1.65, z, g).castShadow = false;
   });
-  void lamps;
-  return g;
+  // a frame loom on the veranda, a length of cloth half woven: the work of making a place, thread by thread
+  const loom = new THREE.Group();
+  loom.position.set(5.4, y0 + 0.14, -3.1);
+  loom.rotation.y = Math.PI / 2 - 0.35;
+  g.add(loom);
+  [-1, 1].forEach((s) => {
+    mesh(box(0.09, 1.6, 0.09), M.darkWood, s * 0.9, 0.8, 0, loom);
+    mesh(box(0.09, 0.09, 1.4), M.darkWood, s * 0.9, 0.05, 0.4, loom);
+  });
+  mesh(cyl(0.055, 0.055, 2.0, 10), M.wood, 0, 1.52, 0, loom).rotation.z = Math.PI / 2;
+  mesh(cyl(0.065, 0.065, 2.0, 10), M.wood, 0, 0.48, 1.0, loom).rotation.z = Math.PI / 2;
+  const warpT = tex(128, 128, (c, w, h) => {
+    c.fillStyle = "#02213d";
+    c.fillRect(0, 0, w, h);
+    for (let x = 0; x < w; x += 4) {
+      c.fillStyle = x % 16 === 0 ? "#c39b65" : "rgba(244,238,227,.5)";
+      c.fillRect(x, 0, 1, h);
+    }
+    c.fillStyle = "#c39b65";
+    for (let y = 92; y < h; y += 6) c.fillRect(0, y, w, 2);
+  });
+  const cloth = mesh(new THREE.PlaneGeometry(1.6, 1.48), std({ map: warpT, rough: 0.9, side: THREE.DoubleSide }), 0, 1.0, 0.5, loom);
+  cloth.rotation.x = -0.76;
+  const beater = new THREE.Group();
+  beater.position.set(0, 1.52, 0.02);
+  loom.add(beater);
+  mesh(box(1.76, 0.11, 0.06), M.lacquer, 0, -0.74, 0.48, beater);
+  [-0.85, 0.85].forEach((x) => (mesh(box(0.04, 0.86, 0.04), M.darkWood, x, -0.38, 0.24, beater).rotation.x = -0.55));
+  const shuttle = mesh(box(0.28, 0.05, 0.08), M.gold, -0.55, 0.82, 0.74, loom);
+  return { group: g, door, glass, lanternM, beater, shuttle };
 }
 
 /** a stepped plinth for the Barong; the engine sets the sculpture on `seat` */
@@ -677,10 +720,11 @@ export function buildBuoy() {
     if (s < 0) d.rotation.y = Math.PI;
     spin.add(d);
   });
-  const light = mesh(ball(0.2), M.warm, 0, 6.15, 0, g);
+  const lightM = glow(3.2, 2.1, 0.9);
+  const light = mesh(ball(0.2), lightM, 0, 6.15, 0, g);
   light.castShadow = false;
   mesh(cyl(0.03, 0.03, 0.4, 6), M.brass, 0, 5.95, 0, g);
-  return { group: g, spin };
+  return { group: g, spin, lightM };
 }
 
 // ---------- Windfall ----------
@@ -713,18 +757,22 @@ export function buildPier(length = 52) {
   rail(head + 6.4, -5.9, head + 6.4, 5.9);
   mesh(mergeGeometries(rails)!, M.white, 0, 0, 0, g);
   // lamp standards with white globes
-  const globes: THREE.BufferGeometry[] = [];
-  for (let x = 5; x < head - 7; x += 9)
+  const lamps: THREE.MeshBasicMaterial[] = []; // shore first
+  for (let x = 5; x < head - 7; x += 9) {
+    const lm = glow(3.2, 2.1, 0.9);
+    lamps.push(lm);
     [-1, 1].forEach((s) => {
       mesh(cyl(0.06, 0.09, 3.3, 8), M.iron, x, deckH + 1.8, s * 2.45, g);
       mesh(box(0.9, 0.06, 0.06), M.iron, x, deckH + 3.3, s * 2.45, g);
-      [-0.4, 0.4].forEach((o) => globes.push(ball(0.19, 12, 10).translate(x + o, deckH + 3.48, s * 2.45)));
+      [-0.4, 0.4].forEach((o) => (mesh(ball(0.19, 12, 10), lm, x + o, deckH + 3.48, s * 2.45, g).castShadow = false));
     });
+  }
+  const kioskGlass = new THREE.MeshStandardMaterial({ color: 0x24353a, roughness: 0.15, metalness: 0.5, emissive: 0xffc070, emissiveIntensity: 0 });
   // the kiosk
   mesh(cyl(3.0, 3.0, 3.1, 12), M.white, head, deckH + 1.7, 0, g);
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2 + Math.PI / 12;
-    const w = mesh(box(0.08, 1.5, 1.0), i === 0 ? M.terracotta : std({ color: 0x24353a, rough: 0.15, metal: 0.5 }), head + Math.cos(a) * 3.0, deckH + (i === 0 ? 1.1 : 1.9), Math.sin(a) * 3.0, g);
+    const w = mesh(box(0.08, 1.5, 1.0), i === 0 ? M.terracotta : kioskGlass, head + Math.cos(a) * 3.0, deckH + (i === 0 ? 1.1 : 1.9), Math.sin(a) * 3.0, g);
     w.rotation.y = -a;
     if (i === 0) w.scale.y = 1.4;
   }
@@ -740,10 +788,9 @@ export function buildPier(length = 52) {
     mesh(box(2.2, 0.55, 0.08), M.teak, x, deckH + 0.95, z + Math.sign(z) * 0.28, g);
     [-0.9, 0.9].forEach((o) => mesh(box(0.08, 0.5, 0.5), M.iron, x + o, deckH + 0.4, z, g));
   });
-  globes.push(ball(0.24, 12, 10).translate(head + 3.2, deckH + 2.2, 0.9), ball(0.24, 12, 10).translate(head + 3.2, deckH + 2.2, -0.9));
-  const lights = new THREE.Mesh(mergeGeometries(globes)!, M.warm);
-  g.add(lights);
-  return { group: g, flag };
+  const kioskM = glow(3.2, 2.1, 0.9);
+  [0.9, -0.9].forEach((z) => (mesh(ball(0.24, 12, 10), kioskM, head + 3.2, deckH + 2.2, z, g).castShadow = false));
+  return { group: g, flag, lamps, kioskM, kioskGlass };
 }
 
 /** Pip, Windfall's mascot, from the app's own model: a soft cream body, leaf ears, a yellow scarf and a glowing bulb */
@@ -848,15 +895,14 @@ export function buildSupper() {
     }
   });
   lines(wire, 0x1a1a1a, g);
-  const festoon = new THREE.Mesh(mergeGeometries(bulbs)!, glow(3.4, 2.3, 1.0));
-  g.add(festoon);
+  const festoonM = glow(3.4, 2.3, 1.0);
+  g.add(new THREE.Mesh(mergeGeometries(bulbs)!, festoonM));
   // crates of surplus: apples, squash and greens
   [[-6.2, 2.2, 0xb5352a], [-5.2, 2.6, 0x7fbf5a], [-6.0, 3.1, 0xe08a2a]].forEach(([x, z, c]) => {
     mesh(box(0.8, 0.45, 0.6), std({ map: plankT, color: 0xb08a5a, rough: 0.9 }), x, y0 + 0.23, z, g);
     for (let i = 0; i < 9; i++) mesh(ball(0.11, 10, 8), std({ color: c, rough: 0.5 }), x - 0.25 + (i % 3) * 0.25, y0 + 0.5 + (i > 5 ? 0.08 : 0), z - 0.15 + Math.floor(i / 3) * 0.16, g);
   });
-  void candles;
-  return g;
+  return { group: g, festoonM, candles };
 }
 
 /** a terrace of beach huts in Brighton's colours: Bootcamp Connect and the earlier work. Doors face +z. */
@@ -869,6 +915,7 @@ export function buildHuts() {
   gable.lineTo(1.5, 0);
   gable.lineTo(0, 1.25);
   gable.closePath();
+  const huts: { doors: THREE.Group[]; inside: THREE.MeshBasicMaterial }[] = [];
   colours.forEach((c, i) => {
     const h = new THREE.Group();
     h.position.set(-10.8 + i * 3.6, 0.4, 0);
@@ -878,11 +925,19 @@ export function buildHuts() {
     const roof = mesh(new THREE.ExtrudeGeometry(gable, { depth: 3.8, bevelEnabled: false }), std({ color: i % 2 ? 0xf3efe6 : 0x3a4648, rough: 0.7 }), 0, 2.5, -1.9, h);
     roof.scale.x = 1.04;
     mesh(box(2.84, 0.1, 0.12), M.white, 0, 2.5, 1.72, h);
-    [-1, 1].forEach((s) => {
-      mesh(box(0.62, 1.85, 0.06), std({ map: rep(plankT, 1, 2), color: new THREE.Color(c).multiplyScalar(0.72).getHex(), rough: 0.7 }), s * 0.33, 0.98, 1.72, h);
+    const inside = glow(0.5, 0.33, 0.14); // the light in the hut, seen when its doors swing open
+    mesh(box(1.26, 1.85, 0.02), inside, 0, 0.98, 1.66, h).castShadow = false;
+    const doorM = std({ map: rep(plankT, 1, 2), color: new THREE.Color(c).multiplyScalar(0.72).getHex(), rough: 0.7 });
+    const doors = [-1, 1].map((s) => {
+      const hinge = new THREE.Group();
+      hinge.position.set(s * 0.64, 0.98, 1.72);
+      h.add(hinge);
+      mesh(box(0.62, 1.85, 0.06), doorM, -s * 0.31, 0, 0, hinge);
+      mesh(ball(0.035, 8, 6), M.brass, -s * 0.56, 0.02, 0.05, hinge);
       mesh(box(0.1, 2.5, 0.1), M.white, s * 1.38, 1.25, 1.7, h);
+      return hinge;
     });
-    mesh(ball(0.04, 8, 6), M.brass, 0.08, 1.0, 1.77, h);
+    huts.push({ doors, inside });
     mesh(box(1.6, 0.14, 0.5), M.teak, 0, -0.07, 2.0, h);
   });
   // two striped deckchairs
@@ -898,7 +953,7 @@ export function buildHuts() {
       mesh(box(0.04, 0.04, 1.0), M.wood, s, 0.3, 0.1, d).rotation.x = 0.7;
     });
   });
-  return g;
+  return { group: g, huts };
 }
 
 /** a lighthouse with a weather vane and a spinning anemometer: the Weather Dashboard */
@@ -924,7 +979,8 @@ export function buildLighthouse() {
   for (let i = 0; i < 16; i++) mesh(cyl(0.03, 0.03, 1, 5), M.iron, Math.cos((i / 16) * 6.283) * 2.4, 18.4, Math.sin((i / 16) * 6.283) * 2.4, g);
   const glass = mesh(new THREE.CylinderGeometry(1.35, 1.35, 2.1, 12, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xeaf6f6, roughness: 0.05, transmission: 0.85, thickness: 0.1, transparent: true, opacity: 0.45, side: THREE.DoubleSide }), 0, 19.05, 0, g);
   glass.castShadow = false;
-  const lampBall = mesh(ball(0.5), glow(5, 4.2, 2.4), 0, 19.05, 0, g);
+  const lampM = glow(5, 4.2, 2.4);
+  const lampBall = mesh(ball(0.5), lampM, 0, 19.05, 0, g);
   lampBall.castShadow = false;
   mesh(new THREE.ConeGeometry(1.7, 1.4, 12), M.sage, 0, 20.8, 0, g);
   mesh(ball(0.22), M.gold, 0, 21.6, 0, g);
@@ -960,7 +1016,7 @@ export function buildLighthouse() {
   const cr = roofTier(0.3, 3.2, 1.6, std({ color: 0x3a4648, rough: 0.7 }), 3.9, g, 0.62);
   cr.parent!.position.set(-5.4, 0, 0.6);
   mesh(box(0.08, 1.7, 0.8), M.teal, -2.88, 2.2, 0.6, g);
-  return { group: g, beam, vane, cups };
+  return { group: g, beam, vane, cups, lampM, beamM };
 }
 
 // ---------- planting ----------
@@ -1054,34 +1110,83 @@ function lumpy(detail: number, amount: number) {
   g.computeVertexNormals();
   return g;
 }
-/** leaf litter: light and dark flecks that break up a canopy's surface */
-const leafT = tex(256, 256, (g, w, h) => {
-  g.fillStyle = "#d0d0d0";
-  g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 2600; i++) {
-    const v = rnd();
-    g.fillStyle = v > 0.5 ? `rgba(255,255,255,${0.1 + rnd() * 0.3})` : `rgba(0,0,0,${0.15 + rnd() * 0.4})`;
+/** a spray of leaves on clear ground: the canopy is built from many of these, so its edge is leaves, not a ball */
+const sprayT = tex(128, 128, (g, w, h) => {
+  g.clearRect(0, 0, w, h);
+  for (let i = 0; i < 90; i++) {
+    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 52, x = w / 2 + Math.cos(a) * r, y = h / 2 + Math.sin(a) * r, v = rnd();
+    g.fillStyle = `rgb(${150 + v * 90},${165 + v * 85},${120 + v * 70})`; // near-white greens: the tree's own colour tints them
     g.beginPath();
-    g.ellipse(rnd() * w, rnd() * h, 2 + rnd() * 5, 1 + rnd() * 3, rnd() * 3.14, 0, 6.3);
+    g.ellipse(x, y, 5 + rnd() * 7, 2.2 + rnd() * 2.6, rnd() * Math.PI, 0, Math.PI * 2);
     g.fill();
   }
 });
-leafT.repeat.set(5, 3);
-/** broadleaf trees: a trunk with three lobes of canopy, shaded darker underneath */
+sprayT.wrapS = sprayT.wrapT = THREE.ClampToEdgeWrapping;
+
+/**
+ * One tree: a trunk that forks, and a crown of leaf sprays set on a few overlapping lobes. Every spray's normal points
+ * out from its lobe's middle, so the crown takes the light as one soft round mass while its outline stays ragged.
+ * spread > 1 gives the low, wide crown of a tree grown in sea wind.
+ */
+function treeGeometry(spread: number) {
+  const sprays: THREE.BufferGeometry[] = [];
+  const lobes = [[0, 5.2, 0, 2.5], [1.9, 4.5, 0.5, 1.9], [-1.6, 4.4, -0.9, 1.8], [0.3, 6.3, 1.0, 1.5], [-0.5, 4.2, 1.7, 1.6], [0.8, 4.1, -1.7, 1.5]];
+  const q = new THREE.Quaternion(), e = new THREE.Euler(), n = new THREE.Vector3();
+  lobes.forEach(([lx, ly, lz, lr]) => {
+    const count = Math.round(lr * lr * 5.2);
+    for (let i = 0; i < count; i++) {
+      // points over the lobe's shell, a few sunk inside so no gap shows the far side
+      const u = rnd() * 2 - 1, a = rnd() * Math.PI * 2, rr = lr * (0.62 + rnd() * 0.42), s = Math.sqrt(1 - u * u);
+      n.set(s * Math.cos(a), u * 0.8 + 0.12, s * Math.sin(a)).normalize();
+      const size = 1.5 + rnd() * 1.1, g = new THREE.PlaneGeometry(size, size);
+      q.setFromEuler(e.set(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3));
+      g.applyQuaternion(q);
+      g.translate((lx + n.x * rr) * spread, ly * (spread > 1 ? 0.82 : 1) + n.y * rr * (spread > 1 ? 0.7 : 1), (lz + n.z * rr) * spread);
+      const nrm = g.attributes.normal as THREE.BufferAttribute, shade = 0.5 + 0.5 * Math.min(1, Math.max(0, n.y * 0.7 + 0.55)) * (0.75 + 0.25 * (rr / lr));
+      const col = new Float32Array(12);
+      for (let k = 0; k < 4; k++) {
+        nrm.setXYZ(k, n.x, n.y * 0.9 + 0.25, n.z);
+        col.set([shade, shade, shade], k * 3);
+      }
+      g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+      sprays.push(g);
+    }
+  });
+  const crown = mergeGeometries(sprays)!;
+  crown.normalizeNormals();
+  // the trunk leans a little and forks into three boughs that reach into the lobes
+  const limb = (a: number[], b: number[], r0: number, r1: number) => {
+    const A = V(a[0], a[1], a[2]), B = V(b[0], b[1], b[2]), d = B.clone().sub(A), g = new THREE.CylinderGeometry(r1, r0, d.length(), 7);
+    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), d.clone().normalize()));
+    g.translate((A.x + B.x) / 2, (A.y + B.y) / 2, (A.z + B.z) / 2);
+    return g;
+  };
+  const k = spread > 1 ? 0.82 : 1;
+  const trunk = mergeGeometries([
+    limb([0, -0.4, 0], [0.15, 2.6 * k, 0.05], 0.34, 0.24),
+    limb([0.15, 2.6 * k, 0.05], [1.5 * spread, 4.3 * k, 0.4 * spread], 0.2, 0.09),
+    limb([0.15, 2.6 * k, 0.05], [-1.3 * spread, 4.2 * k, -0.7 * spread], 0.19, 0.09),
+    limb([0.15, 2.6 * k, 0.05], [0.1, 5.0 * k, 0.5], 0.21, 0.09),
+  ])!;
+  return { crown, trunk };
+}
+/** broadleaf trees. west: the tall dark crowns of a wet island. east: lower, wider and greyer, shaped by the sea wind */
 export function buildTrees(spots: Spot[], west: boolean) {
-  const canopy = mergeGeometries([lumpy(3, 0.2).scale(2.6, 2, 2.6).translate(0, 4.6, 0), lumpy(3, 0.2).scale(1.9, 1.5, 1.9).translate(1.7, 3.8, 0.6), lumpy(3, 0.2).scale(1.8, 1.4, 1.8).translate(-1.3, 3.7, -0.9), lumpy(3, 0.2).scale(1.5, 1.2, 1.5).translate(0.4, 5.6, 1.2)])!;
-  const trunk = cyl(0.22, 0.34, 3.4, 7).translate(0, 1.5, 0);
+  const { crown, trunk } = treeGeometry(west ? 1 : 1.28);
   const place = (s: Spot, o: THREE.Object3D, c: THREE.Color) => {
     o.rotation.y = s.r * 6.283;
-    const k = 0.7 + ((s.r * 13) % 1) * 0.9;
-    o.scale.set(k, k * (0.85 + ((s.r * 5) % 1) * 0.4), k);
+    const k = (west ? 0.85 : 0.7) + ((s.r * 13) % 1) * (west ? 0.85 : 0.6);
+    o.scale.set(k, k * (0.9 + ((s.r * 5) % 1) * 0.3), k);
     const v = (s.r * 3) % 1;
-    if (west) c.setRGB(0.13 + v * 0.07, 0.3 + v * 0.12, 0.08 + v * 0.04);
-    else c.setRGB(0.29 + v * 0.08, 0.38 + v * 0.09, 0.18 + v * 0.05);
+    if (west) c.setRGB(0.2 + v * 0.1, 0.42 + v * 0.16, 0.12 + v * 0.06);
+    else c.setRGB(0.42 + v * 0.1, 0.5 + v * 0.1, 0.27 + v * 0.07);
   };
   const g = new THREE.Group();
-  g.add(instances(trunk, std({ color: 0x5a4636, rough: 1 }), spots, place));
-  g.add(instances(canopy, new THREE.MeshStandardMaterial({ vertexColors: true, map: leafT, roughness: 0.9 }), spots, place, true));
+  g.add(instances(trunk, std({ color: 0x55402f, rough: 1 }), spots, place));
+  const leaves = instances(crown, new THREE.MeshStandardMaterial({ map: sprayT, alphaTest: 0.5, vertexColors: true, side: THREE.DoubleSide, roughness: 0.85 }), spots, place, true);
+  // shadows are cut to the leaves too, so the ground under a tree is dappled, not a blot
+  leaves.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: sprayT, alphaTest: 0.5 });
+  g.add(leaves);
   return g;
 }
 export function buildRocks(spots: Spot[]) {

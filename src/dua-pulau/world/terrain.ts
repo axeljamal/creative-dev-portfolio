@@ -145,3 +145,65 @@ export function scatter(I: Island, count: number, minH: number, maxH: number, ma
   }
   return out;
 }
+
+/**
+ * Where the sea meets the sand: the pale water of the shallows and lines of foam running in to the beach. A sheet laid
+ * just over the water round both coasts; each point knows the height of the ground under it, so the foam follows the
+ * real shoreline, bays and all. `time` is its uniform to advance.
+ */
+export function buildShore() {
+  const STEP = 1.25, pos: number[] = [], hs: number[] = [], idx: number[] = [];
+  for (const I of ISLANDS) {
+    const R = I.r * 1.5, n = Math.ceil((R * 2) / STEP), base = pos.length / 3, H = new Float32Array((n + 1) * (n + 1));
+    for (let j = 0; j <= n; j++)
+      for (let i = 0; i <= n; i++) {
+        const x = I.x - R + i * STEP, z = I.z - R + j * STEP, h = heightAt(x, z);
+        H[j * (n + 1) + i] = h;
+        pos.push(x, 0.05, z);
+        hs.push(h);
+      }
+    for (let j = 0; j < n; j++)
+      for (let i = 0; i < n; i++) {
+        const a = j * (n + 1) + i, b = a + 1, c = a + n + 1, d = c + 1;
+        const lo = Math.min(H[a], H[b], H[c], H[d]), hi = Math.max(H[a], H[b], H[c], H[d]);
+        if (hi < -3.4 || lo > 0.5) continue; // only the strip along the coast
+        idx.push(base + a, base + c, base + b, base + b, base + c, base + d);
+      }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("ground", new THREE.Float32BufferAttribute(hs, 1));
+  g.setIndex(idx);
+  const mat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: { time: { value: 0 }, tint: { value: new THREE.Color(1, 0.93, 0.84) }, light: { value: 1 } },
+    vertexShader: `
+      attribute float ground; varying float vH; varying vec2 vP;
+      void main(){ vH = ground; vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      uniform float time; uniform vec3 tint; uniform float light;
+      varying float vH; varying vec2 vP;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+      void main(){
+        if (vH > 0.22) discard;
+        float d = clamp((vH + 3.2) / 3.3, 0.0, 1.0);                 // 0 out at sea … 1 at the water's edge
+        float n = noise(vP * 0.35) + 0.5 * noise(vP * 1.3 + time * 0.15);
+        // sets of waves run up the sand, each line breaking into lace
+        float run = d * 7.0 - time * 0.55 + n * 1.3;
+        float line = pow(0.5 + 0.5 * sin(run * 6.2832), 5.0);
+        float lace = smoothstep(0.35, 0.9, noise(vP * 2.4 + vec2(time * 0.3, 0.0)));
+        float edge = smoothstep(0.78, 1.0, d);                       // the last wash on the sand, always white
+        float foam = clamp(edge * (0.55 + 0.45 * lace) + smoothstep(0.25, 0.9, d) * line * (0.35 + 0.65 * lace) * 0.8, 0.0, 1.0);
+        vec3 shallows = vec3(0.30, 0.74, 0.70);                      // sand showing through thin water
+        float thin = smoothstep(0.15, 1.0, d) * 0.5;
+        vec3 col = mix(shallows * (0.4 + 0.6 * light), tint * (0.35 + 0.65 * light), foam);
+        gl_FragColor = vec4(col, max(thin * (1.0 - foam), foam * 0.92));
+      }`,
+  });
+  const mesh = new THREE.Mesh(g, mat);
+  mesh.renderOrder = 1;
+  return mesh;
+}
