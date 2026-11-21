@@ -14,6 +14,14 @@ const ModelStage = lazy(() => import("../three/ModelStage"));
 export function Work() {
   return (
     <Section id="work" eyebrow="Case studies" title="Selected work">
+      {/* the same work as a place to visit: a 3D world, on its own page so it never slows this one */}
+      <p className="mb-8 text-[17px] leading-relaxed text-ink-2">
+        Or sail to it.{" "}
+        <a href="/dua-pulau/" className="font-bold text-ink underline decoration-accent decoration-2 underline-offset-4">
+          Dua Pulau
+        </a>{" "}
+        is all of this as a world of two islands, with a pinisi to cross between them.
+      </p>
       <div className="flex flex-col gap-6 sm:gap-10">
         {caseStudies.map((study, i) => (
           <Reveal key={study.name}>

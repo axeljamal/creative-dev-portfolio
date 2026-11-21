@@ -11,7 +11,7 @@ export default defineConfig({
     client: {
       build: {
         rollupOptions: {
-          input: { main: "index.html", admin: "admin/index.html" },
+          input: { main: "index.html", admin: "admin/index.html", "dua-pulau": "dua-pulau/index.html" },
         },
       },
     },
