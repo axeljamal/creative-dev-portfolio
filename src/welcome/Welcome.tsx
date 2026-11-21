@@ -178,7 +178,9 @@ export function Welcome() {
     if (Object.keys(b.view).length) setView((v) => ({ ...v, ...b.view }));
     // the film's own beat sounds stay silent: Marea leads the whole way
   };
+  const wake = useRef(() => {}); // playing, seeking or the sound brings a resting loop back at once
   function seek(t: number) {
+    wake.current();
     const S = T.current;
     S.t = Math.max(0, Math.min(TL.total - 0.01, t));
     S.next = nextIndex(S.t);
@@ -192,11 +194,13 @@ export function Welcome() {
     T.current.playing = on;
     T.current.last = 0;
     setPlaying(on);
+    wake.current();
   }
   function setSoundOn(on: boolean) {
     if (on && !unlock()) on = false; // must run inside the tap, or phones stay silent
     T.current.sound = on;
     setSound(on);
+    wake.current();
   }
   function playWithSound() {
     setSoundOn(true);
@@ -262,7 +266,7 @@ export function Welcome() {
   // one requestAnimationFrame loop while the stage is showing: the film clock, the ticker and the 3D tilt
   useEffect(() => {
     if (!active) return;
-    let raf = 0;
+    let raf = 0, nap = 0;
     const loop = (now: number) => {
       const S = T.current;
       const dt = S.last ? Math.min(0.25, (now - S.last) / 1000) : 0;
@@ -356,12 +360,18 @@ export function Welcome() {
         }
         drawRoseStage(cv.getContext("2d")!, W, H, dpr, RS.current, roseAt(lt), levels(), dt);
       }
-      raf = requestAnimationFrame(loop);
+      // with reduced motion the film waits to be played: until then, and while no note is ringing, look in five times a second instead of every frame
+      const ringing = !!lv && Math.max(lv.drum, ...lv.kettle, ...lv.gong) > 0.02;
+      if (reduceMotion && !S.playing && !ringing) nap = window.setTimeout(() => { nap = 0; raf = requestAnimationFrame(loop); }, 200);
+      else raf = requestAnimationFrame(loop);
     };
+    wake.current = () => { if (nap) { clearTimeout(nap); nap = 0; raf = requestAnimationFrame(loop); } };
     raf = requestAnimationFrame(loop);
     if (!reduceMotion && !T.current.playing) play(true);
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(nap);
+      wake.current = () => {};
       if (T.current.playing) play(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

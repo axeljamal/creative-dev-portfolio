@@ -62,11 +62,13 @@ export function MotifField() {
   const tilt = useRef({ tx: 0, ty: 0, rx: 0, ry: 0 });
   const ground = useRef(-1);
   const taps = useRef(0);
+  const kickRef = useRef(() => {});
 
   // one loop: drift, turn, depth parallax as the page scrolls, and the pointer tilt
   useEffect(() => {
     let raf = 0;
     const loop = (now: number) => {
+      raf = 0;
       const t = now / 1000;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
@@ -96,11 +98,19 @@ export function MotifField() {
       T.rx += (T.ty - T.rx) * 0.05;
       T.ry += (T.tx - T.ry) * 0.05;
       if (sceneRef.current && !reduceMotion) sceneRef.current.style.transform = `rotateX(${T.rx.toFixed(2)}deg) rotateY(${T.ry.toFixed(2)}deg)`;
-      raf = requestAnimationFrame(loop);
+      // with reduced motion nothing drifts, so the loop rests until a motif changes, one floats away or the window is resized
+      if (!reduceMotion || itemsRef.current.some((it) => it.away)) raf = requestAnimationFrame(loop);
     };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
+    kickRef.current = kick;
+    kick();
+    if (reduceMotion) window.addEventListener("resize", kick);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", kick);
+    };
   }, []);
+  useEffect(() => kickRef.current(), [items]);
 
   // the motif under a point, if nothing of the page is there to take the click
   const hit = (x: number, y: number, target: EventTarget | null) => {

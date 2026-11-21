@@ -106,6 +106,7 @@ type State = { px: number; py: number; tx: number; ty: number; t0: number; st: R
 export function LiveLogo({ className, set, live, guide, onTap, onHold, onGo, label }: Props) {
   const box = useRef<HTMLDivElement>(null), inner = useRef<HTMLDivElement>(null), els = useRef<Record<string, HTMLImageElement | null>>({});
   const S = useRef<State>({ px: 0, py: 0, tx: 0, ty: 0, t0: 0, st: {}, pix: {}, holdTm: 0, R: null, lv: {}, hot: null, cardAt: 0 });
+  const wake = useRef(() => {}); // a touch or the pointer brings the loop back at once
   const [hot, setHot] = useState<string | null>(null); // the part under the pointer or the keyboard
   const [card, setCard] = useState<string | null>(null); // the part whose card is open
   const art = set === "day" ? "day" : "night";
@@ -113,8 +114,9 @@ export function LiveLogo({ className, set, live, guide, onTap, onHold, onGo, lab
   useEffect(() => { S.current.pix = {}; }, [art]); // the pixels change with the set
   useEffect(() => {
     const st = S.current; LAYOUT.forEach((L) => { st.st[L[0]] = st.st[L[0]] || {}; });
-    let raf = 0, last = 0;
+    let raf = 0, last = 0, nap = 0, same = 0, was = "";
     const loop = (now: number) => {
+      let sig = "";
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 0; last = now;
       if (!st.t0) st.t0 = now; const t = (now - st.t0) / 1000;
       st.px += (st.tx - st.px) * 0.08; st.py += (st.ty - st.py) * 0.08;
@@ -123,7 +125,7 @@ export function LiveLogo({ className, set, live, guide, onTap, onHold, onGo, lab
       const G = [0, 1].map((i) => { const tgt = lv ? lv.gong[i] : 0; sm["g" + i] = (sm["g" + i] || 0) + (tgt - (sm["g" + i] || 0)) * 0.2; return sm["g" + i]; });
       sm.dr = (sm.dr || 0) + ((lv ? lv.drum : 0) - (sm.dr || 0)) * 0.3;
       st.R = L ? L.R : null;
-      if (inner.current) inner.current.style.transform = L && L.breath ? "scale(" + (1 + sm.dr * 0.012).toFixed(4) + ")" : "";
+      if (inner.current) sig = inner.current.style.transform = L && L.breath ? "scale(" + (1 + sm.dr * 0.012).toFixed(4) + ")" : "";
       LAYOUT.forEach((Lr) => {
         const name = Lr[0], node = els.current[name]; if (!node) return;
         const sp = st.st[name], fly = sp.fly || 0, slow = name.indexOf("bird") === 0;
@@ -137,11 +139,16 @@ export function LiveLogo({ className, set, live, guide, onTap, onHold, onGo, lab
         node.style.transform = "translate(" + x.toFixed(2) + "%," + y.toFixed(2) + "%) rotate(" + rr.toFixed(3) + "rad) scale(" + s.toFixed(3) + "," + (s * i.sy).toFixed(3) + ")";
         const want = name === st.hot ? HOT : "";
         if (node.dataset.hot !== want) { node.dataset.hot = want; node.style.filter = want; }
+        sig += node.style.opacity + node.style.transform + want;
       });
-      raf = requestAnimationFrame(loop);
+      // with reduced motion the mark has no idle life: once it has stopped changing, look in five times a second instead of every frame
+      same = sig === was ? same + 1 : 0; was = sig;
+      if (reduceMotion && same > 3) nap = window.setTimeout(() => { nap = 0; raf = requestAnimationFrame(loop); }, 200);
+      else raf = requestAnimationFrame(loop);
     };
+    wake.current = () => { same = 0; if (nap) { clearTimeout(nap); nap = 0; raf = requestAnimationFrame(loop); } };
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); clearTimeout(nap); };
   }, [live]);
 
   // which part is under a point: the top-most layer whose own pixels are opaque there, else the smallest whose outline holds it
@@ -167,12 +174,13 @@ export function LiveLogo({ className, set, live, guide, onTap, onHold, onGo, lab
     }
     return inside;
   }
-  function setHotPart(name: string | null) { if (name !== S.current.hot) { S.current.hot = name; setHot(name); } }
+  function setHotPart(name: string | null) { if (name !== S.current.hot) { S.current.hot = name; setHot(name); wake.current(); } }
   // a touch: the spring, the note, and the part's door into the portfolio (a second touch within a moment goes through it)
   function touch(name: string, e: Point) {
     const st = S.current, sp = st.st[name], tc = TOUCH[name]; if (!sp || !tc) return;
     if (tc.s) sp.sv = (sp.sv || 0) + tc.s * 14; if (tc.r) sp.rv = (sp.rv || 0) + tc.r * 12; if (tc.y) sp.yv = (sp.yv || 0) + tc.y * 16; if (tc.x) sp.xv = (sp.xv || 0) + tc.x * 16;
     if (tc.fly) sp.xv = (sp.xv || 0) + tc.fly * 260;
+    wake.current();
     if (onTap) onTap(name, LABEL[name], tc.evs, e);
     const g = guide && guide[name];
     if (g) { const now = performance.now(); if (card === name && now - st.cardAt < 3000) { if (onGo) onGo(g, name); setCard(null); } else { setCard(name); st.cardAt = now; } }
@@ -196,7 +204,7 @@ export function LiveLogo({ className, set, live, guide, onTap, onHold, onGo, lab
   };
   const onMove = (e: RPointerEvent<HTMLDivElement>) => {
     const el = box.current; if (!el) return;
-    const r = el.getBoundingClientRect(); S.current.tx = ((e.clientX - r.left) / r.width - 0.5) * 2; S.current.ty = ((e.clientY - r.top) / r.height - 0.5) * 2; hold(true);
+    const r = el.getBoundingClientRect(); S.current.tx = ((e.clientX - r.left) / r.width - 0.5) * 2; S.current.ty = ((e.clientY - r.top) / r.height - 0.5) * 2; hold(true); wake.current();
     if (e.pointerType !== "touch") setHotPart(hit(e.clientX, e.clientY));
   };
   const g = hot && guide ? guide[hot] : null, cg = card && guide ? guide[card] : null;
