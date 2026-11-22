@@ -1,7 +1,7 @@
 // A small chart of the two islands, in the round like the Dua Pulau medallion: the shorelines as they really lie,
 // the pinisi and her heading, and every place, filled once found. Tap a place and she sails there. It is a shortcut
 // for the eye and the pointer; the Places menu is the same thing in words, so the chart itself is hidden from readers.
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PlaceId } from "./places";
 import { place } from "./places";
 import type { Chart as ChartData, World } from "./world/engine";
@@ -14,6 +14,8 @@ export function Chart({ world, found, bound, onSail }: { world: World; found: Pl
   const live = useRef({ found, bound });
   const places = useRef<ChartData["places"]>([]); // kept from the one survey of the coast, for taps
   live.current = { found, bound };
+  // under a thumb the places lie too close to tell apart, so a first touch opens the chart out and the second picks
+  const [big, setBig] = useState(false);
 
   useEffect(() => {
     const cv = ref.current;
@@ -92,9 +94,11 @@ export function Chart({ world, found, bound, onSail }: { world: World; found: Pl
 
   // a tap on, or just beside, a place sends her there
   const pick = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const touch = e.pointerType !== "mouse";
+    if (touch && !big) return setBig(true);
     const r = e.currentTarget.getBoundingClientRect(), c = SIZE / 2, k = (c - 13) / REACH;
     const px = ((e.clientX - r.left) / r.width) * SIZE, py = ((e.clientY - r.top) / r.height) * SIZE;
-    let best: PlaceId | null = null, d = 13;
+    let best: PlaceId | null = null, d = 16;
     places.current.forEach((p) => {
       const dd = Math.hypot(c + p.x * k - px, c + p.z * k - py);
       if (dd < d) {
@@ -102,8 +106,9 @@ export function Chart({ world, found, bound, onSail }: { world: World; found: Pl
         best = p.id;
       }
     });
+    setBig(false);
     if (best) onSail(best);
   };
   const boundName = bound ? place(bound).name : "";
-  return <canvas ref={ref} className="dp-chart" style={{ width: SIZE, height: SIZE }} onPointerDown={pick} aria-hidden="true" title={boundName ? `Sailing to ${boundName.replace(/^The /, "the ")}` : "Chart: tap a place to sail there"} />;
+  return <canvas ref={ref} className={`dp-chart${big ? " is-big" : ""}`} style={{ width: SIZE, height: SIZE }} onPointerDown={pick} aria-hidden="true" title={boundName ? `Sailing to ${boundName.replace(/^The /, "the ")}` : "Chart: tap a place to sail there"} />;
 }

@@ -815,7 +815,8 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
           ev.onFound([...found]);
         }
       }
-      const w = Math.abs(st.x) < 44 && Math.abs(st.z) < 150 ? "strait" : Math.hypot(st.x, st.z) > 330 ? "open" : st.x < 0 ? "md" : "wf";
+      // moored, the waters are the place's own: the pier's end lies far enough out to read as the strait otherwise
+      const w = moored ? moored.island : Math.abs(st.x) < 44 && Math.abs(st.z) < 150 ? "strait" : Math.hypot(st.x, st.z) > 330 ? "open" : st.x < 0 ? "md" : "wf";
       if (w !== waters) ev.onWaters((waters = w));
       beat -= dt;
       if (beat <= 0) {

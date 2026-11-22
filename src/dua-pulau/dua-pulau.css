@@ -138,7 +138,7 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
 .dp-menu span { font-size: 13px; color: rgba(244, 238, 227, 0.65); }
 /* the chart: a glass disc ringed in gold, like the medallion */
 .dp-world canvas.dp-chart { position: absolute; inset: auto auto clamp(12px, 2.4vw, 26px) clamp(12px, 2.4vw, 28px); border-radius: 50%; background: var(--dp-glass); border: 1px solid var(--dp-line);
-  box-shadow: 0 0 0 3px rgba(14, 12, 9, 0.35), inset 0 0 0 3px rgba(224, 194, 126, 0.12), 0 10px 30px rgba(0, 0, 0, 0.4); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: pointer; touch-action: none; }
+  box-shadow: 0 0 0 3px rgba(14, 12, 9, 0.35), inset 0 0 0 3px rgba(224, 194, 126, 0.12), 0 10px 30px rgba(0, 0, 0, 0.4); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: pointer; touch-action: none; transition: width 0.25s ease, height 0.25s ease; }
 .dp-time::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--dp-gold); margin-right: 7px; vertical-align: 1px; }
 .dp-foot { position: absolute; left: 0; right: 0; bottom: clamp(16px, 3vw, 30px); display: flex; justify-content: center; padding: 0 16px; pointer-events: none; }
 .dp-foot > * { pointer-events: auto; }
@@ -218,6 +218,7 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
   .dp-hud-tr { max-width: calc(100% - 150px); }
   .dp-world canvas.dp-chart { width: 104px !important; height: 104px !important; bottom: 44px; }
   .has-panel .dp-chart { display: none; }
+  .dp-world canvas.dp-chart.is-big { width: min(300px, calc(100vw - 24px)) !important; height: min(300px, calc(100vw - 24px)) !important; z-index: 3; }
   .dp-foot { bottom: 10px; }
   .dp-hud-tl strong { margin-top: 2px; }
 }
