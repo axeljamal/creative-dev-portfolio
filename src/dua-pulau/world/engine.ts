@@ -23,7 +23,12 @@ export type WorldEvents = {
   onFound: (ids: PlaceId[]) => void;
   /** the weather in Brighton now, once the lighthouse has asked for it */
   onWeather?: (w: Weather) => void;
+  /** the part of the day it has become */
+  onTime?: (part: DayPart) => void;
 };
+export type DayPart = "First light" | "Morning" | "Midday" | "Afternoon" | "Golden hour" | "Dusk" | "Night";
+/** what a chart of these waters needs: each island's shoreline and where each place lies (x east, z south) */
+export type Chart = { isles: { id: "md" | "wf"; shore: [number, number][] }[]; places: { id: PlaceId; island: "md" | "wf" | "strait"; x: number; z: number }[] };
 /** temp in °C, wind in km/h, from: the compass bearing the wind blows from */
 export type Weather = { temp: number; wind: number; from: number };
 export type World = {
@@ -33,6 +38,11 @@ export type World = {
   /** moor at a place (the camera turns to it) or cast off with null */
   moor: (id: PlaceId | null) => void;
   setMuted: (m: boolean) => void;
+  /** move the day on to its next part */
+  skipTime: () => void;
+  chart: () => Chart;
+  /** where she is now and which way she heads (yaw 0 = east, turning to the north) */
+  boat: () => { x: number; z: number; yaw: number };
   dispose: () => void;
 };
 
@@ -136,7 +146,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   const sun = new THREE.DirectionalLight(0xffe2b8, 0);
   sun.castShadow = true;
   sun.shadow.mapSize.setScalar(coarse ? 2048 : 4096);
-  Object.assign(sun.shadow.camera, { left: -300, right: 300, top: 210, bottom: -210, near: 10, far: 1400 });
+  Object.assign(sun.shadow.camera, { left: -330, right: 330, top: 330, bottom: -330, near: 10, far: 1400 }); // square: the sun goes all the way round
   sun.shadow.bias = -0.0006;
   sun.shadow.normalBias = 0.5;
   scene.add(sun, sun.target);
@@ -177,27 +187,49 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   });
 
   const NIGHT = -5, DAY = 7.5;
+  // The day: the sun rises in the north-east, stands high in the south at noon and sets in the north-west, then a
+  // short night. tod counts seconds through it. The lamp is lit at first light, so sailing begins a little after sunrise.
+  const DAY_S = 330, NIGHT_S = 110, TOD0 = 0.0656 * DAY_S, AZ0 = 120 - 240 * 0.0656;
+  const sunAt = (tod: number) => {
+    if (tod < DAY_S) {
+      const f = tod / DAY_S;
+      return { elev: -6 + 66 * Math.sin(Math.PI * f), az: 120 - 240 * f };
+    }
+    const n = (tod - DAY_S) / NIGHT_S;
+    return { elev: -6 - 8 * Math.sin(Math.PI * n), az: -120 - 120 * n };
+  };
+  const PARTS: [number, DayPart][] = [[0, "First light"], [0.05 * DAY_S, "Morning"], [0.36 * DAY_S, "Midday"], [0.64 * DAY_S, "Afternoon"], [0.84 * DAY_S, "Golden hour"], [0.955 * DAY_S, "Dusk"], [DAY_S + 4, "Night"]];
+  const partAt = (tod: number) => PARTS.reduce((a, p) => (tod >= p[0] ? p[1] : a), PARTS[0][1]);
+  const moon = new THREE.DirectionalLight(0x8fa8dc, 0);
+  moon.position.set(-200, 420, 160);
+  scene.add(moon);
   const cA = new THREE.Color(), cB = new THREE.Color();
-  let lastEnv = -99;
-  function setSun(elev: number, force = false) {
-    sunDir.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - elev), THREE.MathUtils.degToRad(164));
-    const day = smooth(NIGHT, 6, elev), up = smooth(-0.5, 7, elev);
+  let lastEnv = -99, lastAz = -999, dusk = 1; // dusk: 1 in the dark, 0 in full day: every lamp in the world is turned by it
+  function setSun(elev: number, az = AZ0, force = false) {
+    sunDir.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - elev), THREE.MathUtils.degToRad(az));
+    const day = smooth(NIGHT, 6, elev), up = smooth(-0.5, 7, elev), high = smooth(12, 42, elev);
+    dusk = 1 - smooth(-3, 10, elev);
+    // low sun through thick air is gold; as it climbs the air clears and the sky goes blue
+    skyU.turbidity.value = 9 - 6.6 * high;
+    skyU.rayleigh.value = 2.9 - 1.9 * high;
+    moon.intensity = 0.6 * (1 - day);
     skyU.sunPosition.value.copy(sunDir);
     water.material.uniforms.sunDirection.value.copy(sunDir).normalize();
-    water.material.uniforms.sunColor.value.setRGB(1, 0.84, 0.62).multiplyScalar(up);
-    water.material.uniforms.waterColor.value.copy(cA.set(0x020c16)).lerp(cB.set(0x0c4a50), day);
+    water.material.uniforms.sunColor.value.setRGB(1, 0.84 + 0.12 * high, 0.62 + 0.3 * high).multiplyScalar(up);
+    water.material.uniforms.waterColor.value.copy(cA.set(0x020c16)).lerp(cB.set(0x0c4a50), day).lerp(cB.set(0x0b5d6e), high);
     sun.position.copy(sunDir).multiplyScalar(600);
     sun.intensity = 4.6 * up;
-    sun.color.copy(cA.set(0xff8a45)).lerp(cB.set(0xffd9a6), smooth(1, 9, elev));
+    sun.color.copy(cA.set(0xff8a45)).lerp(cB.set(0xffd9a6), smooth(1, 9, elev)).lerp(cB.set(0xfff6ea), high);
     hemi.intensity = 0.2 + 0.75 * day;
     hemi.color.copy(cA.set(0x33466a)).lerp(cB.set(0xcfe0f2), day);
-    (scene.fog as THREE.FogExp2).color.copy(cA.set(0x0a1220)).lerp(cB.set(0xc9a48c), day);
-    renderer.toneMappingExposure = 0.52 - 0.24 * day;
+    (scene.fog as THREE.FogExp2).color.copy(cA.set(0x0a1220)).lerp(cB.set(0xc9a48c), day).lerp(cB.set(0xb4c8d4), high); // the haze cools as the sun climbs
+    renderer.toneMappingExposure = 0.52 - 0.24 * day + 0.1 * high;
     (stars.material as THREE.PointsMaterial).opacity = 1 - smooth(-4, 1, elev);
-    clouds.forEach((c) => c.material.color.copy(cA.set(0x1c2436)).lerp(cB.set(0xffdcc0), day));
+    clouds.forEach((c) => c.material.color.copy(cA.set(0x1c2436)).lerp(cB.set(0xffdcc0), day).lerp(cB.set(0xffffff), high));
     // the sky also lights every surface: re-bake it as the sun moves
-    if (force || Math.abs(elev - lastEnv) > 1.4) {
+    if (force || Math.abs(elev - lastEnv) > 1.4 || (elev > -5 && Math.abs(az - lastAz) > 6)) {
       lastEnv = elev;
+      lastAz = az;
       Object.entries(skyU).forEach(([k, u]) => {
         const v = envSky.material.uniforms[k].value;
         if (v?.copy) v.copy(u.value);
@@ -380,7 +412,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   // ---------- state ----------
   const st = { x: -8, z: 128, yaw: Math.PI / 2, v: 0, roll: 0 };
   let phase: "dark" | "lighting" | "sailing" = "dark";
-  let litAt = 0, lit = 0, elev = NIGHT;
+  let litAt = 0, lit = 0, elev = NIGHT, tod = TOD0, ffTo = -1, dayPart: DayPart = "First light";
   let auto: Site | null = null, autoSide = 0, autoIsle: (typeof ISLANDS)[number] | null = null, moored: Site | null = null, near: PlaceId | null = null;
   let waters = "";
   const found = new Set<PlaceId>();
@@ -388,7 +420,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   let pointer: PointerEvent | null = null;
   const flash = new Array(7).fill(-9);
   let beat = 0;
-  setSun(NIGHT, true);
+  setSun(NIGHT, AZ0, true);
 
   const steering = () => phase === "sailing" && !moored;
   const onKey = (e: KeyboardEvent) => {
@@ -621,9 +653,9 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     }
     const still = reduce ? 0 : 1;
     // the gate: stone lamps light in pairs down the path to the water
-    gate.lamps.forEach((m, i) => dim(m, ...WARM, (0.12 + 0.88 * seq(awake.gate, i, gate.lamps.length)) * flick(t, i)));
+    gate.lamps.forEach((m, i) => dim(m, ...WARM, (0.12 + 0.88 * Math.max(dusk, seq(awake.gate, i, gate.lamps.length))) * flick(t, i)));
     // the pavilion: its lamps come up and the motifs rise and circle it
-    dim(pav.lampM, ...WARM, 0.25 + 0.75 * awake.pavilion);
+    dim(pav.lampM, ...WARM, 0.25 + 0.75 * Math.max(dusk, awake.pavilion));
     motifs.forEach((sp, i) => {
       const a = clamp(awake.pavilion * 1.7 - i * 0.09, 0, 1), ang = t * 0.22 * still + (i / motifs.length) * Math.PI * 2, r = 11.5 + (i % 2) * 2.6;
       sp.visible = a > 0.01;
@@ -637,8 +669,8 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     bale.gongs.forEach((g, i) => (g.rotation.y = Math.sin(t * 2.2 + i) * 0.12 * awake.bale * still));
     // the guest house: windows and lanterns come on, the door opens, and the loom on the veranda weaves
     const home = smooth(0.4, 1, awake.guesthouse);
-    guest.glass.emissiveIntensity = awake.guesthouse * 1.8;
-    dim(guest.lanternM, ...WARM, 0.2 + 0.8 * awake.guesthouse);
+    guest.glass.emissiveIntensity = Math.max(dusk * 0.8, awake.guesthouse) * 1.8;
+    dim(guest.lanternM, ...WARM, 0.2 + 0.8 * Math.max(dusk, awake.guesthouse));
     guest.door.rotation.y = -1.25 * home;
     const pick = Math.floor(t * 1.5), beat = (t * 1.5) % 1;
     guest.beater.rotation.x = home * (beat < 0.2 ? Math.sin((beat / 0.2) * Math.PI) * 0.24 : 0) * still;
@@ -654,13 +686,13 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     plinth.seat.position.y = seatY + smooth(0.4, 1, awake.barong) * 0.5 + Math.sin(t * 1.3) * 0.06 * awake.barong * still;
     barongLight.intensity = awake.barong * 40;
     // the pier: its lamps come on one standard at a time from the shore, then the kiosk lights
-    const head = smooth(0.6, 1, awake.pier);
-    pier.lamps.forEach((m, i) => dim(m, ...WARM, (0.12 + 0.88 * seq(awake.pier, i, pier.lamps.length)) * flick(t, i)));
+    const head = Math.max(dusk, smooth(0.6, 1, awake.pier));
+    pier.lamps.forEach((m, i) => dim(m, ...WARM, (0.12 + 0.88 * Math.max(dusk, seq(awake.pier, i, pier.lamps.length))) * flick(t, i)));
     dim(pier.kioskM, ...WARM, 0.15 + 0.85 * head);
     pier.kioskGlass.emissiveIntensity = head * 2;
     pier.flag.rotation.y = Math.sin(t * (2.6 + awake.pier * 3)) * 0.3 * bob;
     // the supper table: the festoon comes on and twinkles, the candles catch, and Pip jumps for joy
-    dim(supper.festoonM, 3.4, 2.3, 1.0, (0.1 + 0.9 * awake.table) * (awake.table > 0.3 && !reduce ? 0.86 + 0.14 * Math.sin(t * 13) : 1));
+    dim(supper.festoonM, 3.4, 2.3, 1.0, (0.1 + 0.9 * Math.max(dusk * 0.85, awake.table)) * (Math.max(dusk, awake.table) > 0.3 && !reduce ? 0.86 + 0.14 * Math.sin(t * 13) : 1));
     supper.candles.forEach((c, i) => c.scale.setScalar(0.3 + awake.table * (0.9 + 0.2 * Math.sin(t * 17 + i * 3) * still)));
     pip.group.position.y = pipY + Math.abs(Math.sin(t * 5)) * 0.45 * smooth(0.5, 1, awake.table) * still;
     // the beach huts: the doors swing open along the terrace, a light in each
@@ -668,7 +700,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     huts.huts.forEach((h, i) => {
       const k = seq(open, i, huts.huts.length);
       h.doors.forEach((d, n) => (d.rotation.y = (n ? 1 : -1) * 1.75 * k));
-      dim(h.inside, ...WARM, 0.15 + 0.85 * k);
+      dim(h.inside, ...WARM, 0.15 + 0.85 * Math.max(dusk * 0.55, k));
     });
     // the lighthouse: the lamp brightens and the beam strengthens; vane and cups show Brighton's wind as it is now
     if (awake.lighthouse > 0.2 && !weatherAsked) askWeather();
@@ -677,8 +709,8 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     spinBeam += dt * (0.5 + awake.lighthouse * 0.4) * still;
     lighthouse.cups.rotation.y = spinCups;
     lighthouse.beam.rotation.y = reduce ? 0.8 : spinBeam;
-    lighthouse.beamM.opacity = 0.045 + 0.1 * awake.lighthouse;
-    dim(lighthouse.lampM, 5, 4.2, 2.4, 0.5 + 0.9 * awake.lighthouse);
+    lighthouse.beamM.opacity = 0.045 + 0.1 * Math.max(dusk, awake.lighthouse);
+    dim(lighthouse.lampM, 5, 4.2, 2.4, 0.5 + 0.9 * Math.max(dusk, awake.lighthouse));
     // north is -z and east is +x: the arrow points to where the wind comes from
     const from = weather ? THREE.MathUtils.degToRad(weather.from) : 0;
     const into = weather ? Math.atan2(Math.cos(from), Math.sin(from)) - lighthouse.group.rotation.y : 0.6;
@@ -700,8 +732,22 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
 
     if (phase !== "dark") {
       lit = Math.min(1, lit + dt / 0.9);
-      const want = NIGHT + (DAY - NIGHT) * ease(clamp((t - litAt - 1.6) / (reduce ? 0.01 : 7.5), 0, 1));
-      if (want !== elev) setSun((elev = want));
+      if (phase === "sailing" && t - litAt > 9.3) {
+        // the day goes by; asked to move on, it hurries to the next part and settles there
+        if (ffTo >= 0) {
+          const left = (ffTo - tod + DAY_S + NIGHT_S) % (DAY_S + NIGHT_S);
+          const stepS = reduce ? left : Math.min(left, dt * Math.max(24, left * 1.6));
+          tod = (tod + stepS) % (DAY_S + NIGHT_S);
+          if (left - stepS < 0.01) ffTo = -1;
+        } else if (!reduce) tod = (tod + dt) % (DAY_S + NIGHT_S);
+        const sp = sunAt(tod);
+        if (Math.abs(sp.elev - elev) > 0.02 || ffTo >= 0) setSun((elev = sp.elev), sp.az);
+        const part = partAt(tod);
+        if (part !== dayPart) ev.onTime?.((dayPart = part));
+      } else {
+        const want = NIGHT + (DAY - NIGHT) * ease(clamp((t - litAt - 1.6) / (reduce ? 0.01 : 7.5), 0, 1));
+        if (want !== elev) setSun((elev = want));
+      }
     }
     if (phase === "sailing") sail(dt);
     else st.v *= 0.98;
@@ -808,6 +854,25 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
       if (id === "table") window.setTimeout(audio.boop, 700);
     },
     setMuted: audio.setMuted,
+    skipTime() {
+      if (phase !== "sailing") return;
+      const next = PARTS.find((p) => p[0] > tod + 1) ?? PARTS[0];
+      ffTo = next[0] + (next[1] === "Night" ? NIGHT_S * 0.3 : next[1] === "First light" ? 0 : 2);
+    },
+    chart: () => ({
+      // each shoreline: walk in from the sea along 72 bearings until the ground comes up through the water
+      isles: ISLANDS.map((I) => ({
+        id: I.id,
+        shore: Array.from({ length: 72 }, (_, i): [number, number] => {
+          const a = (i / 72) * Math.PI * 2;
+          let r = I.r * 1.6;
+          while (r > 4 && heightAt(I.x + Math.cos(a) * r, I.z + Math.sin(a) * r) < 0) r -= 1.5;
+          return [I.x + Math.cos(a) * r, I.z + Math.sin(a) * r];
+        }),
+      })),
+      places: SITES.map((s) => ({ id: s.id, island: s.island, x: s.x, z: s.z })),
+    }),
+    boat: () => ({ x: st.x, z: st.z, yaw: st.yaw }),
     dispose() {
       disposed = true;
       cancelAnimationFrame(raf);
@@ -827,6 +892,6 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
       renderer.dispose();
     },
   };
-  if (import.meta.env.DEV) Object.assign(window, { __dp: { api, st, skip: () => ((phase = "sailing"), (lit = 1), setSun((elev = DAY), true)) } });
+  if (import.meta.env.DEV) Object.assign(window, { __dp: { api, st, skip: () => ((phase = "sailing"), (lit = 1), setSun((elev = DAY), AZ0, true)) } });
   return api;
 }

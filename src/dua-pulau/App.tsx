@@ -5,7 +5,8 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { earlierWork } from "../content/work";
 import { profile } from "../content/profile";
 import { ISLAND_NAME, PLACES, place, type Island, type Place, type PlaceId } from "./places";
-import type { Weather, World } from "./world/engine";
+import { Chart } from "./Chart";
+import type { DayPart, Weather, World } from "./world/engine";
 
 const ModelStage = lazy(() => import("../three/ModelStage"));
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -26,6 +27,7 @@ export function App() {
   const [menu, setMenu] = useState(false);
   const [bound, setBound] = useState<PlaceId | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
+  const [dayPart, setDayPart] = useState<DayPart>("First light");
 
   const moor = useCallback((id: PlaceId | null) => {
     setOpen(id);
@@ -39,7 +41,7 @@ export function App() {
     import("./world/engine")
       .then(({ createWorld }) => {
         if (gone || !canvas.current) return;
-        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather });
+        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart });
         setState("ready");
       })
       .catch((e) => {
@@ -97,7 +99,7 @@ export function App() {
 
   return (
     <main className="dp">
-      <section id="world" className="dp-world" aria-label="Dua Pulau, a world of two islands">
+      <section id="world" className={`dp-world${open ? " has-panel" : ""}`} aria-label="Dua Pulau, a world of two islands">
         <canvas ref={canvas} tabIndex={-1} aria-label="A pinisi schooner on the sea between two islands: Marea Dvīpa to the west and Windfall to the east. Every place in it is listed below the world." />
 
         <div className={`dp-gate${lit ? " is-out" : ""}`} aria-hidden={lit}>
@@ -127,6 +129,7 @@ export function App() {
             </div>
             <div className="dp-hud-tr">
               <span className="dp-pill" aria-live="polite">{found.length} / {PLACES.length} found</span>
+              <button type="button" className="dp-pill dp-time" onClick={() => world.current?.skipTime()} aria-label={`Time of day: ${dayPart}. Move on to the next part of the day`} title="Move the day on">{dayPart}</button>
               <button type="button" className="dp-pill" aria-expanded={menu} aria-controls="dp-menu" onClick={() => setMenu((m) => !m)}>Places</button>
               <button type="button" className="dp-pill" aria-pressed={!muted} onClick={toggleSound}>{muted ? "Sound off" : "Sound on"}</button>
             </div>
@@ -145,6 +148,7 @@ export function App() {
                 ))}
               </nav>
             )}
+            {sailing && world.current && <Chart world={world.current} found={found} bound={bound} onSail={sailTo} />}
             {!open && (
               <div className="dp-foot" aria-live="polite">
                 {near ? (
