@@ -41,7 +41,7 @@ export function App() {
   const [sailing, setSailing] = useState(false);
   const [near, setNear] = useState<PlaceId | null>(null);
   const [open, setOpen] = useState<PlaceId | null>(null);
-  const [found, setFound] = useState<PlaceId[]>([]);
+  const [found, setFound] = useState<PlaceId[]>(logged); // a place moored at on an earlier visit was found then
   const [waters, setWaters] = useState<keyof typeof WATERS>("strait");
   const [muted, setMuted] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -88,7 +88,7 @@ export function App() {
     import("./world/engine")
       .then(({ createWorld }) => {
         if (gone || !canvas.current) return;
-        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart });
+        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart }, logged());
         setState("ready");
       })
       .catch((e) => {

@@ -60,7 +60,8 @@ const SITES: Site[] = [
   { id: "table", island: "wf", x: 112, z: -28, pad: [13, 4.2], view: [21, 6.5] },
   { id: "huts", island: "wf", x: 128, z: 56, pad: [16, 2.3], view: [38, 9] },
   { id: "lighthouse", island: "wf", x: 178, z: 2, pad: [10, 3.2], view: [54, 16] },
-  { id: "buoy", island: "strait", x: 0, z: -34, view: [17, 6], dock: { x: 0, z: -18 } },
+  // she lies on the far side of the medallion: the camera stands to the south, and a mooring there put it inside the hull
+  { id: "buoy", island: "strait", x: 0, z: -34, view: [17, 6], dock: { x: -6, z: -56 } },
 ];
 
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -140,7 +141,8 @@ function cloudTexture(seed: number) {
   return t;
 }
 
-export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
+/** seen: places found on an earlier visit (the log's ticks), so the counts and the chart pick up where they stopped */
+export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: PlaceId[] = []): World {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !coarse, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarse ? 1.5 : 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -346,6 +348,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
       const gr = buildGroyne();
       gr.position.set(I.x + dx * r, 0, I.z + dz * r);
       gr.rotation.y = Math.atan2(-dz, dx);
+      gr.userData.groyne = 15.5; // its length out to the marker post: the hull keeps clear of it
       scene.add(gr);
     });
   }
@@ -404,6 +407,61 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     scene.add(g);
     markers.set(s.id, { g, lamp, beam });
   });
+
+  // what stands in the water is solid: the mooring floats, the strait's buoy, the pier and its head, the groynes.
+  // Each is a stroke on the sea (a to b) with a thickness; the hull is kept clear of all of them.
+  type Rock = { ax: number; az: number; bx: number; bz: number; r: number };
+  const rocks: Rock[] = [];
+  const dot = (x: number, z: number, r: number) => rocks.push({ ax: x, az: z, bx: x, bz: z, r });
+  markers.forEach((m) => dot(m.g.position.x, m.g.position.z, 1.4));
+  dot(site("buoy").x, site("buoy").z, 3);
+  {
+    const s = site("pier"), d = out(s), at = (k: number) => [s.x + d.x * k, s.z + d.y * k] as const;
+    const [ax, az] = at(0), [bx, bz] = at(PIER_LEN - 9), [hx, hz] = at(PIER_LEN - 11), [ex, ez] = at(PIER_LEN + 1);
+    rocks.push({ ax, az, bx, bz, r: 3 }, { ax: hx, az: hz, bx: ex, bz: ez, r: 6.8 });
+  }
+  scene.traverse((o) => {
+    if (o.userData.groyne) {
+      const a = -o.rotation.y, len = o.userData.groyne as number;
+      rocks.push({ ax: o.position.x, az: o.position.z, bx: o.position.x + Math.cos(a) * len, bz: o.position.z + Math.sin(a) * len, r: 0.6 });
+    }
+  });
+  /** nearest point of a rock to (x, z), and how far off it is */
+  const near2 = (k: Rock, x: number, z: number) => {
+    const vx = k.bx - k.ax, vz = k.bz - k.az, l2 = vx * vx + vz * vz;
+    const u = l2 ? clamp(((x - k.ax) * vx + (z - k.az) * vz) / l2, 0, 1) : 0;
+    const px = k.ax + vx * u, pz = k.az + vz * u;
+    return { px, pz, d: Math.hypot(x - px, z - pz) };
+  };
+  // the lamps at night: a bulb a few centimetres across is smaller than a pixel from out at sea, so as the boat bobs it
+  // falls on a pixel one frame and between pixels the next, and the bloom turns that into a flicker. Each small lamp
+  // gets a soft halo a few pixels wide, sharing the bulb's colour, so it brightens and dims with it and never winks out.
+  {
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const g = c.getContext("2d")!, grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, "rgba(255,255,255,1)");
+    grd.addColorStop(0.25, "rgba(255,255,255,.45)");
+    grd.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 64, 64);
+    const haloT = new THREE.CanvasTexture(c), bulbs: THREE.Mesh[] = [];
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh) || !(o.material instanceof THREE.MeshBasicMaterial) || !o.material.userData.glow) return;
+      o.geometry.computeBoundingSphere();
+      if (o.geometry.boundingSphere!.radius < 0.7) bulbs.push(o);
+    });
+    bulbs.forEach((b) => {
+      const m = new THREE.SpriteMaterial({ map: haloT, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false });
+      m.color = (b.material as THREE.MeshBasicMaterial).color; // the same colour object: it follows every dim and flicker
+      const s = new THREE.Sprite(m);
+      s.scale.setScalar(Math.max(1.1, b.geometry.boundingSphere!.radius * 7));
+      s.raycast = () => {};
+      b.add(s);
+    });
+  }
+  /** the hull's half-beam at o metres forward of midships (−14 stern … +14 bow) */
+  const beamAt = (o: number) => 3.6 * Math.pow(Math.sin(Math.PI * (0.08 + 0.92 * clamp((o + 14) / 28, 0, 1))), 0.6) + 0.3;
 
   // gulls wheel over each island
   const gullM = new THREE.MeshBasicMaterial({ color: 0xe9e6df, side: THREE.DoubleSide });
@@ -495,7 +553,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   let litAt = 0, lit = 0, elev = NIGHT, tod = TOD0, ffTo = -1, dayPart: DayPart = "First light";
   let auto: Site | null = null, autoSide = 0, autoIsle: (typeof ISLANDS)[number] | null = null, moored: Site | null = null, near: PlaceId | null = null;
   let waters = "";
-  const found = new Set<PlaceId>();
+  const found = new Set<PlaceId>(seen);
   const keys: Record<string, boolean> = {};
   let pointer: PointerEvent | null = null;
   const flash = new Array(7).fill(-9);
@@ -566,7 +624,28 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
         const pull = clamp((ring - r) / 22, -1, 1);
         vx = tx * autoSide + (rx / r) * pull;
         vz = tz * autoSide + (rz / r) * pull;
-      } else autoIsle = null;
+      } else {
+        autoIsle = null;
+        // the pier (anything large in the water) lies across her course: keep a beam's length off it and work round
+        // whichever end is nearer the mooring, instead of pressing into it
+        for (const k of rocks) {
+          if (k.r < 2.5) continue;
+          const clear = k.r + 7;
+          let cut = false;
+          for (let s = 0; s <= Math.min(dist, 70) && !cut; s += 3) cut = near2(k, st.x + vx * s, st.z + vz * s).d < clear;
+          if (!cut) continue;
+          const n = near2(k, st.x, st.z), nx = (st.x - n.px) / (n.d || 1), nz = (st.z - n.pz) / (n.d || 1);
+          let tx = -nz, tz = nx;
+          if (tx * dx + tz * dz < 0) (tx = -tx), (tz = -tz);
+          const pull = clamp((clear + 3 - n.d) / 6, -0.6, 1);
+          vx = tx + nx * pull;
+          vz = tz + nz * pull;
+          const l = Math.hypot(vx, vz) || 1;
+          vx /= l;
+          vz /= l;
+          break;
+        }
+      }
       const off = wrap(Math.atan2(-vz, vx) - st.yaw);
       turn = clamp(off * 2.2, -1, 1);
       // her course lies astern (she has just cast off, bows to the shore): back away and swing round before making sail
@@ -611,6 +690,19 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
         st.x -= (gx / gl) * push;
         st.z -= (gz / gl) * push;
         hitLand = true;
+      }
+    }
+    // and nothing in the water passes through her: test the hull from bow to stern against every rock
+    for (let o = 13; o >= -13; o -= 2.6) {
+      const px = st.x + fx * o, pz = st.z + fz * o, hb = beamAt(o);
+      for (const k of rocks) {
+        const n = near2(k, px, pz), gap = k.r + hb - n.d;
+        if (gap > 0) {
+          const nx = n.d > 1e-4 ? (px - n.px) / n.d : -fx, nz = n.d > 1e-4 ? (pz - n.pz) / n.d : -fz;
+          st.x += nx * gap;
+          st.z += nz * gap;
+          hitLand = true;
+        }
       }
     }
     if (hitLand) {

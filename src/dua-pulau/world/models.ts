@@ -85,7 +85,10 @@ const woodT = tex(256, 256, (g, w, h) => {
   for (let y = 0; y < h; y += 32) g.fillRect(0, y, w, 2);
 });
 /** pale planks: tinted by vertex or material colour */
-const plankT = tex(256, 256, (g, w, h) => {
+// drawn on a 256 grid at twice the resolution: up close (the lamp on the foredeck) a coarser grain showed its texels as steps
+const plankT = tex(512, 512, (g) => {
+  g.scale(2, 2);
+  const w = 256, h = 256;
   g.fillStyle = "#e9e3d8";
   g.fillRect(0, 0, w, h);
   for (let i = 0; i < 420; i++) {
@@ -202,8 +205,12 @@ sailT.wrapS = sailT.wrapT = THREE.ClampToEdgeWrapping;
  */
 function age(t: THREE.CanvasTexture, o: { streak?: number; damp?: number; blot?: number; green?: boolean }) {
   const c = t.image as HTMLCanvasElement, g = c.getContext("2d")!, w = c.width, h = c.height;
+  g.setTransform(1, 0, 0, 1, 0, 0); // a texture drawn scaled (the planks) is weathered in its own pixels, scaled below
+  const k = w / 256 >= 2 && t === plankT ? 2 : 1;
+  g.scale(k, k);
+  const W = w / k, H = h / k;
   for (let i = 0; i < 26; i++) {
-    const x = rnd() * w, r = 10 + rnd() * 34, y = rnd() * h, dark = rnd() > 0.45;
+    const x = rnd() * W, r = 10 + rnd() * 34, y = rnd() * H, dark = rnd() > 0.45;
     const grd = g.createRadialGradient(x, y, 0, x, y, r);
     grd.addColorStop(0, dark ? `rgba(40,32,24,${0.16 * (o.blot ?? 1)})` : `rgba(255,248,232,${0.13 * (o.blot ?? 1)})`);
     grd.addColorStop(1, "rgba(0,0,0,0)");
@@ -211,18 +218,18 @@ function age(t: THREE.CanvasTexture, o: { streak?: number; damp?: number; blot?:
     g.fillRect(x - r, y - r, r * 2, r * 2);
   }
   for (let i = 0; i < 22; i++) {
-    const x = rnd() * w, len = h * (0.2 + rnd() * 0.6), wd = 3 + rnd() * 12, grd = g.createLinearGradient(0, 0, 0, len);
+    const x = rnd() * W, len = H * (0.2 + rnd() * 0.6), wd = 3 + rnd() * 12, grd = g.createLinearGradient(0, 0, 0, len);
     grd.addColorStop(0, `rgba(36,30,24,${0.3 * (o.streak ?? 0)})`);
     grd.addColorStop(1, "rgba(36,30,24,0)");
     g.fillStyle = grd;
     g.fillRect(x, 0, wd, len);
   }
   if (o.damp) {
-    const d = g.createLinearGradient(0, h * 0.62, 0, h);
+    const d = g.createLinearGradient(0, H * 0.62, 0, H);
     d.addColorStop(0, "rgba(0,0,0,0)");
     d.addColorStop(1, o.green ? `rgba(52,66,30,${o.damp})` : `rgba(44,36,28,${o.damp})`);
     g.fillStyle = d;
-    g.fillRect(0, h * 0.62, w, h * 0.38);
+    g.fillRect(0, H * 0.62, W, H * 0.38);
   }
   t.needsUpdate = true;
 }
@@ -237,7 +244,11 @@ age(woodT, { streak: 0.3, blot: 0.9 });
 type MatOpts = { color?: number; map?: THREE.Texture; rough?: number; metal?: number; side?: THREE.Side; emissive?: number; vertexColors?: boolean; /** how deep the texture's own relief reads; 0 for none */ bump?: number };
 const std = (o: MatOpts) => new THREE.MeshStandardMaterial({ color: o.color ?? 0xffffff, map: o.map ?? null, bumpMap: o.map && o.bump !== 0 ? o.map : null, bumpScale: o.bump ?? 1.1, roughness: o.rough ?? 0.85, metalness: o.metal ?? 0, side: o.side ?? THREE.FrontSide, emissive: o.emissive ?? 0x000000, vertexColors: o.vertexColors ?? false });
 /** a light source that the bloom pass picks up */
-export const glow = (r: number, g: number, b: number) => new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(r, g, b) });
+export const glow = (r: number, g: number, b: number) => {
+  const m = new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(r, g, b) });
+  m.userData.glow = true; // the world gives every small lamp a soft halo, so a distant bulb never shrinks below a pixel and winks
+  return m;
+};
 
 const M = {
   brick: std({ map: rep(brickT, 2, 1), rough: 0.92 }),
@@ -245,7 +256,7 @@ const M = {
   thatch: std({ map: rep(thatchT, 4, 1), rough: 1 }),
   wood: std({ map: woodT, rough: 0.8 }),
   darkWood: std({ map: woodT, color: 0x6b5a4e, rough: 0.75 }),
-  teak: std({ map: rep(plankT, 4, 1), color: 0xb98a55, rough: 0.7 }),
+  teak: std({ map: rep(plankT, 4, 1), color: 0xb98a55, rough: 0.7, bump: 0.35 }),
   plaster: std({ map: plasterT, rough: 0.9 }),
   tile: std({ map: rep(tileT, 5, 2), rough: 0.85 }),
   white: std({ color: 0xf3efe6, rough: 0.6 }),
@@ -491,7 +502,7 @@ export function buildPinisi() {
   hg.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
   hg.setIndex(idx);
   hg.computeVertexNormals();
-  mesh(hg, std({ map: plankT, vertexColors: true, rough: 0.55, side: THREE.DoubleSide }), 0, 0, 0, boat);
+  mesh(hg, std({ map: plankT, vertexColors: true, rough: 0.55, side: THREE.DoubleSide, bump: 0.35 }), 0, 0, 0, boat);
 
   // deck and rails, following the sheer
   const dp: number[] = [], du: number[] = [], di: number[] = [];
@@ -499,7 +510,9 @@ export function buildPinisi() {
   for (let i = 0; i <= U; i++) {
     const u = i / U, x = -HULL_L / 2 + u * HULL_L, w = hullW(u) * 0.97, y = hullTop(u) - 0.35;
     dp.push(x, y, -w, x, y, w);
-    du.push(u * 10, 0, u * 10, 1);
+    // planks run straight fore and aft and the narrowing hull cuts them off, as on a real deck: v by true distance
+    // across, not stretched edge to edge (that pinched the planks at bow and stern and kinked them at every triangle)
+    du.push(u * 10, 0.5 - w / (2 * HULL_B), u * 10, 0.5 + w / (2 * HULL_B));
     const rx = x + 1.6 * Math.pow(u, 7) - 1.1 * Math.pow(1 - u, 6);
     railL.push(V(rx, hullTop(u) + 0.05, -hullW(u)));
     railR.push(V(rx, hullTop(u) + 0.05, hullW(u)));
@@ -510,12 +523,12 @@ export function buildPinisi() {
   dg.setAttribute("uv", new THREE.Float32BufferAttribute(du, 2));
   dg.setIndex(di);
   dg.computeVertexNormals();
-  mesh(dg, std({ map: rep(plankT, 1, 8), color: 0xc49a66, rough: 0.75, side: THREE.DoubleSide }), 0, 0, 0, boat);
+  mesh(dg, std({ map: rep(plankT, 1, 8), color: 0xc49a66, rough: 0.75, side: THREE.DoubleSide, bump: 0.35 }), 0, 0, 0, boat);
   [railL, railR].forEach((r) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(r), 80, 0.13, 6), M.darkWood, 0, 0, 0, boat));
 
   // deckhouse on the poop, with a carved stern rail
   const cabinY = deckY(-9.5);
-  mesh(box(5.6, 2.3, 4.0), std({ map: rep(plankT, 2, 2), color: 0xf1ece2, rough: 0.6 }), -9.6, cabinY + 1.15, 0, boat);
+  mesh(box(5.6, 2.3, 4.0), std({ map: rep(plankT, 2, 2), color: 0xf1ece2, rough: 0.6, bump: 0.35 }), -9.6, cabinY + 1.15, 0, boat);
   mesh(box(6.3, 0.16, 4.7), M.teak, -9.6, cabinY + 2.38, 0, boat);
   for (let i = 0; i < 4; i++) [-1, 1].forEach((s) => mesh(box(0.8, 0.7, 0.06), std({ color: 0x14212b, rough: 0.2, metal: 0.4 }), -11.4 + i * 1.2, cabinY + 1.45, s * 2.02, boat));
   mesh(box(0.06, 1.6, 0.9), M.wood, -6.78, cabinY + 0.85, 0, boat);
