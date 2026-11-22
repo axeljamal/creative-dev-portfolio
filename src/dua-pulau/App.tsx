@@ -154,7 +154,7 @@ export function App() {
         <canvas ref={canvas} tabIndex={-1} aria-label="A pinisi schooner on the sea between two islands: Marea Dvīpa to the west and Windfall to the east. Every place in it is listed below the world." />
 
         <div className={`dp-gate${lit ? " is-out" : ""}`} aria-hidden={lit}>
-          <a className="dp-home" href="/">← Portfolio</a>
+          <a className="dp-home" href="/portfolio/">Classic portfolio →</a>
           <div className="dp-gate-in">
             <p className="dp-kicker">Dua Pulau · two islands</p>
             <h1>
@@ -174,7 +174,7 @@ export function App() {
         {lit && (
           <div className={`dp-hud${sailing ? " is-on" : ""}`}>
             <div className="dp-hud-tl">
-              <a className="dp-home" href="/">← Portfolio</a>
+              <a className="dp-home" href="/portfolio/">Classic portfolio →</a>
               <strong>Dua Pulau</strong>
               <span>{WATERS[waters]}</span>
             </div>
@@ -248,7 +248,7 @@ export function App() {
           ))}
         </div>
         <p className="dp-credit">
-          Built in code with Three.js: the pinisi, the lamp, both islands and every building. The music is Marea Dvīpa's own gamelan, synthesized in the browser, with Windfall's tuning east of the strait. <a href="/">Back to the portfolio</a>
+          Built in code with Three.js: the pinisi, the lamp, both islands and every building. The music is Marea Dvīpa's own gamelan, synthesized in the browser, with Windfall's tuning east of the strait. <a href="/portfolio/">See the classic portfolio</a>
         </p>
       </section>
     </main>

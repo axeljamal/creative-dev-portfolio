@@ -4,6 +4,8 @@ Portfolio of Axel Jamal, design engineer in Brighton & Hove and founder of Windf
 
 **Live:** https://axelle.marea-dvipa.uk
 
+The home page is Dua Pulau, the portfolio as a 3D world you sail. The classic portfolio is at `/portfolio/`; `/dua-pulau/` and old section links such as `/#contact` forward to the right place.
+
 Runs on Cloudflare Workers: the site, a contact API and a private inbox at `/admin`.
 
 ## Stack

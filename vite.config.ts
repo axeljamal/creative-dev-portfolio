@@ -11,7 +11,8 @@ export default defineConfig({
     client: {
       build: {
         rollupOptions: {
-          input: { main: "index.html", admin: "admin/index.html", "dua-pulau": "dua-pulau/index.html" },
+          // the home page is Dua Pulau; the classic portfolio lives at /portfolio/, and /dua-pulau/ only forwards to the home page
+          input: { main: "index.html", portfolio: "portfolio/index.html", admin: "admin/index.html", "dua-pulau": "dua-pulau/index.html" },
         },
       },
     },

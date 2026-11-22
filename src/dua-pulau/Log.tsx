@@ -54,7 +54,7 @@ export function Log({ visited, first, onSail, onClose }: { visited: PlaceId[]; f
       ))}
       <div className="dp-log-foot">
         <span aria-live="polite">{visited.length} / {PLACES.length} logged</span>
-        {done ? <a className="dp-btn dp-btn-gold" href="/#contact">Write a message</a> : <button type="button" className="dp-btn dp-btn-gold" onClick={onClose}>{first ? "Set sail" : "Close"}</button>}
+        {done ? <a className="dp-btn dp-btn-gold" href="/portfolio/#contact">Write a message</a> : <button type="button" className="dp-btn dp-btn-gold" onClick={onClose}>{first ? "Set sail" : "Close"}</button>}
       </div>
     </nav>
   );

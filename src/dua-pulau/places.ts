@@ -19,7 +19,7 @@ export type Place = {
 };
 
 const study = (name: string) => caseStudies.find((c) => c.name === name);
-const HOME = "/";
+const HOME = "/portfolio/"; // the classic portfolio, now that Dua Pulau is the home page
 
 export const ISLAND_NAME: Record<Island, string> = { md: "Marea Dvīpa", wf: "Windfall", strait: "The strait" };
 
