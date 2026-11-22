@@ -136,6 +136,28 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
 .dp-menu button:hover { background: rgba(224, 194, 126, 0.14); }
 .dp-menu b { font-family: var(--font-display); font-size: 20px; font-weight: 600; line-height: 1.1; }
 .dp-menu span { font-size: 13px; color: rgba(244, 238, 227, 0.65); }
+/* the log: the menu, with what the page is at its head, a tick for each place moored at, and a count at its foot */
+.dp-log { width: min(360px, calc(100% - 24px)); max-height: calc(100% - 96px); }
+.dp-log-head { padding: 2px 8px 0; display: grid; gap: 6px; }
+.dp-log-head h2 { font-family: var(--font-display); font-size: 26px; font-weight: 600; line-height: 1.05; margin: 0; }
+.dp-log-head p:last-child { margin: 0; font-size: 14px; line-height: 1.45; color: rgba(244, 238, 227, 0.8); }
+.dp-log button:not(.dp-btn) { grid-template-columns: 22px 1fr; column-gap: 10px; align-items: start; }
+.dp-log button i { grid-row: span 2; width: 20px; height: 20px; margin-top: 2px; border: 1.5px solid var(--dp-gold); border-radius: 6px; display: grid; place-items: center; font-style: normal; font-size: 13px; font-weight: 700; line-height: 1; color: var(--dp-ink); }
+.dp-log button.is-done i { background: var(--dp-gold); }
+.dp-log button.is-done b { color: rgba(244, 238, 227, 0.62); }
+.dp-log-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 8px 2px; border-top: 1px solid var(--dp-line); position: sticky; bottom: -14px; background: rgba(14, 12, 9, 0.94); margin: 0 -14px -14px; padding: 12px 22px 14px; }
+.dp-log .dp-log-foot span { font-family: var(--font-mono); font-size: 12px; color: var(--dp-gold); white-space: nowrap; }
+.dp-log .dp-log-foot .dp-btn { display: inline-flex; width: auto; padding: 10px 20px; font: 700 14px/1 var(--font-sans); border-radius: 999px; background: var(--dp-gold); color: var(--dp-ink); text-align: center; }
+.dp-log .dp-log-foot .dp-btn:hover { background: #ecd396; }
+.dp-logbtn b { color: var(--dp-gold); font-weight: 500; margin-left: 4px; }
+/* the helmsman: a few lines, said once, where the steering hint will be */
+.dp-talk { width: min(520px, 100%); background: var(--dp-glass); border: 1px solid var(--dp-line); border-radius: 20px; padding: 16px 18px 14px; display: grid; gap: 8px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45); animation: dp-rise 0.4s ease both; }
+.dp-talk .dp-kicker { margin: 0; }
+.dp-talk-line { margin: 0; font-family: var(--font-display); font-size: clamp(19px, 2.2vw, 23px); line-height: 1.3; text-wrap: pretty; }
+.dp-talk-btns { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 2px; }
+.dp-talk-btns .dp-btn { padding: 10px 18px; font-size: 14px; box-shadow: none; animation: none; }
+.dp-talk-skip { background: none; border: 0; color: rgba(244, 238, 227, 0.7); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 8px 4px; }
+.dp-talk-skip:hover { color: var(--dp-gold); }
 /* the chart: a glass disc ringed in gold, like the medallion */
 .dp-world canvas.dp-chart { position: absolute; inset: auto auto clamp(12px, 2.4vw, 26px) clamp(12px, 2.4vw, 28px); border-radius: 50%; background: var(--dp-glass); border: 1px solid var(--dp-line);
   box-shadow: 0 0 0 3px rgba(14, 12, 9, 0.35), inset 0 0 0 3px rgba(224, 194, 126, 0.12), 0 10px 30px rgba(0, 0, 0, 0.4); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: pointer; touch-action: none; transition: width 0.25s ease, height 0.25s ease; }
@@ -213,11 +235,13 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
   .dp-panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: min(64svh, 560px); animation-name: dp-rise; }
   .dp-gate { align-items: flex-end; background: linear-gradient(to top, rgba(4, 6, 12, 0.88) 12%, transparent 70%); }
   .dp-hud-tl .dp-home { display: none; }
-  /* a phone has no room for the count beside the title: it lives in the Places menu instead */
+  /* a phone has no room for the count beside the title: the Log's button carries its own */
   .dp-hud-tr span.dp-pill { display: none; }
   .dp-hud-tr { max-width: calc(100% - 150px); }
   .dp-world canvas.dp-chart { width: 104px !important; height: 104px !important; bottom: 44px; }
-  .has-panel .dp-chart { display: none; }
+  .has-panel .dp-chart, .has-talk .dp-chart, .has-log .dp-chart { display: none; }
+  /* the log opens below both rows of buttons, so Sound stays in reach */
+  .dp-menu { top: 100px; max-height: calc(100% - 150px); }
   .dp-world canvas.dp-chart.is-big { width: min(300px, calc(100vw - 24px)) !important; height: min(300px, calc(100vw - 24px)) !important; z-index: 3; }
   .dp-foot { bottom: 10px; }
   .dp-hud-tl strong { margin-top: 2px; }

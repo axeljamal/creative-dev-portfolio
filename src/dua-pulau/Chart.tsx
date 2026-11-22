@@ -1,6 +1,6 @@
 // A small chart of the two islands, in the round like the Dua Pulau medallion: the shorelines as they really lie,
 // the pinisi and her heading, and every place, filled once found. Tap a place and she sails there. It is a shortcut
-// for the eye and the pointer; the Places menu is the same thing in words, so the chart itself is hidden from readers.
+// for the eye and the pointer; the Log is the same thing in words, so the chart itself is hidden from readers.
 import { useEffect, useRef, useState } from "react";
 import type { PlaceId } from "./places";
 import { place } from "./places";

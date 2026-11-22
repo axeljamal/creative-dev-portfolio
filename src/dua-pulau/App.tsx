@@ -6,10 +6,20 @@ import { earlierWork } from "../content/work";
 import { profile } from "../content/profile";
 import { ISLAND_NAME, PLACES, place, type Island, type Place, type PlaceId } from "./places";
 import { Chart } from "./Chart";
+import { Log, TALK, Talk } from "./Log";
 import type { DayPart, Weather, World } from "./world/engine";
 
 const ModelStage = lazy(() => import("../three/ModelStage"));
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+// the helmsman's welcome is said once per browser; after that the log waits behind its button
+const SEEN = "dua-pulau-welcomed";
+const welcomed = () => {
+  try {
+    return localStorage.getItem(SEEN) === "1";
+  } catch {
+    return false;
+  }
+};
 const WATERS = { md: "Marea Dvīpa waters", wf: "Windfall waters", strait: "The strait", open: "Open sea" } as const;
 
 export function App() {
@@ -28,13 +38,33 @@ export function App() {
   const [bound, setBound] = useState<PlaceId | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
   const [dayPart, setDayPart] = useState<DayPart>("First light");
+  const [visited, setVisited] = useState<PlaceId[]>([]); // moored at: the log's ticks
+  const [talk, setTalk] = useState<number | null>(null); // which line the helmsman is on
+  const [firstLog, setFirstLog] = useState(false); // the log as it opens straight after the welcome
 
   const moor = useCallback((id: PlaceId | null) => {
     setOpen(id);
     setBound(null);
     setMenu(false);
+    setTalk(null);
+    if (id) setVisited((v) => (v.includes(id) ? v : [...v, id]));
     world.current?.moor(id);
   }, []);
+  // the welcome ends, by its last line or by Skip: the log opens in its place
+  const endTalk = () => {
+    setTalk(null);
+    setFirstLog(true);
+    setMenu(true);
+    try {
+      localStorage.setItem(SEEN, "1");
+    } catch {
+      /* private mode: she will simply be welcomed again */
+    }
+  };
+  const closeLog = () => {
+    setMenu(false);
+    setFirstLog(false);
+  };
 
   useEffect(() => {
     let gone = false;
@@ -59,12 +89,16 @@ export function App() {
     if (!world.current || lit) return;
     world.current.light();
     setLit(true);
-    window.setTimeout(() => setSailing(true), reduce ? 400 : 8200);
+    window.setTimeout(() => {
+      setSailing(true);
+      if (!welcomed()) setTalk(0);
+    }, reduce ? 400 : 8200);
   };
   const sailTo = (id: PlaceId) => {
     if (!sailing) return;
     setOpen(null);
-    setMenu(false);
+    closeLog();
+    setTalk(null);
     setBound(id);
     world.current?.moor(null);
     world.current?.sailTo(id);
@@ -82,7 +116,7 @@ export function App() {
       if ((e.target as HTMLElement | null)?.closest?.("input,textarea")) return;
       const k = e.key.toLowerCase();
       if (k === "escape") {
-        if (menu) setMenu(false);
+        if (menu) closeLog();
         else if (open) moor(null);
       } else if (k === "m" && lit) toggleSound();
       else if ((k === "e" || k === "enter") && near && !open && sailing && !(e.target as HTMLElement | null)?.closest?.("button,a")) moor(near);
@@ -99,7 +133,7 @@ export function App() {
 
   return (
     <main className="dp">
-      <section id="world" className={`dp-world${open ? " has-panel" : ""}`} aria-label="Dua Pulau, a world of two islands">
+      <section id="world" className={`dp-world${open ? " has-panel" : ""}${talk !== null ? " has-talk" : ""}${menu ? " has-log" : ""}`} aria-label="Dua Pulau, a world of two islands">
         <canvas ref={canvas} tabIndex={-1} aria-label="A pinisi schooner on the sea between two islands: Marea Dvīpa to the west and Windfall to the east. Every place in it is listed below the world." />
 
         <div className={`dp-gate${lit ? " is-out" : ""}`} aria-hidden={lit}>
@@ -130,35 +164,23 @@ export function App() {
             <div className="dp-hud-tr">
               <span className="dp-pill" aria-live="polite">{found.length} / {PLACES.length} found</span>
               <button type="button" className="dp-pill dp-time" onClick={() => world.current?.skipTime()} aria-label={`Time of day: ${dayPart}. Move on to the next part of the day`} title="Move the day on">{dayPart}</button>
-              <button type="button" className="dp-pill" aria-expanded={menu} aria-controls="dp-menu" onClick={() => setMenu((m) => !m)}>Places</button>
+              <button type="button" className="dp-pill dp-logbtn" aria-expanded={menu} aria-controls="dp-log" onClick={() => (menu ? closeLog() : setMenu(true))}>Log <b>{visited.length}/{PLACES.length}</b></button>
               <button type="button" className="dp-pill" aria-pressed={!muted} onClick={toggleSound}>{muted ? "Sound off" : "Sound on"}</button>
             </div>
-            {menu && (
-              <nav id="dp-menu" className="dp-menu" aria-label="Sail to a place">
-                {(["md", "strait", "wf"] as Island[]).map((isle) => (
-                  <div key={isle}>
-                    <p className={`dp-kicker is-${isle}`}>{ISLAND_NAME[isle]}</p>
-                    {PLACES.filter((p) => p.island === isle).map((p) => (
-                      <button type="button" key={p.id} onClick={() => sailTo(p.id)}>
-                        <b>{p.holds}</b>
-                        <span>{p.name}{found.includes(p.id) ? " · found" : ""}</span>
-                      </button>
-                    ))}
-                  </div>
-                ))}
-              </nav>
-            )}
+            {menu && <Log visited={visited} first={firstLog} onSail={sailTo} onClose={closeLog} />}
             {sailing && world.current && <Chart world={world.current} found={found} bound={bound} onSail={sailTo} />}
             {!open && (
               <div className="dp-foot" aria-live="polite">
-                {near ? (
+                {talk !== null ? (
+                  <Talk line={talk} onNext={() => (talk < TALK.length - 1 ? setTalk(talk + 1) : endTalk())} onSkip={endTalk} />
+                ) : near ? (
                   <button type="button" className={`dp-btn dp-btn-gold is-${place(near).island}`} onClick={() => moor(near)}>
                     Moor at {place(near).name.replace(/^The /, "the ")} <span>· {place(near).holds}</span>
                   </button>
                 ) : bound ? (
                   <p className="dp-hint">Sailing to {place(bound).name.replace(/^The /, "the ")}… steer to take the helm back</p>
                 ) : (
-                  <p className="dp-hint"><span className="dp-keys">← → steer · ↑ sail · or hold and point</span><span className="dp-touch">Hold and point to sail</span> · Places to go straight there</p>
+                  <p className="dp-hint"><span className="dp-keys">← → steer · ↑ sail · or hold and point</span><span className="dp-touch">Hold and point to sail</span> · the Log to go straight there</p>
                 )}
               </div>
             )}
