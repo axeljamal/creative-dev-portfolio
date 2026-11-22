@@ -12,6 +12,17 @@ export const profile = {
     "Across both, the method is the same: a spec first, a design system, the front end and the backend built together, tests and CI before every deploy, and Claude Code as the pair that keeps the pace. The welcome film at the top of this page is Marea Dvīpa’s own, and each Work card runs the real app.",
     "Before tech, I spent six years in hospitality, marketing and PR. I raised a venue's online reputation score by 60%, grew its event-night sales by 40% with a live music programme, and helped a restaurant keep 90% of its revenue by moving it onto delivery in 2020. It taught me to design for the whole customer journey, not just the screen. I work in English, Indonesian and Malay.",
   ],
+  /** where things stand now, kept in step with the LinkedIn profile (last checked 22 November 2026); shown at the gate in Dua Pulau */
+  latest: {
+    role: "Founder & Design Engineer, Marea Dvīpa",
+    place: "Brighton & Hove",
+    now: [
+      { label: "Now", text: "Founder of Windfall at Marea Dvīpa. Windfall turns surplus food into small hosted suppers for three to eight neighbours. It is live on the web and piloting in Brighton & Hove with Brighton & Hove Food Partnership." },
+      { label: "Training", text: "AI-assisted design engineering apprenticeship at TechNative Digital since September 2026, with a certificate in AI-assisted software development. The film of how Windfall was designed played at its Winter Showcase on 19 November 2026." },
+      { label: "Newest work", text: "This world, Dua Pulau, and The Bale, the Media Lab as a room where the ensemble plays each reel's score." },
+      { label: "How I work", text: "A spec first, a design system, tests and CI before every deploy, and accessibility throughout: screen reader labels, reduced motion and WCAG 2.2 AA." },
+    ],
+  },
   email: "hello@marea-dvipa.uk",
   cv,
   links: {

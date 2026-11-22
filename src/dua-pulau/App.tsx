@@ -20,6 +20,16 @@ const welcomed = () => {
     return false;
   }
 };
+// the log's ticks are kept in the browser, so a reload or a later visit picks the voyage up where it stopped
+const LOGGED = "dua-pulau-logged";
+const logged = (): PlaceId[] => {
+  try {
+    const ids: unknown = JSON.parse(localStorage.getItem(LOGGED) || "[]");
+    return Array.isArray(ids) ? PLACES.map((p) => p.id).filter((id) => ids.includes(id)) : [];
+  } catch {
+    return [];
+  }
+};
 const WATERS = { md: "Marea Dvīpa waters", wf: "Windfall waters", strait: "The strait", open: "Open sea" } as const;
 
 export function App() {
@@ -38,7 +48,7 @@ export function App() {
   const [bound, setBound] = useState<PlaceId | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
   const [dayPart, setDayPart] = useState<DayPart>("First light");
-  const [visited, setVisited] = useState<PlaceId[]>([]); // moored at: the log's ticks
+  const [visited, setVisited] = useState<PlaceId[]>(logged); // moored at: the log's ticks
   const [talk, setTalk] = useState<number | null>(null); // which line the helmsman is on
   const [firstLog, setFirstLog] = useState(false); // the log as it opens straight after the welcome
 
@@ -50,6 +60,13 @@ export function App() {
     if (id) setVisited((v) => (v.includes(id) ? v : [...v, id]));
     world.current?.moor(id);
   }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOGGED, JSON.stringify(visited));
+    } catch {
+      /* private mode: the ticks last for this visit only */
+    }
+  }, [visited]);
   // the welcome ends, by its last line or by Skip: the log opens in its place
   const endTalk = () => {
     setTalk(null);
@@ -262,8 +279,16 @@ function PlaceBody({ p, weather }: { p: Place; weather: Weather | null }) {
       {s?.image && p.id !== "barong" && <img className="dp-shot" src={s.image} alt={`${s.name}, a screen from the project`} loading="lazy" />}
       {p.id === "gate" && (
         <>
-          <p className="dp-role">{profile.title} · {profile.location}</p>
+          <p className="dp-role">{profile.latest.role} · {profile.latest.place}</p>
           <p>{profile.bio[0]}</p>
+          <dl>
+            {profile.latest.now.map((n) => (
+              <div key={n.label} style={{ display: "contents" }}>
+                <dt>{n.label}</dt>
+                <dd>{n.text}</dd>
+              </div>
+            ))}
+          </dl>
           <p>{profile.bio[3]}</p>
         </>
       )}
