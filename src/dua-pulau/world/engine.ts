@@ -7,6 +7,7 @@ import { Water } from "three/examples/jsm/objects/Water.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PlaceId } from "../places";
@@ -99,19 +100,41 @@ function waterNormals() {
   return t;
 }
 
-function cloudTexture() {
+/** a cumulus: heaped white tops over a flat, shaded base. Three of these, turned and stretched, make a whole sky. */
+function cloudTexture(seed: number) {
   const c = document.createElement("canvas");
   c.width = 512;
   c.height = 256;
   const g = c.getContext("2d")!;
-  for (let i = 0; i < 46; i++) {
-    const x = 70 + Math.random() * 372, y = 120 + (Math.random() - 0.5) * 80 * Math.sin((x / 512) * Math.PI), r = 30 + Math.random() * 62;
-    const grd = g.createRadialGradient(x, y, 0, x, y, r);
-    grd.addColorStop(0, "rgba(255,255,255,.34)");
+  let r0 = seed * 9301 + 49297;
+  const rnd = () => ((r0 = (r0 * 9301 + 49297) % 233280) / 233280);
+  const BASE = 196;
+  for (let i = 0; i < 64; i++) {
+    // heaped toward the middle: a mound with a lumpy outline, never a slab
+    const x = 256 + (rnd() + rnd() + rnd() - 1.5) * 250, dome = Math.pow(Math.max(0, Math.sin(((x - 40) / 432) * Math.PI)), 1.7);
+    const r = (16 + rnd() * 40) * (0.4 + 0.6 * dome), y = BASE - r * 0.55 - rnd() * 112 * dome;
+    const grd = g.createRadialGradient(x, y, r * 0.15, x, y, r);
+    grd.addColorStop(0, "rgba(255,255,255,.95)");
+    grd.addColorStop(0.6, "rgba(255,255,255,.55)");
     grd.addColorStop(1, "rgba(255,255,255,0)");
     g.fillStyle = grd;
     g.fillRect(x - r, y - r, r * 2, r * 2);
   }
+  // the underside sits in its own shadow
+  g.globalCompositeOperation = "source-atop";
+  const shade = g.createLinearGradient(0, 70, 0, BASE + 10);
+  shade.addColorStop(0, "rgba(120,134,160,0)");
+  shade.addColorStop(0.62, "rgba(120,134,160,0)");
+  shade.addColorStop(1, "rgba(100,116,146,.5)");
+  g.fillStyle = shade;
+  g.fillRect(0, 0, 512, 256);
+  // and ends level, where the air stops lifting it
+  g.globalCompositeOperation = "destination-out";
+  const cut = g.createLinearGradient(0, BASE - 16, 0, BASE + 14);
+  cut.addColorStop(0, "rgba(0,0,0,0)");
+  cut.addColorStop(1, "rgba(0,0,0,1)");
+  g.fillStyle = cut;
+  g.fillRect(0, BASE - 16, 512, 90);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -132,6 +155,11 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   sky.scale.setScalar(10000);
   scene.add(sky);
   const skyU = sky.material.uniforms;
+  // the sky model runs far brighter than the lit land at a high sun, and the tone curve then bleaches it white:
+  // gain holds it down so noon stays blue. (The sky that lights the scene, envSky below, is left as it is.)
+  skyU.gain = { value: 1 };
+  sky.material.fragmentShader = sky.material.fragmentShader.replace("uniform vec3 up;", "uniform vec3 up;\n\t\tuniform float gain;\n\t\tuniform vec3 tint;").replace("vec4( retColor, 1.0 )", "vec4( retColor * gain * tint, 1.0 )");
+  skyU.tint = { value: new THREE.Vector3(1, 1, 1) };
   skyU.turbidity.value = 9;
   skyU.rayleigh.value = 2.9;
   skyU.mieCoefficient.value = 0.004;
@@ -176,12 +204,14 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   stars.layers.set(1); // the main camera sees layer 1; the water's mirror does not, so stars do not litter the sea
   camera.layers.enable(1);
   scene.add(stars);
-  const cloudT = cloudTexture();
-  const clouds = Array.from({ length: 16 }, (_, i) => {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudT, transparent: true, depthWrite: false, fog: false, opacity: 0.8 }));
-    const a = (i / 16) * Math.PI * 2 + Math.random() * 0.3, d = 3200 + Math.random() * 1400;
-    s.position.set(Math.cos(a) * d, 330 + Math.random() * 620, Math.sin(a) * d);
-    s.scale.set(1500 + Math.random() * 1300, 420 + Math.random() * 300, 1);
+  // fair-weather cumulus standing off round the horizon, the far ones lower and smaller as real ones look
+  const cloudT = [cloudTexture(1), cloudTexture(2), cloudTexture(3)];
+  const clouds = Array.from({ length: 26 }, (_, i) => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudT[i % 3], transparent: true, depthWrite: false, fog: false, opacity: 0.94 }));
+    const a = (i / 26) * Math.PI * 2 + Math.random() * 0.2, d = 3000 + Math.random() * 2600, near = 1 - (d - 3000) / 2600;
+    const w = 520 + Math.random() * 700 + near * 300;
+    s.position.set(Math.cos(a) * d, 260 + near * 300 + Math.random() * 240, Math.sin(a) * d);
+    s.scale.set(w * (Math.random() < 0.5 ? -1 : 1), w * (0.36 + Math.random() * 0.14), 1);
     scene.add(s);
     return s;
   });
@@ -210,27 +240,32 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     const day = smooth(NIGHT, 6, elev), up = smooth(-0.5, 7, elev), high = smooth(12, 42, elev);
     dusk = 1 - smooth(-3, 10, elev);
     // low sun through thick air is gold; as it climbs the air clears and the sky goes blue
-    skyU.turbidity.value = 9 - 6.6 * high;
-    skyU.rayleigh.value = 2.9 - 1.9 * high;
+    skyU.turbidity.value = 9 - 7 * high;
+    skyU.rayleigh.value = 2.9 - 0.5 * high;
+    skyU.mieCoefficient.value = 0.004 - 0.002 * high;
+    skyU.gain.value = 1 - 0.5 * high;
+    skyU.tint.value.set(1 - 0.24 * high, 1 - 0.07 * high, 1 + 0.16 * high); // a high sun's sky is a deeper blue than the model gives
     moon.intensity = 0.6 * (1 - day);
     skyU.sunPosition.value.copy(sunDir);
     water.material.uniforms.sunDirection.value.copy(sunDir).normalize();
     water.material.uniforms.sunColor.value.setRGB(1, 0.84 + 0.12 * high, 0.62 + 0.3 * high).multiplyScalar(up);
-    water.material.uniforms.waterColor.value.copy(cA.set(0x020c16)).lerp(cB.set(0x0c4a50), day).lerp(cB.set(0x0b5d6e), high);
+    water.material.uniforms.waterColor.value.copy(cA.set(0x020c16)).lerp(cB.set(0x0c4a50), day).lerp(cB.set(0x06607a), high);
     sun.position.copy(sunDir).multiplyScalar(600);
     sun.intensity = 4.6 * up;
     sun.color.copy(cA.set(0xff8a45)).lerp(cB.set(0xffd9a6), smooth(1, 9, elev)).lerp(cB.set(0xfff6ea), high);
     hemi.intensity = 0.2 + 0.75 * day;
     hemi.color.copy(cA.set(0x33466a)).lerp(cB.set(0xcfe0f2), day);
-    (scene.fog as THREE.FogExp2).color.copy(cA.set(0x0a1220)).lerp(cB.set(0xc9a48c), day).lerp(cB.set(0xb4c8d4), high); // the haze cools as the sun climbs
-    renderer.toneMappingExposure = 0.52 - 0.24 * day + 0.1 * high;
+    (scene.fog as THREE.FogExp2).color.copy(cA.set(0x0a1220)).lerp(cB.set(0xc9a48c), day).lerp(cB.set(0x9dc4de), high); // the haze cools as the sun climbs
+    (scene.fog as THREE.FogExp2).density = 0.0011 - 0.00045 * high; // and thins: at noon the far island stands clear
+    renderer.toneMappingExposure = 0.52 - 0.24 * day + 0.06 * high;
     (stars.material as THREE.PointsMaterial).opacity = 1 - smooth(-4, 1, elev);
-    clouds.forEach((c) => c.material.color.copy(cA.set(0x1c2436)).lerp(cB.set(0xffdcc0), day).lerp(cB.set(0xffffff), high));
+    clouds.forEach((c) => c.material.color.copy(cA.set(0x161d2c)).lerp(cB.set(0xffc9a2), day).lerp(cB.set(0xffffff), smooth(4, 26, elev)).multiplyScalar(0.7 + 2.3 * up)); // unlit, so they must be as bright as the sky they stand in
     // the sky also lights every surface: re-bake it as the sun moves
     if (force || Math.abs(elev - lastEnv) > 1.4 || (elev > -5 && Math.abs(az - lastAz) > 6)) {
       lastEnv = elev;
       lastAz = az;
       Object.entries(skyU).forEach(([k, u]) => {
+        if (k === "gain" || k === "tint") return;
         const v = envSky.material.uniforms[k].value;
         if (v?.copy) v.copy(u.value);
         else envSky.material.uniforms[k].value = u.value;
@@ -392,6 +427,25 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42, 0.6, 2.1);
   composer.addPass(bloom);
+  // the grade: a little more colour, shadows leaning to indigo and lights to gold (Marea Dvīpa's own pair), and the
+  // corners drawn in, as a lens would
+  const grade = new ShaderPass({
+    uniforms: { tDiffuse: { value: null }, amount: { value: 1 } },
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float amount; varying vec2 vUv;
+      void main(){
+        vec4 c = texture2D(tDiffuse, vUv);
+        float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+        vec3 col = mix(vec3(l), c.rgb, 1.0 + 0.14 * amount);
+        float hi = smoothstep(0.25, 1.4, l), lo = 1.0 - smoothstep(0.0, 0.3, l);
+        col *= mix(vec3(1.0), vec3(1.045, 1.0, 0.94), hi * amount);
+        col *= mix(vec3(1.0), vec3(0.93, 0.97, 1.07), lo * amount);
+        vec2 q = vUv - 0.5;
+        col *= 1.0 - amount * 0.34 * smoothstep(0.32, 0.86, length(q * vec2(1.0, 0.82)));
+        gl_FragColor = vec4(max(col, 0.0), c.a);
+      }`,
+  });
+  composer.addPass(grade);
   composer.addPass(new OutputPass());
   const holder = canvas.parentElement!;
   function resize() {

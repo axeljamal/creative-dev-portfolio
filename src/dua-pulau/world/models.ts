@@ -118,17 +118,44 @@ const plasterT = tex(128, 128, (g, w, h) => {
   speckle(g, w, h, 900, ["#d9cdb8", "#fffaf0"], 3);
 });
 /** sailcloth with seams and a rebung (bamboo shoot) border in Marea Dvīpa's gold on indigo */
-const sailT = tex(512, 512, (g, w, h) => {
-  g.fillStyle = "#efe6d2";
+/** sailcloth: sewn panels of off-white canvas, weathered, with Marea Dvīpa's indigo foot and gold tumpal along it */
+const sailCloth = (g: CanvasRenderingContext2D, w: number, h: number) => {
+  g.fillStyle = "#ece2cc";
   g.fillRect(0, 0, w, h);
-  speckle(g, w, h, 2600, ["#d8ccb2", "#fffaf0"], 3);
-  g.strokeStyle = "rgba(120,100,70,.4)";
+  // the weave, then the weather: rain streaks down from the head, grime gathering toward the foot
+  speckle(g, w, h, 5200, ["#d9ccb0", "#fbf5e6", "#e3d7bd"], 2);
+  for (let i = 0; i < 46; i++) {
+    const x = rnd() * w, len = 60 + rnd() * 260, wd = 6 + rnd() * 26, grd = g.createLinearGradient(0, 0, 0, len);
+    grd.addColorStop(0, "rgba(120,104,78,.1)");
+    grd.addColorStop(1, "rgba(120,104,78,0)");
+    g.fillStyle = grd;
+    g.fillRect(x, 0, wd, len);
+  }
+  const foot = g.createLinearGradient(0, h - 240, 0, h);
+  foot.addColorStop(0, "rgba(96,80,56,0)");
+  foot.addColorStop(1, "rgba(96,80,56,.16)");
+  g.fillStyle = foot;
+  g.fillRect(0, h - 240, w, 240);
+  // panel seams, each a doubled line of stitching, and two rows of reef points
   for (let x = 0; x < w; x += 64) {
+    g.strokeStyle = "rgba(110,92,64,.42)";
+    g.lineWidth = 1.2;
     g.beginPath();
     g.moveTo(x, 0);
     g.lineTo(x, h);
     g.stroke();
+    g.strokeStyle = "rgba(255,250,236,.5)";
+    g.beginPath();
+    g.moveTo(x + 3, 0);
+    g.lineTo(x + 3, h);
+    g.stroke();
   }
+  [h - 150, h - 215].forEach((y) => {
+    g.fillStyle = "rgba(110,92,64,.2)";
+    g.fillRect(0, y, w, 2);
+    g.fillStyle = "rgba(70,56,40,.6)";
+    for (let x = 16; x < w; x += 32) g.fillRect(x, y - 2, 2, 11);
+  });
   g.fillStyle = "#02213d";
   g.fillRect(0, h - 76, w, 76);
   g.fillStyle = "#c39b65";
@@ -141,7 +168,32 @@ const sailT = tex(512, 512, (g, w, h) => {
     g.closePath();
     g.fill();
   }
-});
+};
+const sailT = tex(512, 512, sailCloth);
+/** the mainsail carries the Dua Pulau medallion, dyed into the cloth in indigo as a batik would be */
+const mainSailT = tex(512, 512, sailCloth);
+mainSailT.wrapS = mainSailT.wrapT = THREE.ClampToEdgeWrapping;
+{
+  const img = new Image();
+  img.onload = () => {
+    const cv = mainSailT.image as HTMLCanvasElement, g = cv.getContext("2d")!;
+    // the motif's own shape, filled with indigo, then laid into the canvas so the weave still shows through it
+    const dye = document.createElement("canvas");
+    dye.width = dye.height = 250;
+    const d = dye.getContext("2d")!;
+    d.drawImage(img, 0, 0, 250, 250);
+    d.globalCompositeOperation = "source-in";
+    d.fillStyle = "#12325a";
+    d.fillRect(0, 0, 250, 250);
+    g.save();
+    g.globalAlpha = 0.62;
+    g.globalCompositeOperation = "multiply";
+    g.drawImage(dye, 131, 96);
+    g.restore();
+    mainSailT.needsUpdate = true;
+  };
+  img.src = "/motifs/dua-pulau-medallion.png";
+}
 sailT.wrapS = sailT.wrapT = THREE.ClampToEdgeWrapping;
 
 type MatOpts = { color?: number; map?: THREE.Texture; rough?: number; metal?: number; side?: THREE.Side; emissive?: number; vertexColors?: boolean };
@@ -214,6 +266,114 @@ function tedung(parent: THREE.Object3D, x: number, z: number, cloth: number) {
   mesh(new THREE.ConeGeometry(1.25, 0.55, 20, 1, true), std({ color: cloth, rough: 0.9, side: THREE.DoubleSide }), 0, 4.2, 0, g);
   mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.32, 20, 1, true), std({ color: 0xd9b266, rough: 0.7, side: THREE.DoubleSide }), 0, 3.78, 0, g);
   mesh(new THREE.ConeGeometry(0.07, 0.5, 8), M.gold, 0, 4.7, 0, g);
+  return g;
+}
+
+/** kain poleng: the black and white check tied round what is held sacred */
+const polengT = tex(64, 64, (g, w, h) => {
+  const n = 4, c = w / n;
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < n; j++) {
+      g.fillStyle = (i + j) % 2 ? "#f1ece0" : i % 2 ? "#17140f" : "#6f6a62"; // black, white, and the grey where they cross
+      g.fillRect(i * c, j * c, c, c);
+    }
+  void h;
+});
+/** the cloth of an umbul-umbul: one colour, gold tumpal up both edges, the way the sail's foot is finished */
+const umbulT = (ground: string) => {
+  const t = tex(64, 512, (g, w, h) => {
+    g.fillStyle = ground;
+    g.fillRect(0, 0, w, h);
+    speckle(g, w, h, 500, ["rgba(255,255,255,.07)", "rgba(0,0,0,.09)"], 2);
+    g.fillStyle = "#d9b266";
+    for (let y = 0; y < h; y += 26) {
+      g.beginPath();
+      g.moveTo(0, y);
+      g.lineTo(15, y + 13);
+      g.lineTo(0, y + 26);
+      g.closePath();
+      g.fill();
+      g.beginPath();
+      g.moveTo(w, y);
+      g.lineTo(w - 15, y + 13);
+      g.lineTo(w, y + 26);
+      g.closePath();
+      g.fill();
+    }
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+};
+const UMBUL = { indigo: umbulT("#12325a"), terracotta: umbulT("#b65a2c"), pearl: umbulT("#efe6d2") };
+const bamboo = std({ color: 0xb9a468, rough: 0.6 });
+const penjorLeaf = std({ color: 0xe6d48a, rough: 0.8, side: THREE.DoubleSide }), penjorFoot = std({ map: rep(polengT.clone(), 3, 1), rough: 0.9 });
+/** a bamboo pole bowing over at the top, as a tube along its curve. Returns the points along it. */
+function bowedPole(parent: THREE.Object3D, h: number, lean: number, r: number) {
+  const pts = Array.from({ length: 12 }, (_, i) => {
+    const t = i / 11;
+    return V(lean * Math.pow(t, 2.6), h * (t - 0.16 * Math.pow(t, 4)), 0);
+  });
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const m = mesh(new THREE.TubeGeometry(curve, 26, r, 7), bamboo, 0, 0, 0, parent);
+  m.castShadow = true;
+  return curve;
+}
+/** umbul-umbul: a tall festival banner, a long tapering cloth hung down the bow of its pole */
+export function umbul(parent: THREE.Object3D, x: number, z: number, cloth: keyof typeof UMBUL, turn = 0, h = 8.4) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = turn;
+  parent.add(g);
+  const curve = bowedPole(g, h, 1.9, 0.055);
+  // the cloth follows the pole from near the tip down two thirds of it, widest in the middle of its run
+  const N = 22, pos: number[] = [], uv: number[] = [], idx: number[] = [], p = V(0, 0, 0);
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, u = 0.98 - t * 0.66, wd = 0.16 + 0.62 * Math.sin(Math.PI * Math.min(1, t * 1.25)) * (1 - t * 0.35);
+    curve.getPoint(u, p);
+    const wave = Math.sin(t * 9) * 0.12 * t;
+    pos.push(p.x, p.y, p.z + 0.02, p.x + wd * 0.25, p.y - wd * 0.2, p.z + wd + wave);
+    uv.push(0, 1 - t, 1, 1 - t);
+    if (i < N) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  mesh(geo, std({ map: UMBUL[cloth], rough: 0.85, side: THREE.DoubleSide }), 0, 0, 0, g);
+  return g;
+}
+/** penjor: the bamboo pole of Galungan, bowed under a hanging ornament of young palm leaf, its foot wrapped in poleng */
+export function penjor(parent: THREE.Object3D, x: number, z: number, turn = 0) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = turn;
+  parent.add(g);
+  const curve = bowedPole(g, 10.5, 3.4, 0.07);
+  const p = V(0, 0, 0);
+  // every strip of leaf goes into one mesh: a penjor is many small pieces, and four of them should not cost two hundred draws
+  const strips: THREE.BufferGeometry[] = [], o = new THREE.Object3D();
+  const strip = (w: number, h: number, x: number, y: number, z: number, rx: number, ry: number, rz: number) => {
+    o.position.set(x, y, z);
+    o.rotation.set(rx, ry, rz);
+    o.updateMatrix();
+    strips.push(new THREE.PlaneGeometry(w, h).applyMatrix4(o.matrix));
+  };
+  // tufts of pale leaf up the pole, thicker toward the bow
+  for (let i = 0; i < 9; i++) {
+    curve.getPoint(0.3 + i * 0.075, p);
+    for (let k = 0; k < 4; k++) strip(0.07, 0.55 + i * 0.05, p.x, p.y - 0.2, p.z, 0.5, (k / 4) * Math.PI * 2 + i, 0.5);
+  }
+  // the sampian: a little lantern of plaited leaf hanging from the tip, and a fan of strips under it
+  curve.getPoint(1, p);
+  mesh(cyl(0.005, 0.005, 1.5, 4), M.darkWood, p.x, p.y - 0.75, p.z, g);
+  mesh(new THREE.ConeGeometry(0.3, 0.5, 8, 1, true), penjorLeaf, p.x, p.y - 1.55, p.z, g);
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * Math.PI * 2;
+    strip(0.06, 1.1, p.x + Math.cos(a) * 0.16, p.y - 2.3, p.z + Math.sin(a) * 0.16, (rnd() - 0.5) * 0.3, a, (rnd() - 0.5) * 0.3);
+  }
+  mesh(mergeGeometries(strips), penjorLeaf, 0, 0, 0, g);
+  mesh(cyl(0.11, 0.11, 0.8, 10), penjorFoot, 0, 0.9, 0, g);
   return g;
 }
 
@@ -338,10 +498,10 @@ export function buildPinisi() {
   spar(V(mx, mDeck, 0), V(mx - 0.5, 21, 0), 0.28, M.wood, spars, 0.13);
   const bow0 = V(13.2, hullTop(0.96) + 0.1, 0), bow1 = V(23.6, 6.4, 0);
   spar(bow0, bow1, 0.2, M.wood, spars, 0.1);
-  const sailM = std({ map: sailT, rough: 0.95, side: THREE.DoubleSide });
+  const sailM = std({ map: sailT, rough: 0.95, side: THREE.DoubleSide }), mainSailM = std({ map: mainSailT, rough: 0.95, side: THREE.DoubleSide });
   const sails: THREE.Mesh[] = [];
-  const sail = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3, belly: number) => {
-    const s = mesh(sailGeo(a, b, c, d, belly), sailM, 0, 0, 0, boat);
+  const sail = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3, belly: number, m: THREE.Material = sailM) => {
+    const s = mesh(sailGeo(a, b, c, d, belly), m, 0, 0, 0, boat);
     sails.push(s);
     return s;
   };
@@ -353,7 +513,7 @@ export function buildPinisi() {
   sail(V(fx - 0.45, 16.5, 0), V(fx - 0.5, 23.4, 0), V(fx - 0.5, 23.4, 0), V(-1.3, 20.4, 2.6), 0.8);
   // main (aft) gaff sail and topsail
   const mTack = V(mx - 0.3, mDeck + 2.9, 0), mThroat = V(mx - 0.45, 14, 0), mPeak = V(-10.6, 17.6, 2.5), mClew = V(-13.2, mDeck + 3.6, 3.2);
-  sail(mTack, mThroat, mPeak, mClew, 1.4);
+  sail(mTack, mThroat, mPeak, mClew, 1.4, mainSailM);
   spar(mThroat, mPeak, 0.1, M.wood, spars);
   spar(mTack, mClew, 0.1, M.wood, spars);
   sail(V(mx - 0.45, 14.5, 0), V(mx - 0.5, 20.4, 0), V(mx - 0.5, 20.4, 0), V(-10.4, 18, 2.5), 0.7);
@@ -508,6 +668,12 @@ export function buildGate() {
   });
   tedung(g, 3.6, 3.4, 0xf4eee3);
   tedung(g, 3.6, -3.4, 0xf4eee3);
+  const poleng = std({ map: rep(polengT.clone(), 10, 2), rough: 0.9 });
+  [-1, 1].forEach((s) => {
+    mesh(box(3.86, 0.8, 5.26), poleng, 0, 0.7 + 0.75, s * (1.25 + 2.6), g);
+    penjor(g, 13.4, s * 3.5, s > 0 ? -0.5 : 0.5);
+    umbul(g, 5.2, s * 10.6, s > 0 ? "indigo" : "terracotta", Math.PI / 2 - 0.3 * s);
+  });
   // stone lamps down the path to the water: they light in pairs, from the gate outward, when someone comes
   const lamps = [0, 1, 2, 3].map((i) => {
     const m = glow(3.2, 2.1, 0.9);
@@ -527,6 +693,13 @@ export function buildPavilion() {
   mesh(box(13.4, 1, 13.4), M.brick, 0, 1.5, 0, g);
   mesh(box(13.9, 0.3, 13.9), M.stone, 0, 2.15, 0, g);
   for (let i = 0; i < 7; i++) mesh(box(0.55, 0.33, 4), M.stone, 7.2 + i * 0.55, 2.13 - i * 0.33, 0, g);
+  // festival banners at the foot of the steps and the back corners, and a penjor either side of the way up
+  umbul(g, 9.4, 4.2, "pearl", Math.PI / 2 - 0.2);
+  umbul(g, 9.4, -4.2, "pearl", Math.PI / 2 + 0.2);
+  umbul(g, -8.6, 8.6, "indigo", 0.6);
+  umbul(g, -8.6, -8.6, "terracotta", -0.6);
+  penjor(g, 12.6, 3.2, -0.4);
+  penjor(g, 12.6, -3.2, 0.4);
   const y0 = 2.3;
   mesh(box(5.2, 4.2, 5.2), M.brick, 0, y0 + 2.1, 0, g);
   [-1, 1].forEach((a) => [-1, 1].forEach((b) => mesh(box(0.7, 4.3, 0.7), M.stone, a * 2.6, y0 + 2.15, b * 2.6, g)));
@@ -572,6 +745,8 @@ export function buildBale() {
   mesh(box(12, 1.1, 8.6), M.stone, 0, 0.55, 0, g);
   mesh(box(12.4, 0.2, 9), M.brick, 0, 1.2, 0, g);
   for (let i = 0; i < 3; i++) mesh(box(0.5, 0.36, 3), M.stone, 6.45 + i * 0.5, 0.95 - i * 0.36, 0, g);
+  umbul(g, 7.6, 5.6, "terracotta", Math.PI / 2 - 0.25, 7.4);
+  umbul(g, 7.6, -5.6, "indigo", Math.PI / 2 + 0.25, 7.4);
   const y0 = 1.3;
   [-5.2, 0, 5.2].forEach((x) => [-3.6, 3.6].forEach((z) => {
     mesh(cyl(0.17, 0.2, 3.6, 10), M.darkWood, x, y0 + 1.8, z, g);
@@ -1092,24 +1267,6 @@ export function buildPalms(spots: Spot[]) {
   return g;
 }
 
-function lumpy(detail: number, amount: number) {
-  // weld the faces so the lobes shade as soft rounds, not facets
-  const raw = new THREE.IcosahedronGeometry(1, detail);
-  raw.deleteAttribute("normal");
-  const g = mergeVertices(raw, 1e-3);
-  const p = g.attributes.position as THREE.BufferAttribute;
-  const col = new Float32Array(p.count * 3);
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-    const k = 1 + (Math.sin(x * 5.1 + y * 3.3) * Math.cos(z * 4.7 + x * 2.1) + 0.5 * Math.sin(x * 11.3 + z * 9.1) * Math.cos(y * 12.7)) * amount;
-    p.setXYZ(i, x * k, y * k, z * k);
-    const shade = 0.42 + 0.58 * Math.min(1, Math.max(0, y * 0.6 + 0.6));
-    col.set([shade, shade, shade], i * 3);
-  }
-  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-  g.computeVertexNormals();
-  return g;
-}
 /** a spray of leaves on clear ground: the canopy is built from many of these, so its edge is leaves, not a ball */
 const sprayT = tex(128, 128, (g, w, h) => {
   g.clearRect(0, 0, w, h);
@@ -1189,17 +1346,38 @@ export function buildTrees(spots: Spot[], west: boolean) {
   g.add(leaves);
   return g;
 }
+/** a boulder: a ball pushed out of round by a few broad swells, so it reads as worn by water, not broken */
+function boulder() {
+  const raw = new THREE.IcosahedronGeometry(1, 3);
+  raw.deleteAttribute("normal");
+  raw.deleteAttribute("uv");
+  const g = mergeVertices(raw, 1e-3);
+  const p = g.attributes.position as THREE.BufferAttribute;
+  const col = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const k = 1 + 0.2 * Math.sin(x * 2.3 + y * 1.7) * Math.cos(z * 2.1 + x * 1.3) + 0.1 * Math.sin(y * 3.9 + z * 2.6) + 0.035 * Math.sin(x * 9 + z * 7) * Math.cos(y * 8);
+    p.setXYZ(i, x * k, y * k, z * k);
+    const shade = 0.55 + 0.45 * Math.min(1, Math.max(0, y * 0.7 + 0.5));
+    col.set([shade, shade, shade], i * 3);
+  }
+  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  return g;
+}
 export function buildRocks(spots: Spot[]) {
+  // dark basalt on the volcanic island, brown flint on the other, every one a little lighter on top where the weather reaches it
   return instances(
-    lumpy(1, 0.22),
-    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }),
+    boulder(),
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82 }),
     spots,
     (s, o, c) => {
       o.rotation.set(s.r * 3, s.r * 7, s.r * 5);
       const k = 0.5 + ((s.r * 11) % 1) * 1.6;
-      o.scale.set(k * 1.3, k * 0.7, k);
-      const v = 0.42 + ((s.r * 3) % 1) * 0.2;
-      c.setRGB(v, v * 0.94, v * 0.86);
+      o.scale.set(k * 1.35, k * 0.66, k * 1.05);
+      const v = ((s.r * 3) % 1) * 0.1;
+      if (s.x < 0) c.setRGB(0.2 + v, 0.185 + v, 0.175 + v);
+      else c.setRGB(0.33 + v, 0.29 + v, 0.24 + v);
     },
     true,
   );

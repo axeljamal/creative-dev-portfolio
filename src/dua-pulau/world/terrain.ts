@@ -92,41 +92,65 @@ export function buildTerrain() {
     const wf = x > 0;
     const n = fbm(x * 0.09, z * 0.09, 3), n2 = fbm(x * 0.4 + 9, z * 0.4, 2);
     if (y < -0.5) c.setRGB(0.2, 0.36, 0.36).lerp(c2.setRGB(0.7, 0.66, 0.5), smooth(-4, -0.5, y));
-    else if (y < 0.35) c.setRGB(0.5, 0.42, 0.3); // wet sand
-    else if (y < 2.3 + n * 0.5) {
-      // Sulawesi's pale coral sand in the west, Brighton's warmer shingle in the east
-      if (wf) c.setRGB(0.68, 0.56, 0.4).lerp(c2.setRGB(0.5, 0.43, 0.35), 0.5 + n2 * 0.5);
-      else c.setRGB(0.86, 0.74, 0.52).lerp(c2.setRGB(0.72, 0.6, 0.4), 0.5 + n2 * 0.5);
-    } else {
-      if (wf) c.setRGB(0.33, 0.4, 0.2).lerp(c2.setRGB(0.48, 0.5, 0.26), 0.5 + n * 0.9);
-      else c.setRGB(0.14, 0.28, 0.09).lerp(c2.setRGB(0.28, 0.4, 0.13), 0.5 + n * 0.9);
-      c.multiplyScalar(1 - smooth(8, 26, y) * 0.25 + n2 * 0.06);
+    else {
+      // Sulawesi's pale coral sand in the west, Brighton's warmer shingle in the east; dark where the sea has just been
+      if (wf) c.setRGB(0.74, 0.62, 0.45).lerp(c2.setRGB(0.56, 0.47, 0.36), 0.5 + n2 * 0.5);
+      else c.setRGB(0.95, 0.8, 0.54).lerp(c2.setRGB(0.8, 0.64, 0.42), 0.5 + n2 * 0.5);
+      c.lerp(c2.setRGB(0.46, 0.39, 0.29), 1 - smooth(0.15, 0.95, y));
+      // turf comes in over a band, through a strip of dry, sun-bleached grass, not along a line
+      const edge = 2.0 + n * 0.6, turf = smooth(edge, edge + 1.3, y);
+      if (turf > 0) {
+        const t = new THREE.Color();
+        if (wf) t.setRGB(0.3, 0.4, 0.17).lerp(c2.setRGB(0.47, 0.5, 0.24), 0.5 + n * 0.9);
+        else t.setRGB(0.13, 0.3, 0.09).lerp(c2.setRGB(0.3, 0.43, 0.13), 0.5 + n * 0.9);
+        t.lerp(c2.setRGB(0.62, 0.58, 0.3), (1 - smooth(0.25, 0.9, turf)) * 0.75); // the dry strip
+        t.multiplyScalar(1 - smooth(8, 26, y) * 0.22 + n2 * 0.1);
+        c.lerp(t, turf);
+      }
     }
+    // where the ground is too steep to hold turf it shows what it is made of: red volcanic earth in the west, dry downland soil in the east
     const steep = 1 - nor.getY(i);
-    if (y > 0.5 && steep > 0.16) c.lerp(c2.setRGB(0.42, 0.37, 0.32), smooth(0.16, 0.34, steep));
+    if (y > 0.5 && steep > 0.15) {
+      if (wf) c2.setRGB(0.52, 0.46, 0.3).multiplyScalar(0.86 + n2 * 0.3);
+      else c2.setRGB(0.47, 0.29, 0.19).multiplyScalar(0.8 + n2 * 0.4);
+      c.lerp(c2, smooth(wf ? 0.22 : 0.15, wf ? 0.4 : 0.33, steep) * 0.9);
+    }
     col[i * 3] = c.r;
     col[i * 3 + 1] = c.g;
     col[i * 3 + 2] = c.b;
   }
   g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-  // grain: sand, shingle and turf are never one flat colour. The same speckle also roughens the light on them.
+  // the ground's own texture: broad soft mottling (trodden and untrodden, damp and dry) under a fine grain. The colour
+  // comes from the land itself above; this only keeps any of it from being one flat tone. It also roughens the light.
   const cv = document.createElement("canvas");
   cv.width = cv.height = 512;
   const cx = cv.getContext("2d")!;
-  cx.fillStyle = "#c4c4c4";
+  cx.fillStyle = "#cdcdcd";
   cx.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 26000; i++) {
+  for (let i = 0; i < 520; i++) {
+    const x = hash(i, 1.7) * 512, y = hash(i, 2.9) * 512, r = 14 + hash(i, 4.1) * 46, dark = hash(i, 6.3) > 0.5;
+    // drawn nine times round the edges so the texture tiles without a seam
+    for (let ox = -512; ox <= 512; ox += 512) for (let oy = -512; oy <= 512; oy += 512) {
+      if (x + ox + r < 0 || x + ox - r > 512 || y + oy + r < 0 || y + oy - r > 512) continue;
+      const grd = cx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+      grd.addColorStop(0, dark ? "rgba(0,0,0,.04)" : "rgba(255,255,255,.04)");
+      grd.addColorStop(1, dark ? "rgba(0,0,0,0)" : "rgba(255,255,255,0)");
+      cx.fillStyle = grd;
+      cx.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+    }
+  }
+  for (let i = 0; i < 30000; i++) {
     const v = hash(i, 3.3);
-    cx.fillStyle = v > 0.5 ? `rgba(255,255,255,${0.1 + hash(i, 7) * 0.35})` : `rgba(0,0,0,${0.1 + hash(i, 9) * 0.4})`;
-    const r = 0.6 + hash(i, 5) * 2.4;
+    cx.fillStyle = v > 0.5 ? `rgba(255,255,255,${0.04 + hash(i, 7) * 0.13})` : `rgba(0,0,0,${0.04 + hash(i, 9) * 0.15})`;
+    const r = 0.5 + hash(i, 5) * 1.5;
     cx.fillRect(hash(i, 1.1) * 512, hash(i, 2.2) * 512, r, r);
   }
   const grain = new THREE.CanvasTexture(cv);
   grain.colorSpace = THREE.SRGBColorSpace;
   grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
-  grain.repeat.set(110, 68);
+  grain.repeat.set(64, 40);
   grain.anisotropy = 8;
-  const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, map: grain, bumpMap: grain, bumpScale: 1.4, roughness: 0.96, metalness: 0 }));
+  const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, map: grain, bumpMap: grain, bumpScale: 0.45, roughness: 0.94, metalness: 0 }));
   mesh.receiveShadow = true;
   return mesh;
 }
