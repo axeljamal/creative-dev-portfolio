@@ -24,6 +24,10 @@
     }
   ],
 
+  // the helmsman's model (Workers AI), and a per-visitor limit on questions to it
+  "ai": { "binding": "AI" },
+  "ratelimits": [{ "name": "ASK_LIMIT", "namespace_id": "1001", "simple": { "limit": 12, "period": 60 } }],
+
   "vars": {
     // Cloudflare Access: your team domain, e.g. "axeljamal.cloudflareaccess.com",
     // and the Application Audience (AUD) tag of the /admin application

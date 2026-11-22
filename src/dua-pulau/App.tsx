@@ -7,6 +7,7 @@ import { profile } from "../content/profile";
 import { ISLAND_NAME, PLACES, place, type Island, type Place, type PlaceId } from "./places";
 import { Chart } from "./Chart";
 import { Log, TALK, Talk } from "./Log";
+import { Ask, type AskLine } from "./Ask";
 import type { DayPart, Weather, World } from "./world/engine";
 
 const ModelStage = lazy(() => import("../three/ModelStage"));
@@ -51,6 +52,8 @@ export function App() {
   const [visited, setVisited] = useState<PlaceId[]>(logged); // moored at: the log's ticks
   const [talk, setTalk] = useState<number | null>(null); // which line the helmsman is on
   const [firstLog, setFirstLog] = useState(false); // the log as it opens straight after the welcome
+  const [asking, setAsking] = useState(false); // the helmsman's question panel
+  const [askThread, setAskThread] = useState<AskLine[]>([]); // kept while the panel is shut, so a conversation picks up again
 
   const moor = useCallback((id: PlaceId | null) => {
     setOpen(id);
@@ -115,6 +118,7 @@ export function App() {
     if (!sailing) return;
     setOpen(null);
     closeLog();
+    setAsking(false);
     setTalk(null);
     setBound(id);
     world.current?.moor(null);
@@ -150,7 +154,7 @@ export function App() {
 
   return (
     <main className="dp">
-      <section id="world" className={`dp-world${open ? " has-panel" : ""}${talk !== null ? " has-talk" : ""}${menu ? " has-log" : ""}`} aria-label="Dua Pulau, a world of two islands">
+      <section id="world" className={`dp-world${open ? " has-panel" : ""}${talk !== null ? " has-talk" : ""}${menu || asking ? " has-log" : ""}`} aria-label="Dua Pulau, a world of two islands">
         <canvas ref={canvas} tabIndex={-1} aria-label="A pinisi schooner on the sea between two islands: Marea Dvīpa to the west and Windfall to the east. Every place in it is listed below the world." />
 
         <div className={`dp-gate${lit ? " is-out" : ""}`} aria-hidden={lit}>
@@ -181,10 +185,14 @@ export function App() {
             <div className="dp-hud-tr">
               <span className="dp-pill" aria-live="polite">{found.length} / {PLACES.length} found</span>
               <button type="button" className="dp-pill dp-time" onClick={() => world.current?.skipTime()} aria-label={`Time of day: ${dayPart}. Move on to the next part of the day`} title="Move the day on">{dayPart}</button>
-              <button type="button" className="dp-pill dp-logbtn" aria-expanded={menu} aria-controls="dp-log" onClick={() => (menu ? closeLog() : setMenu(true))}>Log <b>{visited.length}/{PLACES.length}</b></button>
+              {sailing && (
+                <button type="button" className="dp-pill" aria-expanded={asking} aria-controls="dp-ask" onClick={() => { closeLog(); setAsking(!asking); }}>Ask</button>
+              )}
+              <button type="button" className="dp-pill dp-logbtn" aria-expanded={menu} aria-controls="dp-log" onClick={() => { setAsking(false); if (menu) closeLog(); else setMenu(true); }}>Log <b>{visited.length}/{PLACES.length}</b></button>
               <button type="button" className="dp-pill" aria-pressed={!muted} onClick={toggleSound}>{muted ? "Sound off" : "Sound on"}</button>
             </div>
             {menu && <Log visited={visited} first={firstLog} onSail={sailTo} onClose={closeLog} />}
+            {asking && <Ask thread={askThread} setThread={setAskThread} onSail={sailTo} onClose={() => setAsking(false)} />}
             {sailing && world.current && <Chart world={world.current} found={found} bound={bound} onSail={sailTo} />}
             {!open && (
               <div className="dp-foot" aria-live="polite">

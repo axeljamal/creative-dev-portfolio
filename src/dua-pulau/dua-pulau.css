@@ -150,6 +150,30 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
 .dp-log .dp-log-foot .dp-btn { display: inline-flex; width: auto; padding: 10px 20px; font: 700 14px/1 var(--font-sans); border-radius: 999px; background: var(--dp-gold); color: var(--dp-ink); text-align: center; }
 .dp-log .dp-log-foot .dp-btn:hover { background: #ecd396; }
 .dp-logbtn b { color: var(--dp-gold); font-weight: 500; margin-left: 4px; }
+/* ask the helmsman: the log's glass, with his answers in the display face and the visitor's in plain type */
+.dp-ask { width: min(380px, calc(100% - 24px)); max-height: calc(100% - 96px); display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.dp-ask .dp-log-head p:last-child { font-size: 12.5px; color: rgba(244, 238, 227, 0.62); }
+.dp-ask-thread { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 10px; padding: 0 8px; overscroll-behavior: contain; }
+.dp-ask-starters { display: flex; flex-wrap: wrap; gap: 6px; }
+.dp-ask .dp-ask-starters button { display: inline-flex; width: auto; font-size: 13px; padding: 7px 12px; border: 1px solid var(--dp-line); border-radius: 999px; }
+.dp-ask-you { justify-self: end; max-width: 85%; margin: 0; padding: 8px 12px; border-radius: 14px 14px 4px 14px; background: rgba(224, 194, 126, 0.16); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.dp-ask-him { display: grid; gap: 8px; justify-items: start; margin: 0; }
+.dp-ask-him p, p.dp-ask-him { margin: 0; font-family: var(--font-display); font-size: 18px; line-height: 1.32; text-wrap: pretty; overflow-wrap: anywhere; }
+.dp-ask-him a { color: var(--dp-gold); text-decoration: underline; text-underline-offset: 2px; }
+.dp-ask .dp-ask-him .dp-btn { display: inline-flex; width: auto; padding: 9px 16px; font: 700 13.5px/1 var(--font-sans); border-radius: 999px; }
+.dp-ask-busy { color: var(--dp-gold); letter-spacing: 0.2em; animation: dp-breathe 1.2s ease-in-out infinite; }
+@keyframes dp-breathe { 50% { opacity: 0.35; } }
+.dp-ask-form { display: flex; gap: 8px; padding: 10px 0 0; border-top: 1px solid var(--dp-line); }
+.dp-ask-form input { flex: 1; min-width: 0; font: 15px/1.2 var(--font-sans); color: var(--dp-pearl); background: rgba(244, 238, 227, 0.08); border: 1px solid var(--dp-line); border-radius: 999px; padding: 10px 14px; }
+.dp-ask-form input::placeholder { color: rgba(244, 238, 227, 0.5); }
+.dp-ask-form input:focus-visible { outline: 2px solid var(--dp-gold); outline-offset: 1px; }
+.dp-ask .dp-ask-form .dp-btn { display: inline-flex; width: auto; padding: 10px 18px; font: 700 14px/1 var(--font-sans); border-radius: 999px; }
+/* the menu's plain-button reset would strip the gold from his buttons */
+.dp-ask .dp-btn-gold { background: var(--dp-gold); color: var(--dp-ink); }
+.dp-ask .dp-btn-gold:hover { background: #ecd396; }
+.dp-ask .dp-btn-gold:disabled { background: rgba(224, 194, 126, 0.35); color: rgba(14, 12, 9, 0.7); }
+.dp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .dp-ask-busy { animation: none; } }
 /* the helmsman: a few lines, said once, where the steering hint will be */
 .dp-talk { width: min(520px, 100%); background: var(--dp-glass); border: 1px solid var(--dp-line); border-radius: 20px; padding: 16px 18px 14px; display: grid; gap: 8px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45); animation: dp-rise 0.4s ease both; }
 .dp-talk .dp-kicker { margin: 0; }

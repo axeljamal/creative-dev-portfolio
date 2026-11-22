@@ -1,9 +1,10 @@
 import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage, Mailbox } from "mimetext";
 import { requireAdmin } from "./access";
+import { handleAsk } from "./ask";
 
 // the alert binding is optional until Email Routing is on for the domain (see wrangler.jsonc)
-type EnvWithMail = Env & { ALERTS?: { send(message: EmailMessage): Promise<void> }; ADMIN_TOKEN?: string };
+type EnvWithMail = Env & { ALERTS?: { send(message: EmailMessage): Promise<unknown> }; ADMIN_TOKEN?: string };
 
 const STATUSES = ["new", "read", "archived"];
 const LIMITS = { name: 200, email: 320, message: 5000, draft: 10000, url: 500 };
@@ -19,6 +20,9 @@ export default {
     try {
       if (pathname === "/api/contact" && request.method === "POST") {
         return await handleContact(request, env, ctx);
+      }
+      if (pathname === "/api/ask" && request.method === "POST") {
+        return await handleAsk(request, env);
       }
       if (pathname.startsWith("/api/admin/")) {
         const denied = await requireAdmin(request, env);

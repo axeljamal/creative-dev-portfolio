@@ -6,3 +6,8 @@ RESEND_API_KEY=
 ADMIN_DEV_BYPASS=true
 # or open /admin with a token, as in production
 ADMIN_TOKEN=
+
+# the helmsman (/api/ask) on a laptop: ask a local Ollama model instead of Workers AI (run `ollama serve` first)
+HELMSMAN_LLM=ollama
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=gemma3:1b
