@@ -1,6 +1,6 @@
 # Creative Dev Portfolio
 
-Portfolio of Axel Jamal, design engineer and AI creative technologist in Brighton.
+Portfolio of Axel Jamal, design engineer in Brighton & Hove and founder of Windfall at Marea Dvīpa.
 
 **Live:** https://axelle.marea-dvipa.uk
 

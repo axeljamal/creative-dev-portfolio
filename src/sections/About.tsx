@@ -33,6 +33,9 @@ export function About() {
             className="flex h-full flex-col rounded-[2rem] p-6 sm:rounded-[2.5rem] sm:p-10"
           >
             <div className="flex flex-1 flex-col">
+              <p className="mb-4 font-mono text-xs font-medium tracking-[0.14em] text-accent-solid uppercase">
+                {profile.title} · {profile.location}
+              </p>
               <div className="space-y-4 text-lg leading-relaxed">
                 {profile.bio.map((paragraph) => (
                   <p key={paragraph.slice(0, 24)}>{paragraph}</p>
