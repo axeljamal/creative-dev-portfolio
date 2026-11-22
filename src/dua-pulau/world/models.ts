@@ -196,8 +196,46 @@ mainSailT.wrapS = mainSailT.wrapT = THREE.ClampToEdgeWrapping;
 }
 sailT.wrapS = sailT.wrapT = THREE.ClampToEdgeWrapping;
 
-type MatOpts = { color?: number; map?: THREE.Texture; rough?: number; metal?: number; side?: THREE.Side; emissive?: number; vertexColors?: boolean };
-const std = (o: MatOpts) => new THREE.MeshStandardMaterial({ color: o.color ?? 0xffffff, map: o.map ?? null, roughness: o.rough ?? 0.85, metalness: o.metal ?? 0, side: o.side ?? THREE.FrontSide, emissive: o.emissive ?? 0x000000, vertexColors: o.vertexColors ?? false });
+/**
+ * Nothing that stands outdoors is clean. Onto a finished texture this lays what weather leaves: rain streaks running
+ * down from the top, damp and green creeping up from the foot, and blotches where a surface has faded unevenly.
+ */
+function age(t: THREE.CanvasTexture, o: { streak?: number; damp?: number; blot?: number; green?: boolean }) {
+  const c = t.image as HTMLCanvasElement, g = c.getContext("2d")!, w = c.width, h = c.height;
+  for (let i = 0; i < 26; i++) {
+    const x = rnd() * w, r = 10 + rnd() * 34, y = rnd() * h, dark = rnd() > 0.45;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, dark ? `rgba(40,32,24,${0.16 * (o.blot ?? 1)})` : `rgba(255,248,232,${0.13 * (o.blot ?? 1)})`);
+    grd.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grd;
+    g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (let i = 0; i < 22; i++) {
+    const x = rnd() * w, len = h * (0.2 + rnd() * 0.6), wd = 3 + rnd() * 12, grd = g.createLinearGradient(0, 0, 0, len);
+    grd.addColorStop(0, `rgba(36,30,24,${0.3 * (o.streak ?? 0)})`);
+    grd.addColorStop(1, "rgba(36,30,24,0)");
+    g.fillStyle = grd;
+    g.fillRect(x, 0, wd, len);
+  }
+  if (o.damp) {
+    const d = g.createLinearGradient(0, h * 0.62, 0, h);
+    d.addColorStop(0, "rgba(0,0,0,0)");
+    d.addColorStop(1, o.green ? `rgba(52,66,30,${o.damp})` : `rgba(44,36,28,${o.damp})`);
+    g.fillStyle = d;
+    g.fillRect(0, h * 0.62, w, h * 0.38);
+  }
+  t.needsUpdate = true;
+}
+age(brickT, { streak: 0.7, damp: 0.42, green: true });
+age(parasT, { streak: 0.8, damp: 0.5, green: true });
+age(plasterT, { streak: 0.5, damp: 0.34 });
+age(thatchT, { streak: 0.3, blot: 1.3 });
+age(tileT, { streak: 0.35, blot: 1.2, damp: 0.2, green: true });
+age(plankT, { streak: 0.3, blot: 1.1 });
+age(woodT, { streak: 0.3, blot: 0.9 });
+
+type MatOpts = { color?: number; map?: THREE.Texture; rough?: number; metal?: number; side?: THREE.Side; emissive?: number; vertexColors?: boolean; /** how deep the texture's own relief reads; 0 for none */ bump?: number };
+const std = (o: MatOpts) => new THREE.MeshStandardMaterial({ color: o.color ?? 0xffffff, map: o.map ?? null, bumpMap: o.map && o.bump !== 0 ? o.map : null, bumpScale: o.bump ?? 1.1, roughness: o.rough ?? 0.85, metalness: o.metal ?? 0, side: o.side ?? THREE.FrontSide, emissive: o.emissive ?? 0x000000, vertexColors: o.vertexColors ?? false });
 /** a light source that the bloom pass picks up */
 export const glow = (r: number, g: number, b: number) => new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(r, g, b) });
 
@@ -965,54 +1003,135 @@ export function buildPier(length = 52) {
   });
   const kioskM = glow(3.2, 2.1, 0.9);
   [0.9, -0.9].forEach((z) => (mesh(ball(0.24, 12, 10), kioskM, head + 3.2, deckH + 2.2, z, g).castShadow = false));
+  // bunting from lamp to lamp down both sides, in Windfall's colours
+  const flags: THREE.BufferGeometry[] = [], strings: THREE.Vector3[] = [], hues = [0xc67139, 0xfff2eb, 0x7a8a5e, 0xf2c14e], col = new THREE.Color();
+  for (let x = 5; x + 9 < head - 7; x += 9)
+    [-1, 1].forEach((sd) => {
+      let prev: THREE.Vector3 | null = null;
+      for (let k = 0; k <= 12; k++) {
+        const f = k / 12, pt = V(x + f * 9, deckH + 3.25 - Math.sin(Math.PI * f) * 0.75, sd * 2.45);
+        if (prev) strings.push(prev, pt);
+        prev = pt;
+        if (k === 0 || k === 12) continue;
+        const tri = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([pt.x - 0.24, pt.y, pt.z, pt.x + 0.24, pt.y, pt.z, pt.x, pt.y - 0.52, pt.z + (k % 2 ? 0.06 : -0.06)], 3));
+        col.setHex(hues[(k + (sd > 0 ? 0 : 2)) % 4]);
+        tri.setAttribute("color", new THREE.Float32BufferAttribute([col.r, col.g, col.b, col.r, col.g, col.b, col.r, col.g, col.b], 3));
+        flags.push(tri);
+      }
+    });
+  const bunt = mergeGeometries(flags)!;
+  bunt.computeVertexNormals();
+  mesh(bunt, std({ vertexColors: true, rough: 0.9, side: THREE.DoubleSide }), 0, 0, 0, g);
+  lines(strings, 0x2a2a28, g);
   return { group: g, flag, lamps, kioskM, kioskGlass };
 }
 
 /** Pip, Windfall's mascot, from the app's own model: a soft cream body, leaf ears, a yellow scarf and a glowing bulb */
 export function buildPip() {
+  // Pip exactly as Windfall draws them (windfall/scripts/art/pip.js, the model the app's own pictures are rendered
+  // from): the same shapes and colours, cel-shaded in three tones, with the dark outline that makes Pip a drawing.
   const g = new THREE.Group();
-  const body = new THREE.MeshPhysicalMaterial({ color: 0xffe1b0, roughness: 0.62, sheen: 0.6, sheenColor: 0xfff2d8, sheenRoughness: 0.5 });
-  const pts = [[0, 0.05], [0.42, 0.08], [0.62, 0.35], [0.66, 0.8], [0.6, 1.3], [0.5, 1.75], [0.32, 2.02], [0, 2.1]].map(([r, y]) => new THREE.Vector2(r, y));
-  mesh(new THREE.LatheGeometry(new THREE.SplineCurve(pts).getPoints(40), 36), body, 0, 0, 0, g);
-  const scarf = mesh(new THREE.TorusGeometry(0.585, 0.1, 10, 32), std({ color: 0xffc928, rough: 0.85 }), 0, 1.2, 0, g);
-  scarf.rotation.x = Math.PI / 2;
-  mesh(box(0.2, 0.5, 0.07), std({ color: 0xf0a91a, rough: 0.85 }), 0.3, 0.98, 0.55, g).rotation.z = -0.2;
-  const ears = [-1, 1].map((s) => {
-    const e = mesh(ball(0.22, 14, 10), std({ color: s < 0 ? 0x7fbf5a : 0x5f9e44, rough: 0.6 }), s * 0.3, 2.12, -0.02, g);
-    e.scale.set(0.7, 1.6, 0.28);
-    e.rotation.z = -s * 0.55;
+  // the three tones are lifted from the original's: this world's sun is far stronger than the studio lights Pip was
+  // drawn under and its exposure far lower, and without the lift Pip's peach comes out tan
+  const grad = new THREE.DataTexture(new Uint8Array([150, 205, 245, 255]), 4, 1, THREE.RedFormat);
+  grad.minFilter = grad.magFilter = THREE.NearestFilter;
+  grad.needsUpdate = true;
+  const toons: THREE.MeshToonMaterial[] = [];
+  const toon = (hex: number) => {
+    const m = new THREE.MeshToonMaterial({ color: hex, gradientMap: grad, emissive: hex, emissiveIntensity: 0.34 });
+    m.userData.toon = true;
+    toons.push(m);
+    return m;
+  };
+  const bodyM = toon(0xffe1b0), leafM = toon(0x7fbf5a), leafD = toon(0x5f9e44), scarfM = toon(0xffc928), scarfD = toon(0xf0a91a), cheekM = toon(0xff9a8a), footM = toon(0xf3c58e);
+  const white = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: grad }), black = new THREE.MeshToonMaterial({ color: 0x24182e, gradientMap: grad });
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, sx = 1, sy = 1, sz = 1, par: THREE.Object3D = g) => {
+    const m = mesh(geo, mat, x, y, z, par);
+    m.scale.set(sx, sy, sz);
+    return m;
+  };
+  const V2 = (a: number[][]) => a.map(([x, y]) => new THREE.Vector2(x, y));
+  add(new THREE.LatheGeometry(new THREE.SplineCurve(V2([[0, 0.05], [0.42, 0.08], [0.62, 0.35], [0.66, 0.8], [0.6, 1.3], [0.5, 1.75], [0.32, 2.02], [0, 2.1]])).getPoints(60), 48), bodyM, 0, 0, 0, 1, 1, 0.92);
+  [-0.24, 0.24].forEach((x) => add(ball(0.17, 16, 12), footM, x, 0.06, 0.22, 1, 0.55, 1.3));
+  add(new THREE.TorusGeometry(0.58, 0.09, 12, 40), scarfM, 0, 1.2, 0, 1, 1, 0.9).rotation.x = Math.PI / 2;
+  add(new THREE.CapsuleGeometry(0.08, 0.38, 6, 12), scarfD, 0.34, 0.95, 0.5, 1, 1, 0.6).rotation.set(0.2, 0, 0.35);
+  // the two leaves: a leaf's own outline, given a little thickness
+  const es = new THREE.Shape();
+  es.moveTo(0, 0);
+  es.bezierCurveTo(0.32, 0.18, 0.3, 0.7, 0, 1);
+  es.bezierCurveTo(-0.3, 0.7, -0.32, 0.18, 0, 0);
+  const earGeo = new THREE.ExtrudeGeometry(es, { depth: 0.05, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 3, curveSegments: 20 });
+  const ears = [-1, 1].map((sx) => {
+    const e = new THREE.Group();
+    e.position.set(sx * 0.2, 1.98, -0.02);
+    e.rotation.set(-0.15, 0, -sx * 0.7);
+    g.add(e);
+    add(earGeo, sx < 0 ? leafM : leafD, 0, 0, -0.045, 0.7, 0.75, 1, e);
     return e;
   });
-  const stalk = mesh(cyl(0.022, 0.026, 0.5, 6), std({ color: 0x5f9e44, rough: 0.6 }), 0.1, 2.3, 0.05, g);
-  stalk.rotation.z = -0.4;
-  const bulb = mesh(ball(0.09, 12, 10), glow(3, 2.6, 1.2), 0.21, 2.54, 0.07, g);
+  const ant = new THREE.CatmullRomCurve3([V(0, 2.06, 0), V(0.04, 2.35, 0.05), V(0.2, 2.55, 0.08), V(0.32, 2.48, 0.1)]);
+  add(new THREE.TubeGeometry(ant, 24, 0.025, 8), leafD, 0, 0, 0);
+  const tip = ant.getPoint(1);
+  const bulb = add(ball(0.09, 16, 12), glow(2.6, 2.3, 1.1), tip.x, tip.y, tip.z);
   bulb.castShadow = false;
+  // the face, in its happy look: lids a little lowered into arches, a wide smile, the head tipped
+  const head = new THREE.Group();
+  head.position.set(0, 1.72, 0.47);
+  head.rotation.z = 0.08;
+  g.add(head);
   [-0.17, 0.17].forEach((x) => {
-    const w = mesh(ball(0.11, 16, 12), std({ color: 0xffffff, rough: 0.2 }), x, 1.64, 0.54, g);
-    w.scale.set(1, 1.25, 0.5);
-    const p = mesh(ball(0.07, 14, 10), std({ color: 0x24182e, rough: 0.15 }), x, 1.64, 0.585, g);
-    p.scale.set(1, 1.15, 0.5);
-    mesh(ball(0.022, 8, 6), glow(1.6, 1.6, 1.6), x + 0.025, 1.68, 0.625, g).castShadow = false;
+    const eye = new THREE.Group();
+    eye.position.set(x, 0.02, 0);
+    head.add(eye);
+    add(ball(0.11, 20, 16), white, 0, 0, 0, 1, 1.25, 0.5, eye);
+    add(ball(0.07, 16, 12), black, 0, 0, 0.035, 1, 1.15, 0.5, eye);
+    add(ball(0.022, 8, 6), glow(1.5, 1.5, 1.5), 0.025, 0.04, 0.07, 1, 1, 1, eye).castShadow = false;
+    add(new THREE.SphereGeometry(0.118, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), bodyM, 0, 0, 0, 1, 1.27, 0.56, eye).rotation.x = -0.34; // lifted further than in the drawings: here Pip is seen from above, which closes the eyes
   });
-  mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(-0.09, 1.475, 0.6), V(-0.035, 1.42, 0.625), V(0.035, 1.42, 0.625), V(0.09, 1.475, 0.6)]), 16, 0.02, 8), std({ color: 0x24182e, rough: 0.4 }), 0, 0, 0, g);
-  [-0.3, 0.3].forEach((x) => mesh(ball(0.07, 10, 8), std({ color: 0xff9a8a, rough: 0.8 }), x, 1.5, 0.5, g).scale.set(1, 0.65, 0.35));
-  [-0.26, 0.26].forEach((x) => mesh(ball(0.2, 12, 10), std({ color: 0xf3c58e, rough: 0.7 }), x, 0.08, 0.2, g).scale.set(1, 0.5, 1.3));
-  const arm = (par: THREE.Object3D, p: number[][]) => {
-    mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(p.map(([x, y, z]) => V(x, y, z))), 20, 0.085, 10), body, 0, 0, 0, par);
-    const [x, y, z] = p[p.length - 1];
-    mesh(ball(0.15, 14, 10), body, x, y, z, par).scale.set(1, 0.8, 1.1);
+  const smile = new THREE.Group();
+  smile.position.set(0, -0.17, 0.07);
+  smile.scale.set(1.3, 1.6, 1);
+  head.add(smile);
+  add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(-0.09, 0.025, -0.01), V(-0.035, -0.03, 0.015), V(0.035, -0.03, 0.015), V(0.09, 0.025, -0.01)]), 20, 0.02, 8), black, 0, 0, 0, 1, 1, 1, smile);
+  [-0.3, 0.3].forEach((x) => add(ball(0.07, 12, 10), cheekM, x, -0.12, -0.03, 1, 0.65, 0.35, head));
+  const arm = (par: THREE.Object3D, p: number[][], hand: number[]) => {
+    add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(p.map(([x, y, z]) => V(x, y, z))), 28, 0.085, 12), bodyM, 0, 0, 0, 1, 1, 1, par);
+    add(ball(0.15, 16, 12), bodyM, hand[0], hand[1], hand[2], 1, 1, 1, par);
   };
-  arm(g, [[-0.6, 1.15, 0.05], [-0.86, 0.85, 0.12], [-0.92, 0.55, 0.2]]);
+  arm(g, [[-0.6, 1.15, 0.05], [-0.86, 0.85, 0.12], [-0.92, 0.55, 0.2]], [-0.93, 0.48, 0.22]);
+  // the waving arm hangs from a shoulder so it can swing
   const shoulder = new THREE.Group();
   shoulder.position.set(0.6, 1.2, 0.05);
   g.add(shoulder);
-  arm(shoulder, [[0, 0, 0], [0.35, 0.3, 0.1], [0.45, 0.75, 0.15]]);
+  arm(shoulder, [[0, 0, 0], [0.35, 0.3, 0.1], [0.45, 0.75, 0.15]], [0.46, 0.83, 0.17]);
+  // the outline: each cel-shaded part again, turned inside out, pushed out along its normals and painted dark
+  g.updateMatrixWorld(true);
+  const ws = V(0, 0, 0), outs: THREE.Mesh[] = [];
+  g.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.isMesh && (m.material as THREE.Material).userData.toon) outs.push(m);
+  });
+  outs.forEach((o) => {
+    o.getWorldScale(ws);
+    const th = 0.022 / ((Math.abs(ws.x) + Math.abs(ws.y) + Math.abs(ws.z)) / 3 || 1);
+    const m = new THREE.MeshBasicMaterial({ color: 0x2b1d33, side: THREE.BackSide });
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.ot = { value: th };
+      sh.vertexShader = "uniform float ot;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n transformed += normalize(normal) * ot;");
+    };
+    m.customProgramCacheKey = () => "pip-outline-" + th.toFixed(4);
+    const line = new THREE.Mesh(o.geometry, m);
+    line.castShadow = false;
+    o.add(line);
+  });
   return {
     group: g,
-    update(t: number, still: boolean) {
+    /** dark: 1 at night, 0 by day. Pip's own lift of colour is for the sun; in the dark it would make a lamp of them. */
+    update(t: number, still: boolean, dark = 0) {
+      toons.forEach((m) => (m.emissiveIntensity = 0.05 + 0.29 * (1 - dark)));
       if (still) return;
       shoulder.rotation.z = 0.35 * Math.sin(t * 4);
-      ears.forEach((e, n) => (e.rotation.z = (n ? -1 : 1) * (0.55 + 0.06 * Math.sin(t * 3.1 + n * 1.7))));
+      ears.forEach((e, n) => (e.rotation.z = (n ? -1 : 1) * (0.7 + 0.06 * Math.sin(t * 3.1 + n * 1.7))));
       bulb.scale.setScalar(1 + 0.18 * Math.sin(t * 3));
       g.scale.y = g.scale.x * (1 + 0.012 * Math.sin(t * 2.2));
     },
@@ -1346,6 +1465,57 @@ export function buildTrees(spots: Spot[], west: boolean) {
   g.add(leaves);
   return g;
 }
+/** a groyne: the timber breakwaters that comb Brighton's shingle, running from the beach down into the sea along +x */
+export function buildGroyne(len = 15) {
+  const g = new THREE.Group();
+  const wet = std({ map: rep(plankT, 5, 1), color: 0x5a4a3c, rough: 0.7 }), post = std({ map: woodT, color: 0x4a3d32, rough: 0.75 });
+  const parts: THREE.BufferGeometry[] = [], posts: THREE.BufferGeometry[] = [];
+  // the wall steps down toward the sea, as each bay is a plank lower than the last
+  for (let i = 0; i < len / 2.5; i++) {
+    const x = i * 2.5, top = 1.25 - i * 0.2;
+    parts.push(box(2.5, 2.6, 0.16).translate(x + 1.25, top - 1.3, 0));
+    posts.push(box(0.3, 3.4, 0.3).translate(x, top - 1.2, 0.2), box(0.3, 3.4, 0.3).translate(x, top - 1.2, -0.2));
+  }
+  posts.push(cyl(0.2, 0.22, 4.4, 8).translate(len + 0.1, 0.2, 0));
+  mesh(mergeGeometries(parts)!, wet, 0, 0, 0, g);
+  mesh(mergeGeometries(posts)!, post, 0, 0, 0, g);
+  // a marker on the seaward post, green over the weed line
+  mesh(cyl(0.21, 0.21, 0.5, 8), std({ color: 0x3f6b3a, rough: 0.6 }), len + 0.1, 2.15, 0, g);
+  return g;
+}
+
+/** a raised bed of the sort an allotment is made of: what Windfall's suppers are cooked from. Long side along x. */
+export function buildPlanter(seed = 0) {
+  const g = new THREE.Group();
+  const timber = std({ map: rep(plankT, 2, 1), color: 0x8a6e4e, rough: 0.9 });
+  mesh(box(2.6, 0.5, 1.2), timber, 0, 0.25, 0, g);
+  mesh(box(2.4, 0.06, 1.0), std({ color: 0x2e2218, rough: 1, bump: 0 }), 0, 0.5, 0, g);
+  const leaves: THREE.BufferGeometry[] = [], fruit: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < 12; i++) {
+    const x = -1.0 + (i % 6) * 0.4, z = i < 6 ? -0.26 : 0.26, k = 0.75 + (((i + seed) * 0.37) % 1) * 0.5;
+    leaves.push(ball(0.2, 8, 6).scale(1, 0.85 * k, 1).translate(x, 0.6 + 0.08 * k, z));
+    if ((i + seed) % 3 === 0) fruit.push(ball(0.07, 8, 6).translate(x + 0.1, 0.72, z + 0.08));
+  }
+  mesh(mergeGeometries(leaves)!, std({ color: seed % 2 ? 0x4f7a34 : 0x6a8f3c, rough: 0.85, bump: 0 }), 0, 0, 0, g);
+  if (fruit.length) mesh(mergeGeometries(fruit)!, std({ color: seed % 2 ? 0xd9482f : 0xf2a03a, rough: 0.5, bump: 0 }), 0, 0, 0, g);
+  return g;
+}
+
+/** the soft shadow a building keeps round its own foot, whatever the sun is doing: without it a model sits on the ground like a toy on a table */
+const shadeT = tex(128, 128, (g, w, h) => {
+  const grd = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+  grd.addColorStop(0, "rgba(0,0,0,.62)");
+  grd.addColorStop(0.55, "rgba(0,0,0,.4)");
+  grd.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, w, h);
+});
+export function groundShade(r: number) {
+  const m = new THREE.Mesh(new THREE.CircleGeometry(r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: shadeT, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, toneMapped: false }));
+  m.renderOrder = 1;
+  return m;
+}
+
 /** a boulder: a ball pushed out of round by a few broad swells, so it reads as worn by water, not broken */
 function boulder() {
   const raw = new THREE.IcosahedronGeometry(1, 3);

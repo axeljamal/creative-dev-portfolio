@@ -12,7 +12,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PlaceId } from "../places";
 import * as audio from "./audio";
-import { buildBale, buildBuoy, buildGate, buildGuestHouse, buildHuts, buildLamp, buildLighthouse, buildPalms, buildPavilion, buildPier, buildPinisi, buildPip, buildPlinth, buildRocks, buildSupper, buildTrees, glow } from "./models";
+import { buildBale, buildBuoy, buildGate, buildGroyne, buildGuestHouse, buildHuts, buildLamp, buildLighthouse, buildPalms, buildPavilion, buildPier, buildPinisi, buildPip, buildPlanter, buildPlinth, buildRocks, buildSupper, buildTrees, glow , groundShade } from "./models";
 import { ISLANDS, addPad, buildShore, buildTerrain, dockFor, heightAt, nearestIsland, scatter, smooth } from "./terrain";
 
 export type WorldEvents = {
@@ -299,6 +299,12 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     o.position.set(s.x, heightAt(s.x, s.z), s.z);
     o.rotation.y = Math.atan2(-d.y, d.x) + turn;
     scene.add(o);
+    // every building on land keeps a soft shadow round its foot
+    if (s.pad && s.island !== "strait") {
+      const sh = groundShade(s.pad[0] * 0.98);
+      sh.position.set(s.x, heightAt(s.x, s.z) + 0.05, s.z);
+      scene.add(sh);
+    }
     return o;
   }
   const gate = buildGate();
@@ -322,6 +328,26 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
     const s = site("table"), d = out(s);
     pip.group.position.set(s.x + d.x * 8.5, heightAt(s.x, s.z) + 0.16, s.z + d.y * 8.5);
     scene.add(pip.group);
+  }
+  // Windfall's shore, dressed as Brighton's: raised beds by the supper table, and groynes combing the shingle
+  {
+    const s = site("table"), d = out(s), y = heightAt(s.x, s.z);
+    [-1, 1].forEach((sd, i) => {
+      const b = buildPlanter(i);
+      b.position.set(s.x + d.x * 6.4 - d.y * sd * 4.6, y, s.z + d.y * 6.4 + d.x * sd * 4.6);
+      b.rotation.y = Math.atan2(-d.y, d.x) + Math.PI / 2;
+      scene.add(b);
+    });
+    const I = ISLANDS[1];
+    [100, 132, 205, 238].forEach((deg) => {
+      const a = THREE.MathUtils.degToRad(deg), dx = Math.cos(a), dz = Math.sin(a);
+      let r = I.r * 0.4;
+      while (r < I.r * 1.4 && heightAt(I.x + dx * r, I.z + dz * r) > 0.9) r += 0.5; // walk out to the top of the beach
+      const gr = buildGroyne();
+      gr.position.set(I.x + dx * r, 0, I.z + dz * r);
+      gr.rotation.y = Math.atan2(-dz, dx);
+      scene.add(gr);
+    });
   }
   const huts = buildHuts();
   stand("huts", huts.group, Math.PI / 2); // doors to the sea
@@ -838,8 +864,8 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents): World {
       m.beam.visible = !found.has(id) && Math.hypot(camPos.x - m.g.position.x, camPos.z - m.g.position.z) > 70;
     });
     life(t, dt, bob);
-    pip.group.rotation.y = Math.atan2(st.x - pip.group.position.x, st.z - pip.group.position.z);
-    pip.update(t, reduce);
+    pip.group.rotation.y = Math.atan2(camera.position.x - pip.group.position.x, camera.position.z - pip.group.position.z); // Pip waves at whoever is looking
+    pip.update(t, reduce, dusk);
     bale.kettles.forEach((k, i) => {
       const a = Math.max(0, 1 - (t - flash[i]) / 0.7);
       (k.material as THREE.MeshStandardMaterial).emissive.setRGB(a * 1.6, a * 1.0, a * 0.3);
