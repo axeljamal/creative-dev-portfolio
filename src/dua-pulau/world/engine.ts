@@ -28,7 +28,11 @@ export type WorldEvents = {
   onTime?: (part: DayPart) => void;
   /** Pip, the crew on deck, was tapped: the page opens his questions */
   onPip?: () => void;
+  /** the view changed from the keyboard (V) */
+  onView?: (v: BoatView) => void;
 };
+/** where the camera follows her from: off the stern quarter, or broadside from either side */
+export type BoatView = "astern" | "starboard" | "port";
 export type DayPart = "First light" | "Morning" | "Midday" | "Afternoon" | "Golden hour" | "Dusk" | "Night";
 /** what a chart of these waters needs: each island's shoreline and where each place lies (x east, z south) */
 export type Chart = { isles: { id: "md" | "wf"; shore: [number, number][] }[]; places: { id: PlaceId; island: "md" | "wf" | "strait"; x: number; z: number }[] };
@@ -45,6 +49,8 @@ export type World = {
   skipTime: () => void;
   /** the questions panel is open: Pip on deck stays awake and turns to the visitor */
   pipTalking: (on: boolean) => void;
+  /** follow her from astern, or from her starboard or port side */
+  setView: (v: BoatView) => void;
   chart: () => Chart;
   /** where she is now and which way she heads (yaw 0 = east, turning to the north) */
   boat: () => { x: number; z: number; yaw: number };
@@ -577,6 +583,11 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     if (down && !steering()) return;
     if ((e.target as HTMLElement | null)?.closest?.("input,textarea,select,[contenteditable]")) return;
     if (down && inView && ["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) e.preventDefault();
+    if (down && k === "v" && !e.repeat) {
+      view = VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length];
+      ev.onView?.(view);
+      return;
+    }
     keys[k] = down;
     if (down && ["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(k)) auto = null;
   };
@@ -738,6 +749,11 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   // ---------- camera ----------
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), wantPos = new THREE.Vector3(), wantLook = new THREE.Vector3(), lampW = new THREE.Vector3();
   let camSet = false, shift = 0;
+  // the follow view: an angle round her from dead astern (towards starboard is positive), eased, so a change of view
+  // swings the camera round behind the stern rather than straight through the hull
+  const VIEWS: BoatView[] = ["astern", "starboard", "port"];
+  const VIEW_ANG: Record<BoatView, number> = { astern: Math.atan(0.3), starboard: 1.38, port: -1.38 };
+  let view: BoatView = "astern", camAng = VIEW_ANG.astern, camNear = 0;
   function aim(t: number, dt: number) {
     const fx = Math.cos(st.yaw), fz = -Math.sin(st.yaw);
     const tall = camera.aspect < 0.8;
@@ -750,8 +766,17 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     // (on a phone the lamp sits a little right of centre too, so Pip, asleep beside it, is in the picture)
     const side = tall ? 0.17 : 0.42;
     const lampLook = new THREE.Vector3(lampW.x + Math.sin(a) * side, lampW.y - (tall ? 0.5 : 0.2), lampW.z + Math.cos(a) * side);
-    const back = tall ? 70 : 50, off = back * 0.3; // a little off her quarter, so the sails and the sheer both show
-    const followPos = new THREE.Vector3(st.x - fx * back - fz * off, tall ? 26 : 17, st.z - fz * back + fx * off), followLook = new THREE.Vector3(st.x + fx * 14, 7, st.z + fz * 14);
+    // astern: a little off her quarter, so the sails and the sheer both show. Broadside: her whole length side on,
+    // hull, deckhouse and every sail, like a photograph of her from a passing boat.
+    const ease1 = reduce ? 1 : Math.min(1, dt * 1.6);
+    camAng += (VIEW_ANG[view] - camAng) * ease1;
+    camNear += ((view === "astern" ? 0 : 1) - camNear) * ease1;
+    // (a phone is narrow: side on, she needs standing well off to fit stem to bowsprit)
+    const dist = tall ? 73 + camNear * 62 : 52 * (1 - camNear * 0.08), sx = -fz, sz = fx; // (sx, sz): her starboard side
+    const ca = Math.cos(camAng), sa = Math.sin(camAng);
+    const followPos = new THREE.Vector3(st.x - fx * ca * dist + sx * sa * dist, (tall ? 26 : 17) - camNear * (tall ? 12 : 8), st.z - fz * ca * dist + sz * sa * dist);
+    const lead = 14 - camNear * 10; // side on, look at the middle of her length, bowsprit included
+    const followLook = new THREE.Vector3(st.x + fx * lead, 7 + camNear * 2, st.z + fz * lead);
     let fov = 42, k = Math.min(1, dt * 2.2);
     if (phase === "dark") {
       wantPos.copy(lampPos);
@@ -1067,6 +1092,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     },
     setMuted: audio.setMuted,
     pipTalking: (on) => void (talking = on),
+    setView: (v) => void (view = v),
     skipTime() {
       if (phase !== "sailing") return;
       const next = PARTS.find((p) => p[0] > tod + 1) ?? PARTS[0];

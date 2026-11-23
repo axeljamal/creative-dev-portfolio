@@ -8,7 +8,10 @@ import { ISLAND_NAME, PLACES, place, type Island, type Place, type PlaceId } fro
 import { Chart } from "./Chart";
 import { Log, TALK, Talk } from "./Log";
 import { Ask, type AskLine } from "./Ask";
-import type { DayPart, Weather, World } from "./world/engine";
+import type { BoatView, DayPart, Weather, World } from "./world/engine";
+
+const VIEW_NEXT: Record<BoatView, BoatView> = { astern: "starboard", starboard: "port", port: "astern" };
+const VIEW_NAME: Record<BoatView, string> = { astern: "Astern", starboard: "Starboard side", port: "Port side" };
 
 const ModelStage = lazy(() => import("../three/ModelStage"));
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -45,6 +48,7 @@ export function App() {
   const [found, setFound] = useState<PlaceId[]>(logged); // a place moored at on an earlier visit was found then
   const [waters, setWaters] = useState<keyof typeof WATERS>("strait");
   const [muted, setMuted] = useState(false);
+  const [boatView, setBoatView] = useState<BoatView>("astern");
   const [menu, setMenu] = useState(false);
   const [bound, setBound] = useState<PlaceId | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
@@ -101,7 +105,7 @@ export function App() {
     import("./world/engine")
       .then(({ createWorld }) => {
         if (gone || !canvas.current) return;
-        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart, onPip: askPip }, logged());
+        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart, onPip: askPip, onView: setBoatView }, logged());
         setState("ready");
       })
       .catch((e) => {
@@ -197,6 +201,9 @@ export function App() {
             <div className="dp-hud-tr">
               <span className="dp-pill" aria-live="polite">{found.length} / {PLACES.length} found</span>
               <button type="button" className="dp-pill dp-time" onClick={() => world.current?.skipTime()} aria-label={`Time of day: ${dayPart}. Move on to the next part of the day`} title="Move the day on">{dayPart}</button>
+              {sailing && (
+                <button type="button" className="dp-pill" onClick={() => { const v = VIEW_NEXT[boatView]; setBoatView(v); world.current?.setView(v); }} aria-label={`View: ${VIEW_NAME[boatView]}. Change to ${VIEW_NAME[VIEW_NEXT[boatView]]}`} title="Change the view (V)">{VIEW_NAME[boatView]}</button>
+              )}
               {sailing && (
                 <button type="button" className="dp-pill" aria-expanded={asking} aria-controls="dp-ask" onClick={() => { closeLog(); setAsking(!asking); }}>Ask Pip</button>
               )}
