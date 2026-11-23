@@ -12,7 +12,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PlaceId } from "../places";
 import * as audio from "./audio";
-import { buildBale, buildBuoy, buildGate, buildGroyne, buildGuestHouse, buildHuts, buildLamp, buildLighthouse, buildPalms, buildPavilion, buildPier, buildPinisi, buildPip, buildPlanter, buildPlinth, buildRocks, buildSupper, buildTrees, glow , groundShade } from "./models";
+import { buildBale, buildBuoy, buildGate, buildGroyne, buildGuestHouse, buildHuts, buildLamp, buildLighthouse, buildPalms, buildPavilion, buildPier, buildPinisi, buildPip, buildPlanter, type PipMood, buildPlinth, buildRocks, buildSupper, buildTrees, glow , groundShade } from "./models";
 import { ISLANDS, addPad, buildShore, buildTerrain, dockFor, heightAt, nearestIsland, scatter, smooth } from "./terrain";
 
 export type WorldEvents = {
@@ -26,6 +26,8 @@ export type WorldEvents = {
   onWeather?: (w: Weather) => void;
   /** the part of the day it has become */
   onTime?: (part: DayPart) => void;
+  /** Pip, the crew on deck, was tapped: the page opens his questions */
+  onPip?: () => void;
 };
 export type DayPart = "First light" | "Morning" | "Midday" | "Afternoon" | "Golden hour" | "Dusk" | "Night";
 /** what a chart of these waters needs: each island's shoreline and where each place lies (x east, z south) */
@@ -41,6 +43,8 @@ export type World = {
   setMuted: (m: boolean) => void;
   /** move the day on to its next part */
   skipTime: () => void;
+  /** the questions panel is open: Pip on deck stays awake and turns to the visitor */
+  pipTalking: (on: boolean) => void;
   chart: () => Chart;
   /** where she is now and which way she heads (yaw 0 = east, turning to the north) */
   boat: () => { x: number; z: number; yaw: number };
@@ -486,6 +490,13 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   lamp.lamp.position.y = 0.6;
   lamp.lamp.rotation.y = -0.5;
   pinisi.lampAt.add(lamp.lamp);
+  // Pip sails as crew: asleep by the lamp in the dark, waking with it, looking out at sea, cheering each place you
+  // moor at, turning to you when you ask him something, and dozing off again at night while she sails on
+  const crew = buildPip();
+  crew.group.scale.setScalar(0.27); // by the lamp, seen close; on the stern roof he is drawn larger, to read from astern
+  pinisi.pipBow.add(crew.group);
+  let cheerAt = -99, talking = false;
+  const toCam = new THREE.Vector3();
 
   // her wake: soft patches of foam laid on the water astern, spreading and fading
   const foamC = document.createElement("canvas");
@@ -574,6 +585,13 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   window.addEventListener("keyup", onKey);
   window.addEventListener("blur", clearKeys);
   const pDown = (e: PointerEvent) => {
+    // a tap on Pip asks him something, wherever she is
+    if (phase !== "dark" && ev.onPip) {
+      const r = canvas.getBoundingClientRect();
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      if (ray.intersectObject(crew.group, true).length) return void ev.onPip();
+    }
     if (!steering()) return;
     pointer = e;
     auto = null;
@@ -729,7 +747,8 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     const a = st.yaw + 0.9 + (reduce ? 0 : Math.sin(t * 0.13) * 0.5), dLamp = tall ? 2.5 : 1.75;
     const lampPos = new THREE.Vector3(lampW.x + Math.cos(a) * dLamp, lampW.y + 0.34, lampW.z - Math.sin(a) * dLamp);
     // the words sit low and left, so the lamp is framed high and to the right of them
-    const side = tall ? 0 : 0.42;
+    // (on a phone the lamp sits a little right of centre too, so Pip, asleep beside it, is in the picture)
+    const side = tall ? 0.17 : 0.42;
     const lampLook = new THREE.Vector3(lampW.x + Math.sin(a) * side, lampW.y - (tall ? 0.5 : 0.2), lampW.z + Math.cos(a) * side);
     const back = tall ? 70 : 50, off = back * 0.3; // a little off her quarter, so the sails and the sheer both show
     const followPos = new THREE.Vector3(st.x - fx * back - fz * off, tall ? 26 : 17, st.z - fz * back + fx * off), followLook = new THREE.Vector3(st.x + fx * 14, 7, st.z + fz * 14);
@@ -748,6 +767,12 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       fov = 34 + 8 * p;
       k = 1;
       if (p >= 1) phase = "sailing";
+      // once the camera has drawn back behind her sails, Pip hops up onto the deckhouse roof, where it can see him
+      if (p > 0.55 && crew.group.parent !== pinisi.pipStern) {
+        pinisi.pipStern.add(crew.group);
+        crew.group.scale.setScalar(0.9);
+        cheerAt = t;
+      }
     } else if (moored) {
       // moored: stand off the shore and look at the place
       const s = moored, d = s.island === "strait" ? new THREE.Vector2(0.3, 1).normalize() : out(s), [dist, h] = s.view, far = tall ? 1.45 : 1;
@@ -958,6 +983,19 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     life(t, dt, bob);
     pip.group.rotation.y = Math.atan2(camera.position.x - pip.group.position.x, camera.position.z - pip.group.position.z); // Pip waves at whoever is looking
     pip.update(t, reduce, dusk);
+    {
+      const cheering = t - cheerAt < 2.6, night = dusk > 0.85 && !moored && !talking && !cheering;
+      const mood: PipMood = phase === "dark" ? "sleep" : talking ? "wave" : cheering ? "cheer" : t - litAt < 4.5 ? "wave" : night ? "sleep" : moored ? "wave" : "look";
+      // he turns to the visitor (the camera) to wave, cheer or answer; at sea he looks out over the bow, glancing back now and then
+      crew.group.parent!.worldToLocal(toCam.copy(camera.position));
+      const face = Math.atan2(toCam.x - crew.group.position.x, toCam.z - crew.group.position.z);
+      const glance = reduce ? 0.6 : 0.45 + 0.5 * smooth(0.5, 1, Math.sin(t * 0.45));
+      const want = mood === "look" ? Math.PI / 2 + Math.atan2(Math.sin(face - Math.PI / 2), Math.cos(face - Math.PI / 2)) * glance : mood === "sleep" ? Math.PI / 2 + 0.6 : face;
+      const d = Math.atan2(Math.sin(want - crew.group.rotation.y), Math.cos(want - crew.group.rotation.y));
+      crew.group.rotation.y += reduce ? d : d * (1 - Math.exp(-dt * 5));
+      crew.group.position.y = cheering && !reduce ? Math.abs(Math.sin((t - cheerAt) * 7)) * 0.35 : 0;
+      crew.update(t, reduce, dusk, mood);
+    }
     bale.kettles.forEach((k, i) => {
       const a = Math.max(0, 1 - (t - flash[i]) / 0.7);
       (k.material as THREE.MeshStandardMaterial).emissive.setRGB(a * 1.6, a * 1.0, a * 0.3);
@@ -1023,10 +1061,12 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       auto = null;
       st.v = 0;
       audio.arrive(moored.island);
+      cheerAt = performance.now() / 1000;
       if (id === "bale") [0, 1, 2, 3, 4, 5, 6, 4, 3, 0].forEach((n, i) => window.setTimeout(() => ((flash[n] = performance.now() / 1000), audio.kettle(n, 0.36)), 900 + i * 190));
       if (id === "table") window.setTimeout(audio.boop, 700);
     },
     setMuted: audio.setMuted,
+    pipTalking: (on) => void (talking = on),
     skipTime() {
       if (phase !== "sailing") return;
       const next = PARTS.find((p) => p[0] > tod + 1) ?? PARTS[0];
@@ -1065,6 +1105,6 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       renderer.dispose();
     },
   };
-  if (import.meta.env.DEV) Object.assign(window, { __dp: { api, st, skip: () => ((phase = "sailing"), (lit = 1), setSun((elev = DAY), AZ0, true)) } });
+  if (import.meta.env.DEV) Object.assign(window, { __dp: { api, st, pip: () => { const v = crew.group.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, crew.group.scale.y * 1.1, 0)).project(camera), r = canvas.getBoundingClientRect(); return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height, onScreen: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1 }; }, skip: () => ((phase = "sailing"), (lit = 1), setSun((elev = DAY), AZ0, true)) } });
   return api;
 }

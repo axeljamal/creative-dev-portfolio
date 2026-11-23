@@ -592,11 +592,18 @@ export function buildPinisi() {
   boat.add(lampAt);
   mesh(box(0.5, 0.55, 0.5), M.teak, 0, 0.275, 0, lampAt);
   mesh(box(0.62, 0.05, 0.62), M.darkWood, 0, 0.575, 0, lampAt);
+  // where Pip stands as crew. Before sailing: curled up beside the lamp, on the side the first view looks from,
+  // kept inside the narrowing bow. Under way: on the deckhouse roof at the stern, the part the following camera sees.
+  const bx = 10.95, pipBow = new THREE.Group();
+  pipBow.position.set(bx, deckY(bx), Math.min(0.55, hullW((bx + HULL_L / 2) / HULL_L) - 0.35));
+  const pipStern = new THREE.Group();
+  pipStern.position.set(-11.6, cabinY + 2.46, 0);
+  boat.add(pipBow, pipStern);
 
   boat.traverse((o) => {
     if (o instanceof THREE.Mesh) o.castShadow = true;
   });
-  return { boat, sails, flag, lampAt };
+  return { boat, sails, flag, lampAt, pipBow, pipStern };
 }
 
 // ---------- the pelita: a brass oil lamp with a living flame ----------
@@ -1039,6 +1046,9 @@ export function buildPier(length = 52) {
   return { group: g, flag, lamps, kioskM, kioskGlass };
 }
 
+/** what Pip is doing: waving hello, looking out to sea, cheering a find, or asleep */
+export type PipMood = "wave" | "look" | "cheer" | "sleep";
+
 /** Pip, Windfall's mascot, from the app's own model: a soft cream body, leaf ears, a yellow scarf and a glowing bulb */
 export function buildPip() {
   // Pip exactly as Windfall draws them (windfall/scripts/art/pip.js, the model the app's own pictures are rendered
@@ -1088,6 +1098,7 @@ export function buildPip() {
   const bulb = add(ball(0.09, 16, 12), glow(2.6, 2.3, 1.1), tip.x, tip.y, tip.z);
   bulb.castShadow = false;
   // the face, in its happy look: lids a little lowered into arches, a wide smile, the head tipped
+  const lids: THREE.Mesh[] = [], eyes: THREE.Group[] = [];
   const head = new THREE.Group();
   head.position.set(0, 1.72, 0.47);
   head.rotation.z = 0.08;
@@ -1096,10 +1107,11 @@ export function buildPip() {
     const eye = new THREE.Group();
     eye.position.set(x, 0.02, 0);
     head.add(eye);
+    eyes.push(eye);
     add(ball(0.11, 20, 16), white, 0, 0, 0, 1, 1.25, 0.5, eye);
     add(ball(0.07, 16, 12), black, 0, 0, 0.035, 1, 1.15, 0.5, eye);
     add(ball(0.022, 8, 6), glow(1.5, 1.5, 1.5), 0.025, 0.04, 0.07, 1, 1, 1, eye).castShadow = false;
-    add(new THREE.SphereGeometry(0.118, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), bodyM, 0, 0, 0, 1, 1.27, 0.56, eye).rotation.x = -0.34; // lifted further than in the drawings: here Pip is seen from above, which closes the eyes
+    lids.push(add(new THREE.SphereGeometry(0.118, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), bodyM, 0, 0, 0, 1, 1.27, 0.56, eye)); // the lid, lifted further than in the drawings: here Pip is seen from above, which closes the eyes
   });
   const smile = new THREE.Group();
   smile.position.set(0, -0.17, 0.07);
@@ -1137,16 +1149,41 @@ export function buildPip() {
     line.castShadow = false;
     o.add(line);
   });
+  // each mood is a pose Pip eases into: how open the eyes are, where the waving arm rests, how the ears hold
+  // (closed eyes are the eyes squashed to a line: turning the flattened lid down only stands it on edge)
+  const POSE: Record<PipMood, { lid: number; open: number; arm: number; ear: number; tip: number }> = {
+    wave: { lid: -0.34, open: 1, arm: 0, ear: 0.7, tip: 0.08 },
+    look: { lid: -0.2, open: 0.9, arm: -2.1, ear: 0.62, tip: 0.02 },
+    cheer: { lid: -0.5, open: 0.55, arm: 0.3, ear: 0.55, tip: 0.12 },
+    sleep: { lid: -0.34, open: 0.1, arm: -2.25, ear: 1.05, tip: 0.3 },
+  };
+  const now = { ...POSE.wave };
+  let last = -1;
   return {
     group: g,
-    /** dark: 1 at night, 0 by day. Pip's own lift of colour is for the sun; in the dark it would make a lamp of them. */
-    update(t: number, still: boolean, dark = 0) {
+    /** dark: 1 at night, 0 by day. Pip's own lift of colour is for the sun; in the dark it would make a lamp of them.
+     *  mood: the pose to ease into (the supper table's Pip only ever waves). With `still` (Reduce Motion) Pip takes
+     *  the pose at once and nothing loops. */
+    update(t: number, still: boolean, dark = 0, mood: PipMood = "wave") {
       toons.forEach((m) => (m.emissiveIntensity = 0.05 + 0.29 * (1 - dark)));
-      if (still) return;
-      shoulder.rotation.z = 0.35 * Math.sin(t * 4);
-      ears.forEach((e, n) => (e.rotation.z = (n ? -1 : 1) * (0.7 + 0.06 * Math.sin(t * 3.1 + n * 1.7))));
-      bulb.scale.setScalar(1 + 0.18 * Math.sin(t * 3));
-      g.scale.y = g.scale.x * (1 + 0.012 * Math.sin(t * 2.2));
+      const want = POSE[mood], k = still || last < 0 ? 1 : 1 - Math.exp(-(t - last) * 4);
+      last = t;
+      (Object.keys(now) as (keyof typeof now)[]).forEach((key) => (now[key] += (want[key] - now[key]) * k));
+      lids.forEach((l) => (l.rotation.x = now.lid));
+      eyes.forEach((e) => (e.scale.y = now.open));
+      head.rotation.z = now.tip;
+      const asleep = mood === "sleep";
+      if (still) {
+        shoulder.rotation.z = now.arm;
+        ears.forEach((e, n) => (e.rotation.z = (n ? -1 : 1) * now.ear));
+        return;
+      }
+      // the arm moves round its resting place: a wave, a quick cheer, a slow sway at sea, nothing asleep
+      const swing = mood === "wave" ? 0.35 * Math.sin(t * 4) : mood === "cheer" ? 0.5 * Math.sin(t * 9) : mood === "look" ? 0.08 * Math.sin(t * 1.3) : 0;
+      shoulder.rotation.z = now.arm + swing;
+      ears.forEach((e, n) => (e.rotation.z = (n ? -1 : 1) * (now.ear + (asleep ? 0.02 : 0.06) * Math.sin(t * (asleep ? 0.9 : 3.1) + n * 1.7))));
+      bulb.scale.setScalar(asleep ? 0.75 + 0.1 * Math.sin(t * 1.1) : 1 + 0.18 * Math.sin(t * 3));
+      g.scale.y = g.scale.x * (1 + (asleep ? 0.03 * Math.sin(t * 1.1) : 0.012 * Math.sin(t * 2.2)));
     },
   };
 }

@@ -1,13 +1,13 @@
-// POST /api/ask: the helmsman answers a visitor's question about the work, from the portfolio's own words only.
+// POST /api/ask: Pip answers a visitor's question about Axel and the work, from the portfolio's own words only.
 // Live, the model is Gemma 4 on Cloudflare Workers AI (no key to keep). On a laptop, HELMSMAN_LLM=ollama in .dev.vars
 // sends the same conversation to a local Ollama model instead, so the chat can be built offline for free.
-import { HELMSMAN_BRIEF, PLACE_IDS } from "../src/dua-pulau/brief";
+import { PIP_BRIEF, PLACE_IDS } from "../src/dua-pulau/brief";
 
 const MODEL = "@cf/google/gemma-4-26b-a4b-it";
 const MAX_TURNS = 6; // the last few lines of the conversation, enough to follow a thread
 const MAX_ASK = 300; // a visitor's question
-const MAX_HEARD = 1200; // one of the helmsman's own earlier replies, sent back for context
-const RESTING = "The helmsman is resting just now. The Log will still take you to every place.";
+const MAX_HEARD = 1200; // one of Pip's own earlier replies, sent back for context
+const RESTING = "Pip is having a nap just now. The Log will still take you to every place.";
 
 type AskEnv = Env & { HELMSMAN_LLM?: string; OLLAMA_URL?: string; OLLAMA_MODEL?: string };
 type Line = { role: "user" | "assistant"; content: string };
@@ -27,7 +27,7 @@ export async function handleAsk(request: Request, env: AskEnv) {
   try {
     text = env.HELMSMAN_LLM === "ollama" ? await ollama(env, lines) : await workersAi(env, lines);
   } catch (err) {
-    console.error("helmsman", err);
+    console.error("pip", err);
     return json({ reply: RESTING, resting: true }, 503);
   }
   return json(answer(text));
@@ -47,7 +47,7 @@ function conversation(raw: unknown): Line[] | null {
 }
 
 /** the reply as plain words, and the one real place it offers to sail to, if any. Whatever the model does, a visitor
- * never sees code, the helmsman's orders recited, or a long lecture: those become one line steering back to the islands. */
+ * never sees code, Pip's orders recited, or a long lecture: those become one line steering back to the islands. */
 function answer(raw: string) {
   let text = raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   const id = text.match(/^\s*SAIL:\s*([a-z]+)\s*$/im)?.[1]?.toLowerCase();
@@ -63,7 +63,7 @@ function answer(raw: string) {
 
 async function workersAi(env: AskEnv, lines: Line[]) {
   const out = (await env.AI.run(MODEL as Parameters<Ai["run"]>[0], {
-    messages: [{ role: "system", content: HELMSMAN_BRIEF }, ...lines],
+    messages: [{ role: "system", content: PIP_BRIEF }, ...lines],
     max_completion_tokens: 320,
     temperature: 0.4,
     // Gemma 4 thinks before it speaks by default, and the thinking alone used up the whole reply budget
@@ -81,7 +81,7 @@ async function ollama(env: AskEnv, lines: Line[]) {
     body: JSON.stringify({
       model: env.OLLAMA_MODEL || "gemma3:1b",
       stream: false,
-      messages: [{ role: "system", content: HELMSMAN_BRIEF }, ...lines],
+      messages: [{ role: "system", content: PIP_BRIEF }, ...lines],
       options: { num_predict: 320, temperature: 0.4, num_ctx: 8192 },
     }),
   });

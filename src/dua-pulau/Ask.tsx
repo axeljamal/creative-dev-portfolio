@@ -1,12 +1,12 @@
-// Ask the helmsman: a visitor's questions about the work, answered from the portfolio's own words by /api/ask.
+// Ask Pip: a visitor's questions about Axel and the work, answered from the portfolio's own words by /api/ask.
 // When one place holds the answer he offers to sail there, through the same autopilot as the Log.
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { place, type PlaceId } from "./places";
 
 export type AskLine = { role: "user" | "assistant"; content: string; sail?: PlaceId };
 
-const STARTERS = ["What is Windfall?", "Who made all this?", "Where can I hear the gamelan?"];
-const RESTING = "The helmsman is resting just now. The Log will still take you to every place.";
+const STARTERS = ["Who made all this?", "What are Axel's skills?", "How does Windfall work?", "How was this world built?"];
+const RESTING = "Pip is having a nap just now. The Log will still take you to every place.";
 /** hosts his replies may link to; any other address stays plain text */
 const LINK_HOSTS = ["marea-dvipa.uk", "github.com", "linkedin.com", "windfall.expo.app"];
 
@@ -53,11 +53,11 @@ export function Ask({ thread, setThread, onSail, onClose }: { thread: AskLine[];
   };
 
   return (
-    <section id="dp-ask" className="dp-menu dp-ask" aria-label="Ask the helmsman about the work" onKeyDown={(e) => e.key === "Escape" && onClose()}>
+    <section id="dp-ask" className="dp-menu dp-ask" aria-label="Ask Pip about Axel and the work" onKeyDown={(e) => e.key === "Escape" && onClose()}>
       <div className="dp-log-head">
-        <p className="dp-kicker">The helmsman</p>
-        <h2>Ask me about the work.</h2>
-        <p>Answers come from Axel's portfolio, written by an AI model, so check anything important at the place itself.</p>
+        <p className="dp-kicker">Pip, the crew</p>
+        <h2>Ask me about Axel.</h2>
+        <p>Their work, how it's built, their skills and experience. Answers come from Axel's portfolio, written by an AI model, so check anything important at the place itself.</p>
       </div>
       <div className="dp-ask-thread" aria-live="polite">
         {thread.length === 0 && (
@@ -81,12 +81,12 @@ export function Ask({ thread, setThread, onSail, onClose }: { thread: AskLine[];
             </div>
           ),
         )}
-        {busy && <p className="dp-ask-him dp-ask-busy" aria-label="The helmsman is answering">…</p>}
+        {busy && <p className="dp-ask-him dp-ask-busy" aria-label="Pip is answering">…</p>}
         <div ref={end} />
       </div>
       <form className="dp-ask-form" onSubmit={send}>
         <label className="dp-sr" htmlFor="dp-ask-q">Your question</label>
-        <input id="dp-ask-q" ref={input} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={300} placeholder="Ask the helmsman…" autoComplete="off" enterKeyHint="send" />
+        <input id="dp-ask-q" ref={input} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={300} placeholder="Ask Pip…" autoComplete="off" enterKeyHint="send" />
         <button type="submit" className="dp-btn dp-btn-gold" disabled={busy || !draft.trim()}>Ask</button>
       </form>
     </section>

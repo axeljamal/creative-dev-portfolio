@@ -1,13 +1,13 @@
-// The ship's log: what Dua Pulau is, said once by the helmsman as you first get under way, and then the ten things
+// The ship's log: what Dua Pulau is, said once by Pip as you first get under way, and then the ten things
 // to do in it as a list that ticks itself off as you moor. The list is also the way to sail straight to a place.
 import { useEffect, useRef } from "react";
 import { ISLAND_NAME, PLACES, type Island, type PlaceId } from "./places";
 
-/** what the helmsman says, a line at a time, the first time the pinisi gets under way */
+/** what Pip says, a line at a time, the first time the pinisi gets under way */
 export const TALK = [
-  "Welcome aboard. This is a portfolio you sail: two islands, ten places, and a piece of work waiting at each.",
+  "Welcome aboard! I'm Pip, your crew. This is Axel's portfolio, and you sail it: two islands, ten places, and a piece of work waiting at each.",
   "West lies Marea Dvīpa, a studio for batik and ikat patterns. East lies Windfall, an app for sharing surplus food. The medallion floats in the strait between them.",
-  "Steer her yourself, or pick a place from the log and she will take you there. Moor to read the work.",
+  "Steer her yourself, or pick a place from the log and she will take you there. Moor to read the work, and tap me any time to ask about Axel.",
 ];
 
 export function Talk({ line, onNext, onSkip }: { line: number; onNext: () => void; onSkip: () => void }) {
@@ -17,8 +17,8 @@ export function Talk({ line, onNext, onSkip }: { line: number; onNext: () => voi
   }, [line]);
   const last = line === TALK.length - 1;
   return (
-    <div className="dp-talk" role="group" aria-label="The helmsman speaks">
-      <p className="dp-kicker">The helmsman · {line + 1} of {TALK.length}</p>
+    <div className="dp-talk" role="group" aria-label="Pip speaks">
+      <p className="dp-kicker">Pip · {line + 1} of {TALK.length}</p>
       <p className="dp-talk-line" aria-live="polite">{TALK[line]}</p>
       <div className="dp-talk-btns">
         {!last && <button type="button" className="dp-talk-skip" onClick={onSkip}>Skip</button>}

@@ -12,7 +12,7 @@ import type { DayPart, Weather, World } from "./world/engine";
 
 const ModelStage = lazy(() => import("../three/ModelStage"));
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-// the helmsman's welcome is said once per browser; after that the log waits behind its button
+// Pip's welcome is said once per browser; after that the log waits behind its button
 const SEEN = "dua-pulau-welcomed";
 const welcomed = () => {
   try {
@@ -50,9 +50,9 @@ export function App() {
   const [weather, setWeather] = useState<Weather | null>(null);
   const [dayPart, setDayPart] = useState<DayPart>("First light");
   const [visited, setVisited] = useState<PlaceId[]>(logged); // moored at: the log's ticks
-  const [talk, setTalk] = useState<number | null>(null); // which line the helmsman is on
+  const [talk, setTalk] = useState<number | null>(null); // which line of Pip's welcome is showing
   const [firstLog, setFirstLog] = useState(false); // the log as it opens straight after the welcome
-  const [asking, setAsking] = useState(false); // the helmsman's question panel
+  const [asking, setAsking] = useState(false); // Pip's question panel
   const [askThread, setAskThread] = useState<AskLine[]>([]); // kept while the panel is shut, so a conversation picks up again
 
   const moor = useCallback((id: PlaceId | null) => {
@@ -85,13 +85,23 @@ export function App() {
     setMenu(false);
     setFirstLog(false);
   };
+  /** a tap on Pip on deck: his questions open, once she is under way (before that the welcome is still speaking) */
+  const sailingNow = useRef(false);
+  sailingNow.current = sailing;
+  const askPip = useCallback(() => {
+    if (!sailingNow.current) return;
+    setMenu(false);
+    setFirstLog(false);
+    setTalk(null);
+    setAsking(true);
+  }, []);
 
   useEffect(() => {
     let gone = false;
     import("./world/engine")
       .then(({ createWorld }) => {
         if (gone || !canvas.current) return;
-        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart }, logged());
+        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart, onPip: askPip }, logged());
         setState("ready");
       })
       .catch((e) => {
@@ -104,6 +114,8 @@ export function App() {
       world.current = null;
     };
   }, [moor]);
+  // Pip on deck stays awake and faces the visitor while his questions are open
+  useEffect(() => world.current?.pipTalking(asking), [asking, state]);
 
   const light = () => {
     if (!world.current || lit) return;
@@ -186,7 +198,7 @@ export function App() {
               <span className="dp-pill" aria-live="polite">{found.length} / {PLACES.length} found</span>
               <button type="button" className="dp-pill dp-time" onClick={() => world.current?.skipTime()} aria-label={`Time of day: ${dayPart}. Move on to the next part of the day`} title="Move the day on">{dayPart}</button>
               {sailing && (
-                <button type="button" className="dp-pill" aria-expanded={asking} aria-controls="dp-ask" onClick={() => { closeLog(); setAsking(!asking); }}>Ask</button>
+                <button type="button" className="dp-pill" aria-expanded={asking} aria-controls="dp-ask" onClick={() => { closeLog(); setAsking(!asking); }}>Ask Pip</button>
               )}
               <button type="button" className="dp-pill dp-logbtn" aria-expanded={menu} aria-controls="dp-log" onClick={() => { setAsking(false); if (menu) closeLog(); else setMenu(true); }}>Log <b>{visited.length}/{PLACES.length}</b></button>
               <button type="button" className="dp-pill" aria-pressed={!muted} onClick={toggleSound}>{muted ? "Sound off" : "Sound on"}</button>

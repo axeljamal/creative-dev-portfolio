@@ -150,7 +150,7 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
 .dp-log .dp-log-foot .dp-btn { display: inline-flex; width: auto; padding: 10px 20px; font: 700 14px/1 var(--font-sans); border-radius: 999px; background: var(--dp-gold); color: var(--dp-ink); text-align: center; }
 .dp-log .dp-log-foot .dp-btn:hover { background: #ecd396; }
 .dp-logbtn b { color: var(--dp-gold); font-weight: 500; margin-left: 4px; }
-/* ask the helmsman: the log's glass, with his answers in the display face and the visitor's in plain type */
+/* ask Pip: the log's glass, with his answers in the display face and the visitor's in plain type */
 .dp-ask { width: min(380px, calc(100% - 24px)); max-height: calc(100% - 96px); display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
 .dp-ask .dp-log-head p:last-child { font-size: 12.5px; color: rgba(244, 238, 227, 0.62); }
 .dp-ask-thread { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 10px; padding: 0 8px; overscroll-behavior: contain; }
@@ -174,7 +174,7 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
 .dp-ask .dp-btn-gold:disabled { background: rgba(224, 194, 126, 0.35); color: rgba(14, 12, 9, 0.7); }
 .dp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .dp-ask-busy { animation: none; } }
-/* the helmsman: a few lines, said once, where the steering hint will be */
+/* Pip's welcome: a few lines, said once, where the steering hint will be */
 .dp-talk { width: min(520px, 100%); background: var(--dp-glass); border: 1px solid var(--dp-line); border-radius: 20px; padding: 16px 18px 14px; display: grid; gap: 8px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45); animation: dp-rise 0.4s ease both; }
 .dp-talk .dp-kicker { margin: 0; }
 .dp-talk-line { margin: 0; font-family: var(--font-display); font-size: clamp(19px, 2.2vw, 23px); line-height: 1.3; text-wrap: pretty; }
