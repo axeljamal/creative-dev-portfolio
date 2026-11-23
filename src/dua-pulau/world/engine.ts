@@ -11,6 +11,7 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PlaceId } from "../places";
+import { earlierWork } from "../../content/work";
 import * as audio from "./audio";
 import { buildBale, buildBuoy, buildGate, buildGroyne, buildGuestHouse, buildHuts, buildLamp, buildLighthouse, buildPalms, buildPavilion, buildPier, buildPinisi, buildPip, buildPlanter, type PipMood, buildPlinth, buildRocks, buildSupper, buildTrees, glow , groundShade } from "./models";
 import { ISLANDS, addClear, addPad, buildShore, buildTerrain, dockFor, heightAt, nearestIsland, scatter, smooth } from "./terrain";
@@ -317,8 +318,10 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     return d;
   };
   /** stand a model on its site, its front (+x) turned to the sea */
+  const placed = new Map<PlaceId, THREE.Object3D>();
   function stand(id: PlaceId, o: THREE.Object3D, turn = 0) {
     const s = site(id), d = out(s);
+    placed.set(id, o);
     o.position.set(s.x, heightAt(s.x, s.z), s.z);
     o.rotation.y = Math.atan2(-d.y, d.x) + turn;
     scene.add(o);
@@ -376,7 +379,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       scene.add(gr);
     });
   }
-  const huts = buildHuts();
+  const huts = buildHuts([{ name: "Bootcamp Connect", line: "A team app for bootcamp graduates: an AI CV and LinkedIn import, Google sign-in and a ranked feed." }, ...earlierWork.map((w) => ({ name: w.name, line: w.details }))]);
   stand("huts", huts.group, Math.PI / 2); // doors to the sea
   const lighthouse = buildLighthouse();
   stand("lighthouse", lighthouse.group);
@@ -591,6 +594,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   const orb = { yaw: 0, pitch: 0, zoom: 1 }, orbWant = { yaw: 0, pitch: 0, zoom: 1 };
   const touches = new Map<number, { x: number; y: number }>();
   let pinch0 = 0, zoom0 = 1, looking = false;
+  const solids = new Map<PlaceId, THREE.Box3[]>();
   const orbiting = () => !!moored && phase === "sailing";
   const pinchGap = () => {
     const [a, b] = [...touches.values()];
@@ -880,6 +884,17 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       const A = 0.72 + orb.yaw, ca = Math.cos(A), sa = Math.sin(A), ox = d.x * ca - d.y * sa, oz = d.y * ca + d.x * sa, r = dist * far * orb.zoom;
       wantPos.set(cx + ox * r, (h * far + orb.pitch * dist * far) * orb.zoom + ground * 0.6 + (1 - orb.zoom) * ground * 0.4, cz + oz * r);
       wantPos.y = Math.max(wantPos.y, heightAt(wantPos.x, wantPos.z) + 1.4 + 2.6 * Math.min(1, orb.zoom));
+      // nor inside the place itself: if it stands within any part of the model, lift it clear over the top
+      {
+        let boxes = solids.get(moored.id);
+        if (!boxes) {
+          const o = placed.get(moored.id);
+          o?.updateMatrixWorld(true);
+          boxes = (o?.children ?? []).map((c) => new THREE.Box3().setFromObject(c).expandByScalar(0.45)).filter((b) => !b.isEmpty());
+          solids.set(moored.id, boxes);
+        }
+        for (const b of boxes) if (b.containsPoint(wantPos)) wantPos.y = b.max.y + 0.5;
+      }
       // walking round must not put the camera inside her: keep it outside an ellipse round her hull and rig
       {
         const bx = wantPos.x - st.x, bz = wantPos.z - st.z, along = bx * fx + bz * fz, across = bx * -fz + bz * fx, L = 19, B = 7;
@@ -1010,7 +1025,9 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     huts.huts.forEach((h, i) => {
       const k = seq(open, i, huts.huts.length);
       h.doors.forEach((d, n) => (d.rotation.y = (n ? 1 : -1) * 1.75 * k));
-      dim(h.inside, ...WARM, 0.15 + 0.85 * Math.max(dusk * 0.55, k));
+      const on = Math.max(dusk * 0.55, k);
+      dim(h.inside, ...WARM, 0.15 + 0.85 * on);
+      h.lit.forEach((m) => m.color.copy(m.userData.base).multiplyScalar(0.06 + 0.94 * on));
     });
     // the lighthouse: the lamp brightens and the beam strengthens; vane and cups show Brighton's wind as it is now
     if (awake.lighthouse > 0.2 && !weatherAsked) askWeather();

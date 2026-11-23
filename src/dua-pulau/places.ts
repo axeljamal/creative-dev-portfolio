@@ -106,7 +106,7 @@ export const PLACES: Place[] = [
     name: "The beach huts",
     holds: "Bootcamp Connect and earlier work",
     quest: "Open the beach huts",
-    blurb: "A terrace of huts on the shingle, one for each project that came before.",
+    blurb: "A terrace of Hove beach huts on the promenade, one for each project that came before. The doors open on a poster of each, and the last hut is to let.",
     study: study("Bootcamp Connect"),
     links: [],
   },

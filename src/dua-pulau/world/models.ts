@@ -1,5 +1,5 @@
 // Everything standing in the world, built in code: the pinisi and her oil lamp, Marea Dvīpa's gate, meru pavilion,
-// Gong and Tugu Perdamaian, the guest house, the Victorian bandstand, the Windfall supper on the shingle, beach huts and lighthouse, Pip, and the planting.
+// Gong and Tugu Perdamaian, the guest house, the Victorian bandstand, the Windfall supper on the shingle, Hove beach huts (each opening on a poster of its project) and lighthouse, Pip, and the planting.
 // Lengths are in metres. Materials are physically based so the sky lights them.
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -2138,54 +2138,243 @@ export function buildSupper() {
   return { group: g, festoonM, candles, pipSeat };
 }
 
-/** a terrace of beach huts in Brighton's colours: Bootcamp Connect and the earlier work. Doors face +z. */
-export function buildHuts() {
+/** upright tongue-and-groove boards for the huts, pale so the paint tints them */
+const vboardT = tex(256, 256, (g, w, h) => {
+  g.fillStyle = "#ece6da";
+  g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 260; i++) {
+    g.strokeStyle = i % 2 ? "rgba(90,70,50,.12)" : "rgba(255,255,255,.28)";
+    const x = rnd() * w;
+    g.beginPath();
+    g.moveTo(x, 0);
+    g.lineTo(x + rnd() * 3 - 1.5, h);
+    g.stroke();
+  }
+  for (let x = 0; x < w; x += 32) {
+    g.fillStyle = "rgba(30,20,10,.5)";
+    g.fillRect(x, 0, 2, h);
+    g.fillStyle = "rgba(255,255,255,.35)";
+    g.fillRect(x + 2, 0, 1, h);
+  }
+});
+age(vboardT, { streak: 0.25, blot: 0.6 });
+const hex = (c: number) => "#" + c.toString(16).padStart(6, "0");
+/** the poster on a hut's back wall: what the project was, lit when the doors open */
+function posterT(name: string, line: string, accent: number) {
+  return tex(256, 360, (g, w, h) => {
+    g.fillStyle = "#f6efe2";
+    g.fillRect(0, 0, w, h);
+    speckle(g, w, h, 500, ["#d9cdb6", "#fffaf0"], 2);
+    g.fillStyle = hex(accent);
+    g.fillRect(0, 0, w, 64);
+    g.fillRect(18, h - 30, w - 36, 6);
+    g.textAlign = "center";
+    g.fillStyle = "#1f2420";
+    let size = 34;
+    g.font = `bold ${size}px Georgia, serif`;
+    while (g.measureText(name).width > w - 30 && size > 18) g.font = `bold ${--size}px Georgia, serif`;
+    g.fillText(name, w / 2, 112);
+    g.font = "19px Georgia, serif";
+    g.fillStyle = "#3a3f3a";
+    const words = line.split(" ");
+    let row = "", y = 158;
+    for (const wd of words) {
+      const t = row ? row + " " + wd : wd;
+      if (g.measureText(t).width > w - 40) {
+        g.fillText(row, w / 2, y);
+        row = wd;
+        y += 26;
+      } else row = t;
+    }
+    if (row) g.fillText(row, w / 2, y);
+  });
+}
+/** the name painted on the board over a hut's door */
+function nameT(name: string, ground: number) {
+  return tex(512, 96, (g, w, h) => {
+    g.fillStyle = hex(ground);
+    g.fillRect(0, 0, w, h);
+    g.strokeStyle = "rgba(255,255,255,.7)";
+    g.lineWidth = 4;
+    g.strokeRect(8, 8, w - 16, h - 16);
+    g.fillStyle = "#f7f1e6";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    let size = 46;
+    g.font = `bold ${size}px Georgia, serif`;
+    while (g.measureText(name).width > w - 40 && size > 20) g.font = `bold ${--size}px Georgia, serif`;
+    g.fillText(name, w / 2, h / 2 + 2);
+  });
+}
+const stripeT = (cols: string[]) =>
+  tex(128, 128, (g, w, h) => {
+    const n = cols.length * 2;
+    for (let i = 0; i < n; i++) {
+      g.fillStyle = cols[i % cols.length];
+      g.fillRect((i * w) / n, 0, w / n + 1, h);
+    }
+    speckle(g, w, h, 300, ["#fff", "#000"], 1);
+  });
+
+export type HutProject = { name: string; line: string };
+/** a terrace of Hove-style beach huts on a concrete promenade, one for each project that came before, and the last to
+ * let. Each is hollow: its doors swing open on a poster of the project lit inside. Doors face +z. */
+export function buildHuts(projects: HutProject[]) {
   const g = new THREE.Group();
   const colours = [0xc67139, 0x6aa7a8, 0xf2c14e, 0xd9667b, 0x8fb0d9, 0x7a8a5e, 0xf4eee3];
-  mesh(box(26.5, 0.4, 5.6), std({ map: rep(plankT, 10, 2), color: 0xa08c70, rough: 0.9 }), 0, 0.2, 0.6, g);
-  const gable = new THREE.Shape();
-  gable.moveTo(-1.5, 0);
-  gable.lineTo(1.5, 0);
-  gable.lineTo(0, 1.25);
-  gable.closePath();
-  const huts: { doors: THREE.Group[]; inside: THREE.MeshBasicMaterial }[] = [];
-  colours.forEach((c, i) => {
-    const h = new THREE.Group();
-    h.position.set(-10.8 + i * 3.6, 0.4, 0);
+  const doorCols = [0x2f5d73, 0xf4eee3, 0x3b793f, 0xf4eee3, 0xcc3f2f, 0xf4eee3, 0x1c7eab];
+  const list = [...projects.slice(0, 6), { name: "To let", line: "Your project could be next. Say hello at the medallion in the strait." }];
+  // the promenade: a concrete apron with a kerb, stepping down to the shingle at the front
+  const conc = std({ map: rep(parasT, 6, 1), color: 0xcfc8ba, rough: 0.95 });
+  mesh(box(27.5, 0.5, 6.2), conc, 0, 0.0, 0.4, g);
+  mesh(box(27.5, 0.22, 0.8), conc, 0, -0.18, 3.9, g);
+  mesh(box(27.5, 1.6, 6.0), conc, 0, -1.05, 0.5, g); // its footing, down into the beach where the ground falls away
+  const W = 2.8, D = 3.2, H = 2.3, Y0 = 0.6, rise = 0.95, half = W / 2 + 0.22;
+  const slope = Math.hypot(half, rise), ang = Math.atan2(rise, half);
+  const huts: { doors: THREE.Group[]; inside: THREE.MeshBasicMaterial; lit: THREE.MeshBasicMaterial[] }[] = [];
+  const felt = [std({ color: 0x3a4648, rough: 0.85 }), std({ color: 0xf3efe6, rough: 0.7 })];
+  const gableS = new THREE.Shape();
+  gableS.moveTo(-W / 2, 0);
+  gableS.lineTo(W / 2, 0);
+  gableS.lineTo(0, rise * (W / 2 / half));
+  gableS.closePath();
+  const gableG = new THREE.ExtrudeGeometry(gableS, { depth: 0.08, bevelEnabled: false });
+  list.forEach((p, i) => {
+    const c = colours[i], h = new THREE.Group();
+    h.position.set(-10.8 + i * 3.6, 0, 0);
     g.add(h);
-    const paint = std({ map: rep(plankT, 1, 3), color: c, rough: 0.7 });
-    mesh(box(2.8, 2.5, 3.4), paint, 0, 1.25, 0, h);
-    const roof = mesh(new THREE.ExtrudeGeometry(gable, { depth: 3.8, bevelEnabled: false }), std({ color: i % 2 ? 0xf3efe6 : 0x3a4648, rough: 0.7 }), 0, 2.5, -1.9, h);
-    roof.scale.x = 1.04;
-    mesh(box(2.84, 0.1, 0.12), M.white, 0, 2.5, 1.72, h);
-    const inside = glow(0.5, 0.33, 0.14); // the light in the hut, seen when its doors swing open
-    mesh(box(1.26, 1.85, 0.02), inside, 0, 0.98, 1.66, h).castShadow = false;
-    const doorM = std({ map: rep(plankT, 1, 2), color: new THREE.Color(c).multiplyScalar(0.72).getHex(), rough: 0.7 });
+    const paint = std({ map: rep(vboardT, 2, 1), color: c, rough: 0.72, bump: 0.5 });
+    // a timber base on bearers, raising the floor off the promenade
+    mesh(box(W + 0.1, 0.3, D + 0.1), M.darkWood, 0, 0.4, 0, h);
+    // walls: back, sides, and a front with the doorway left open
+    mesh(box(W, H, 0.08), paint, 0, Y0 + H / 2, -D / 2 + 0.04, h);
+    [-1, 1].forEach((sd) => mesh(box(0.08, H, D), paint, sd * (W / 2 - 0.04), Y0 + H / 2, 0, h));
+    const dw = 1.3, dh = 1.95, jamb = (W - dw) / 2;
+    [-1, 1].forEach((sd) => mesh(box(jamb, H, 0.08), paint, sd * (dw / 2 + jamb / 2), Y0 + H / 2, D / 2 - 0.04, h));
+    mesh(box(dw, H - dh, 0.08), paint, 0, Y0 + dh + (H - dh) / 2, D / 2 - 0.04, h);
+    // gables front and back, and the roof: two felted slabs with white bargeboards and a finial
+    [D / 2 - 0.08, -D / 2].forEach((z) => mesh(gableG, paint, 0, Y0 + H, z, h));
+    [-1, 1].forEach((sd) => {
+      const r = mesh(box(slope, 0.08, D + 0.5), felt[i % 2], (sd * half) / 2, Y0 + H + rise / 2 + 0.04, 0, h);
+      r.rotation.z = -sd * ang;
+      [1, -1].forEach((zs) => {
+        const bb = mesh(box(slope, 0.2, 0.05), M.white, (sd * half) / 2, Y0 + H + rise / 2 - 0.02, zs * (D / 2 + 0.27), h);
+        bb.rotation.z = -sd * ang;
+      });
+    });
+    mesh(box(0.1, 0.06, D + 0.55), felt[i % 2], 0, Y0 + H + rise + 0.07, 0, h);
+    mesh(cyl(0.035, 0.05, 0.5, 6), M.white, 0, Y0 + H + rise - 0.05, D / 2 + 0.3, h);
+    // white corner boards
+    [-1, 1].forEach((sx) => [-1, 1].forEach((sz) => mesh(box(0.1, H, 0.1), M.white, sx * (W / 2 - 0.02), Y0 + H / 2, sz * (D / 2 - 0.02), h)));
+    // the name board over the door
+    mesh(new THREE.PlaneGeometry(1.5, 0.28), std({ map: nameT(p.name, doorCols[i] === 0xf4eee3 ? 0x2f3b3e : doorCols[i]), rough: 0.6, bump: 0 }), 0, Y0 + dh + 0.2, D / 2 + 0.01, h);
+    // inside: a lining that warms when the doors open, the poster on the back wall, a shelf of jars and a stool
+    const lining = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide });
+    lining.userData.base = new THREE.Color(0.42, 0.32, 0.22);
+    const room = mesh(box(W - 0.18, H - 0.04, D - 0.18), lining, 0, Y0 + H / 2, 0, h);
+    room.castShadow = false;
+    const poster = new THREE.MeshBasicMaterial({ map: posterT(p.name, p.line, c === 0xf4eee3 ? 0xc67139 : c), color: 0x000000 });
+    poster.userData.base = new THREE.Color(1, 0.96, 0.88);
+    mesh(new THREE.PlaneGeometry(1.15, 1.6), poster, 0, Y0 + 1.3, -D / 2 + 0.1, h).castShadow = false;
+    const shelfM = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    shelfM.userData.base = new THREE.Color(0.55, 0.4, 0.26);
+    mesh(box(0.9, 0.04, 0.25), shelfM, -0.75 + (i % 2) * 1.5, Y0 + 1.35, -D / 2 + 0.25, h).castShadow = false;
+    const jarM = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    jarM.userData.base = new THREE.Color(new THREE.Color(colours[(i + 3) % 7]).multiplyScalar(0.8));
+    for (let k = 0; k < 3; k++) mesh(cyl(0.06, 0.06, 0.16, 8), jarM, -0.75 + (i % 2) * 1.5 - 0.28 + k * 0.28, Y0 + 1.45, -D / 2 + 0.25, h).castShadow = false;
+    const inside = glow(0.5, 0.33, 0.14); // the bulb under the ridge
+    mesh(ball(0.07, 10, 8), inside, 0, Y0 + H - 0.15, 0.2, h).castShadow = false;
+    // the doors, cross-braced, and the step up to them
+    const doorM = std({ map: rep(vboardT, 1, 1), color: doorCols[i], rough: 0.65, bump: 0.5 });
     const doors = [-1, 1].map((s) => {
       const hinge = new THREE.Group();
-      hinge.position.set(s * 0.64, 0.98, 1.72);
+      hinge.position.set(s * (dw / 2), Y0 + dh / 2, D / 2);
       h.add(hinge);
-      mesh(box(0.62, 1.85, 0.06), doorM, -s * 0.31, 0, 0, hinge);
-      mesh(ball(0.035, 8, 6), M.brass, -s * 0.56, 0.02, 0.05, hinge);
-      mesh(box(0.1, 2.5, 0.1), M.white, s * 1.38, 1.25, 1.7, h);
+      mesh(box(dw / 2 - 0.01, dh, 0.05), doorM, (-s * dw) / 4, 0, 0, hinge);
+      [-0.7, 0.7].forEach((y) => mesh(box(dw / 2 - 0.08, 0.1, 0.03), doorM, (-s * dw) / 4, y, 0.04, hinge));
+      const br = mesh(box(0.08, 1.45, 0.03), doorM, (-s * dw) / 4, 0, 0.04, hinge);
+      br.rotation.z = s * 0.5;
+      mesh(ball(0.035, 8, 6), M.brass, -s * (dw / 2 - 0.08), 0.02, 0.06, hinge);
       return hinge;
     });
-    huts.push({ doors, inside });
-    mesh(box(1.6, 0.14, 0.5), M.teak, 0, -0.07, 2.0, h);
+    mesh(box(1.5, 0.16, 0.5), M.teak, 0, 0.33, D / 2 + 0.3, h);
+    huts.push({ doors, inside, lit: [lining, poster, shelfM, jarM] });
   });
-  // two striped deckchairs
-  [[-3, 0xc67139], [4.4, 0x6aa7a8]].forEach(([x, c]) => {
+  // bunting along the terrace front, under the eaves
+  {
+    const cols = [0xc67139, 0xfaf7f2, 0x7a8a5e, 0x1c7eab, 0xf2c14e, 0xcc3f2f];
+    const flag = new THREE.BufferGeometry().setFromPoints([V(-0.13, 0, 0), V(0.13, 0, 0), V(0, -0.3, 0)]);
+    flag.computeVertexNormals();
+    const mats = cols.map((c) => std({ color: c, rough: 0.9, side: THREE.DoubleSide }));
+    const y = Y0 + H + 0.1, z = D / 2 + 0.55;
+    for (let k = 0; k < 6; k++) {
+      const x0 = -10.8 + k * 3.6, x1 = x0 + 3.6;
+      const pts = Array.from({ length: 9 }, (_, j) => V(x0 + ((x1 - x0) * j) / 8, y - Math.sin((Math.PI * j) / 8) * 0.35, z));
+      const curve = new THREE.CatmullRomCurve3(pts);
+      mesh(new THREE.TubeGeometry(curve, 12, 0.008, 4), M.iron, 0, 0, 0, g).castShadow = false;
+      for (let j = 1; j < 8; j++) {
+        const f = mesh(flag, mats[(k * 7 + j) % mats.length], 0, 0, 0, g);
+        f.position.copy(curve.getPoint(j / 8));
+        f.castShadow = false;
+      }
+    }
+  }
+  // deckchairs in striped canvas
+  const chair = (x: number, z: number, r: number, cols: string[]) => {
     const d = new THREE.Group();
-    d.position.set(x, 0.4, 2.7);
-    d.rotation.y = 0.3;
+    d.position.set(x, 0.25, z);
+    d.rotation.y = r;
     g.add(d);
-    const seat = mesh(box(0.6, 0.03, 1.2), std({ color: c, rough: 0.9 }), 0, 0.42, 0, d);
-    seat.rotation.x = -0.6;
-    [-0.3, 0.3].forEach((s) => {
-      mesh(box(0.04, 0.04, 1.4), M.wood, s, 0.42, 0, d).rotation.x = -0.6;
-      mesh(box(0.04, 0.04, 1.0), M.wood, s, 0.3, 0.1, d).rotation.x = 0.7;
+    const canvasM = std({ map: stripeT(cols), rough: 0.95, side: THREE.DoubleSide, bump: 0 });
+    const seat = mesh(new THREE.PlaneGeometry(0.5, 1.3, 1, 6), canvasM, 0, 0.45, 0, d);
+    const pos = seat.geometry.attributes.position as THREE.BufferAttribute;
+    for (let k = 0; k < pos.count; k++) pos.setZ(k, -Math.sin(((pos.getY(k) + 0.65) / 1.3) * Math.PI) * 0.12);
+    seat.geometry.computeVertexNormals();
+    seat.rotation.x = -0.95;
+    [-0.29, 0.29].forEach((s) => {
+      mesh(box(0.04, 0.04, 1.45), M.wood, s, 0.45, 0, d).rotation.x = -0.95 + Math.PI / 2 - Math.PI / 2;
+      const leg = mesh(box(0.04, 0.04, 1.05), M.wood, s, 0.3, 0.15, d);
+      leg.rotation.x = 0.75;
     });
-  });
+    mesh(box(0.62, 0.04, 0.04), M.wood, 0, 0.03, 0.55, d);
+  };
+  chair(-5.6, 2.9, 0.35, ["#C67139", "#FAF7F2"]);
+  chair(-4.5, 3.0, -0.15, ["#1C7EAB", "#FAF7F2"]);
+  chair(6.6, 2.9, 0.25, ["#7A8A5E", "#F2C14E"]);
+  // a folding table with a kettle and mugs outside the second hut
+  {
+    const t = new THREE.Group();
+    t.position.set(-7.2, 0.25, 2.7);
+    g.add(t);
+    mesh(box(0.7, 0.04, 0.5), M.white, 0, 0.62, 0, t);
+    [-1, 1].forEach((s) => (mesh(box(0.03, 0.75, 0.03), M.iron, s * 0.3, 0.3, 0, t).rotation.z = s * 0.35));
+    mesh(cyl(0.08, 0.1, 0.18, 12), M.brass, -0.15, 0.73, 0, t);
+    [0.05, 0.17, 0.27].forEach((x, k) => mesh(cyl(0.035, 0.035, 0.08, 10), [M.terracotta, M.cream, M.teal][k], x, 0.68, (k - 1) * 0.08, t));
+  }
+  // a surfboard against the fifth hut, a bucket and spade, and a lifebuoy on its post at the end of the terrace
+  {
+    const sb = mesh(new THREE.CapsuleGeometry(0.24, 1.6, 6, 12), std({ color: 0xfaf7f2, rough: 0.4 }), 3.6 + 1.62, 1.55, 1.2, g);
+    sb.scale.set(1, 1, 0.18);
+    sb.rotation.set(0, Math.PI / 2, -0.22);
+    const stripe = mesh(box(0.06, 1.9, 0.07), M.terracotta, 3.6 + 1.66, 1.55, 1.2, g);
+    stripe.rotation.z = -0.22;
+    const bucket = mesh(cyl(0.13, 0.1, 0.22, 14), std({ color: 0xcc3f2f, rough: 0.5 }), 1.9, 0.36, 3.3, g);
+    bucket.castShadow = true;
+    const spade = mesh(box(0.03, 0.55, 0.03), M.wood, 2.1, 0.5, 3.35, g);
+    spade.rotation.z = -0.4;
+    mesh(box(0.14, 0.16, 0.02), std({ color: 0x1c7eab, rough: 0.5 }), 2.0, 0.32, 3.35, g);
+    const post = new THREE.Group();
+    post.position.set(13.2, 0.25, 2.8);
+    g.add(post);
+    mesh(box(0.12, 1.7, 0.12), M.white, 0, 0.85, 0, post);
+    mesh(box(0.8, 0.9, 0.06), std({ color: 0xcc3f2f, rough: 0.6 }), 0, 1.2, 0.06, post);
+    const ring = mesh(new THREE.TorusGeometry(0.28, 0.07, 10, 24), std({ color: 0xe8772e, rough: 0.6 }), 0, 1.2, 0.14, post);
+    [0, 1, 2, 3].forEach((k) => {
+      const b = mesh(new THREE.TorusGeometry(0.28, 0.075, 6, 4, 0.35), M.white, 0, 1.2, 0.14, post);
+      b.rotation.z = k * (Math.PI / 2) - 0.17;
+    });
+    ring.castShadow = true;
+  }
   return { group: g, huts };
 }
 
