@@ -6,6 +6,7 @@ import {
   LuDatabase,
   LuFileCheck,
   LuFlaskConical,
+  LuHeartHandshake,
   LuMegaphone,
   LuMessageSquareText,
   LuPalette,
@@ -61,6 +62,7 @@ export const skills: { name: string; icon: IconType }[] = [
   { name: "Generative pattern design", icon: LuShapes },
   { name: "Design systems", icon: LuPalette },
   { name: "Accessibility (WCAG 2.2 AA)", icon: LuAccessibility },
+  { name: "Customer service and customer experience", icon: LuHeartHandshake },
   { name: "Team leadership", icon: LuUsers },
   { name: "Marketing and PR", icon: LuMegaphone },
 ];
