@@ -52,7 +52,7 @@ function answer(raw: string) {
   let text = raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   const id = text.match(/^\s*SAIL:\s*([a-z]+)\s*$/im)?.[1]?.toLowerCase();
   text = text.replace(/^\s*SAIL:.*$/gim, "").trim();
-  if (/```|Rules you always keep|^FACTS$|^\[(?:gate|pier|buoy)\]/m.test(text)) {
+  if (/```|Rules you always keep|^FACTS$|^\[(?:gate|pier|buoy)\]|\(sail id: [a-z]+;/m.test(text)) {
     return { reply: "That's not for these waters. Ask me about Axel's work, or where to sail next." };
   }
   text = text.replace(/\*\*|__|^#+\s*|^\s*[*-]\s+/gm, "").replace(/\n{2,}/g, "\n").trim();
