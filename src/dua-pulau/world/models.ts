@@ -1,5 +1,5 @@
 // Everything standing in the world, built in code: the pinisi and her oil lamp, Marea Dvīpa's gate, meru pavilion,
-// Gong and Tugu Perdamaian, the guest house, the Victorian bandstand, supper table, beach huts and lighthouse, Pip, and the planting.
+// Gong and Tugu Perdamaian, the guest house, the Victorian bandstand, the Windfall supper on the shingle, beach huts and lighthouse, Pip, and the planting.
 // Lengths are in metres. Materials are physically based so the sky lights them.
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -1907,65 +1907,235 @@ export function buildPip() {
   };
 }
 
-/** the supper table at golden hour: places laid, festoon lights overhead, crates of the day's windfall. Long side along x. */
+/** a Windfall supper on Brighton's shingle: a trestle laid for eight on a strip of boardwalk, a striped windbreak
+ *  against the breeze (land side, -z), festoon lights overhead, and the host's cargo bike with crates of the day's
+ *  surplus, Pip riding in its box. Long side along x; +z faces the sea. Colours are Windfall's own (DESIGN.md). */
+const windbreakT = tex(512, 128, (g, w, h) => {
+  const cols = ["#C67139", "#FAF7F2", "#7A8A5E", "#FAF7F2", "#1C7EAB", "#FAF7F2"];
+  const sw = w / 12;
+  for (let i = 0; i < 12; i++) {
+    g.fillStyle = cols[i % cols.length];
+    g.fillRect(i * sw, 0, sw + 1, h);
+  }
+  g.globalAlpha = 0.25;
+  speckle(g, w, h, 700, ["#3a3026", "#ffffff"], 1); // canvas weave
+  g.globalAlpha = 1;
+  const sun = g.createLinearGradient(0, 0, 0, h);
+  sun.addColorStop(0, "rgba(255,250,236,.12)");
+  sun.addColorStop(1, "rgba(60,48,32,.18)");
+  g.fillStyle = sun;
+  g.fillRect(0, 0, w, h);
+});
+const boardT = tex(256, 256, (g) => {
+  g.fillStyle = "#9c8a72";
+  g.fillRect(0, 0, 256, 256);
+  for (let y = 0; y < 256; y += 32) {
+    const v = rnd();
+    g.fillStyle = `rgb(${142 + v * 30},${124 + v * 26},${100 + v * 22})`;
+    g.fillRect(0, y + 3, 256, 27);
+  }
+  speckle(g, 256, 256, 1800, ["#5d5040", "#c9b89c"], 2);
+});
+const signT = tex(256, 320, (g, w, h) => {
+  g.fillStyle = "#1f2420";
+  g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 1400, ["#3a403a", "#151815"], 3);
+  g.textAlign = "center";
+  g.fillStyle = "#FFC6A5";
+  g.font = "bold 44px Georgia, serif";
+  g.fillText("Windfall", w / 2, 70);
+  g.fillStyle = "#f5ead8";
+  g.font = "30px Georgia, serif";
+  g.fillText("supper tonight", w / 2, 130);
+  g.fillText("on the beach", w / 2, 168);
+  g.fillStyle = "#CCDBB2";
+  g.font = "26px Georgia, serif";
+  g.fillText("8 seats", w / 2, 228);
+  g.fillText("bring a plate", w / 2, 264);
+});
+
 export function buildSupper() {
   const g = new THREE.Group();
-  mesh(box(15, 0.16, 8), std({ map: rep(plankT, 7, 2), color: 0xa98a66, rough: 0.9 }), 0, 0.08, 0, g);
-  const y0 = 0.16;
-  mesh(box(9.4, 0.1, 1.5), M.wood, 0, y0 + 0.78, 0, g);
-  [-4.2, 0, 4.2].forEach((x) => [-0.55, 0.55].forEach((z) => mesh(box(0.12, 0.74, 0.12), M.darkWood, x, y0 + 0.37, z, g)));
-  mesh(box(9.5, 0.015, 0.62), M.cream, 0, y0 + 0.84, 0, g);
-  const dishC = [0x7fbf5a, 0xffc928, 0xc67139, 0xe58a9a, 0x7a8a5e, 0xf4eee3];
-  for (let i = 0; i < 7; i++)
+  // a strip of boardwalk on the shingle, its timber skirt running down into the beach where the ground falls away
+  mesh(box(11, 0.12, 5.6), std({ map: rep(boardT, 6, 3), rough: 0.95 }), 0, 0.06, -0.2, g);
+  mesh(box(10.9, 1.6, 5.5), std({ map: rep(woodT, 6, 1), color: 0x7a6a58, rough: 0.95 }), 0, -0.8, -0.2, g);
+  const y0 = 0.12;
+  // the trestle: a board on two A-frames, a terracotta cloth falling over the long sides, a pearl runner with sage hems
+  const top = y0 + 0.76;
+  mesh(box(4.8, 0.05, 0.95), M.wood, 0, top - 0.03, 0, g);
+  [-1.7, 1.7].forEach((x) => {
     [-1, 1].forEach((s) => {
-      const x = -3.9 + i * 1.3;
-      // chair
-      const c = new THREE.Group();
-      c.position.set(x, y0, s * 1.25);
-      c.rotation.y = s > 0 ? Math.PI : 0;
-      g.add(c);
-      mesh(box(0.48, 0.06, 0.46), M.wood, 0, 0.46, 0, c);
-      mesh(box(0.44, 0.05, 0.42), M.terracotta, 0, 0.5, 0, c);
-      mesh(box(0.48, 0.5, 0.05), M.wood, 0, 0.78, -0.22, c);
-      [-0.2, 0.2].forEach((a) => [-0.19, 0.19].forEach((b) => mesh(box(0.05, 0.46, 0.05), M.darkWood, a, 0.23, b, c)));
-      // place setting
-      mesh(cyl(0.16, 0.12, 0.025, 20), M.white, x, y0 + 0.86, s * 0.5, g);
-      mesh(cyl(0.035, 0.03, 0.12, 10), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, transmission: 0.9, thickness: 0.05 }), x + 0.24, y0 + 0.91, s * 0.42, g);
+      [-0.1, 0.1].forEach((dx) => spar(V(x + dx, y0, s * 0.42), V(x + dx * 0.6, top - 0.06, s * 0.08), 0.035, M.darkWood, g));
     });
-  for (let i = 0; i < 6; i++) {
-    const b = mesh(new THREE.SphereGeometry(0.2, 18, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), std({ color: dishC[i], rough: 0.4, side: THREE.DoubleSide }), -3.3 + i * 1.3, y0 + 1.05, 0, g);
-    mesh(ball(0.15, 12, 8), std({ color: [0xd9a441, 0x9c3b22, 0x6a9a3a, 0xe9d9a8, 0xb5532a, 0x7a9a4a][i], rough: 0.9 }), 0, -0.08, 0, b).scale.y = 0.5;
+    mesh(box(0.06, 0.05, 0.84), M.darkWood, x, y0 + 0.28, 0, g);
+  });
+  const cloth = std({ color: 0xc67139, rough: 0.95, side: THREE.DoubleSide });
+  mesh(box(5.0, 0.02, 1.15), cloth, 0, top, 0, g);
+  [-1, 1].forEach((s) => mesh(box(5.0, 0.26, 0.02), cloth, 0, top - 0.13, s * 0.575, g));
+  mesh(box(4.4, 0.012, 0.34), std({ color: 0xfaf7f2, rough: 0.9 }), 0, top + 0.016, 0, g);
+  [-1, 1].forEach((s) => mesh(box(4.4, 0.013, 0.03), M.sage, 0, top + 0.017, s * 0.17, g));
+  // eight mismatched chairs: painted ladder-backs, a folding bistro chair, a stool, in Windfall's colours
+  const paint = [0xc67139, 0x7a8a5e, 0x1c7eab, 0xfaf7f2, 0xcc3f2f, 0x3b793f, 0x3f616f, 0xe08a52].map((c) => std({ color: c, rough: 0.7 }));
+  const xs = [-1.8, -0.6, 0.6, 1.8];
+  let k = 0;
+  xs.forEach((x, i) =>
+    [-1, 1].forEach((s) => {
+      const c = new THREE.Group(), m = paint[k], kind = (i * 2 + (s > 0 ? 1 : 0) + k) % 3;
+      c.position.set(x + (rnd() - 0.5) * 0.14, y0, s * 0.92);
+      c.rotation.y = (s > 0 ? Math.PI : 0) + (rnd() - 0.5) * 0.28;
+      g.add(c);
+      if (kind === 0) {
+        // ladder-back
+        mesh(box(0.44, 0.05, 0.42), m, 0, 0.46, 0, c);
+        [-0.19, 0.19].forEach((a) => [-0.18, 0.18].forEach((b) => mesh(box(0.04, b < 0 ? 0.95 : 0.46, 0.04), m, a, b < 0 ? 0.475 : 0.23, b, c)));
+        [0.62, 0.76, 0.9].forEach((y) => mesh(box(0.38, 0.05, 0.02), m, 0, y, -0.18, c));
+      } else if (kind === 1) {
+        // folding bistro chair: round seat, splayed metal legs, a slatted back
+        mesh(cyl(0.21, 0.21, 0.035, 18), m, 0, 0.46, 0, c);
+        [-1, 1].forEach((a) => {
+          spar(V(a * 0.18, 0, 0.18), V(a * 0.16, 0.9, -0.2), 0.014, M.iron, c);
+          spar(V(a * 0.18, 0, -0.2), V(a * 0.16, 0.45, 0.16), 0.014, M.iron, c);
+        });
+        [0.66, 0.74, 0.82].forEach((y) => mesh(box(0.34, 0.05, 0.015), m, 0, y, -0.17 - (y - 0.66) * 0.04, c));
+      } else {
+        // a tall stool brought out from the kitchen
+        mesh(cyl(0.18, 0.18, 0.05, 16), m, 0, 0.5, 0, c);
+        [0, 1, 2, 3].forEach((q) => {
+          const a = q * Math.PI / 2 + Math.PI / 4;
+          spar(V(Math.cos(a) * 0.13, 0.48, Math.sin(a) * 0.13), V(Math.cos(a) * 0.2, 0, Math.sin(a) * 0.2), 0.016, M.darkWood, c);
+        });
+        mesh(new THREE.TorusGeometry(0.15, 0.012, 6, 20).rotateX(Math.PI / 2), M.darkWood, 0, 0.2, 0, c);
+      }
+      // place setting: plate, sage napkin, glass
+      mesh(cyl(0.14, 0.11, 0.022, 20), M.white, x, top + 0.02, s * 0.36, g);
+      mesh(box(0.1, 0.008, 0.18), M.sage, x - 0.22, top + 0.016, s * 0.36, g);
+      mesh(cyl(0.032, 0.028, 0.11, 10), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, transmission: 0.9, thickness: 0.05 }), x + 0.2, top + 0.065, s * 0.28, g);
+      k++;
+    }),
+  );
+  // shared dishes down the runner: bread, salad, a pie, a bowl of apples, a jug of water
+  {
+    const loaf = mesh(ball(0.15, 14, 10), std({ color: 0xb5793a, rough: 0.8 }), -1.25, top + 0.08, 0, g);
+    loaf.scale.set(1.7, 0.7, 0.9);
+    mesh(box(0.5, 0.025, 0.22), M.wood, -1.25, top + 0.025, 0, g);
+    const bowl = (x: number, col: number, fill: number) => {
+      mesh(new THREE.SphereGeometry(0.17, 18, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), std({ color: col, rough: 0.4, side: THREE.DoubleSide }), x, top + 0.18, 0, g);
+      const f = mesh(ball(0.14, 12, 8), std({ color: fill, rough: 0.9 }), x, top + 0.13, 0, g);
+      f.scale.y = 0.45;
+    };
+    bowl(-0.45, 0xfaf7f2, 0x6a9a3a);
+    mesh(cyl(0.19, 0.16, 0.06, 22), std({ color: 0xc67139, rough: 0.5 }), 0.35, top + 0.04, 0, g);
+    mesh(cyl(0.17, 0.17, 0.03, 22), std({ color: 0xd9a441, rough: 0.85 }), 0.35, top + 0.075, 0, g);
+    bowl(1.2, 0x3f616f, 0xcc3f2f);
+    for (let i = 0; i < 5; i++) mesh(ball(0.055, 10, 8), std({ color: 0xcc3f2f, rough: 0.45 }), 1.2 + Math.cos(i * 1.3) * 0.07, top + 0.17, Math.sin(i * 1.3) * 0.07, g);
+    mesh(cyl(0.07, 0.09, 0.24, 14), new THREE.MeshPhysicalMaterial({ color: 0xdff2f5, roughness: 0.05, transmission: 0.85, thickness: 0.2 }), 1.85, top + 0.12, 0.08, g);
   }
-  const candles = [-2.6, 0, 2.6].map((x) => {
-    mesh(cyl(0.06, 0.06, 0.16, 10), new THREE.MeshPhysicalMaterial({ color: 0xffe2b0, roughness: 0.1, transmission: 0.6, thickness: 0.1 }), x + 0.65, y0 + 0.93, 0, g);
-    const f = mesh(ball(0.035, 8, 6), glow(4, 2.4, 0.8), x + 0.65, y0 + 0.95, 0, g);
+  // jam-jar candles
+  const candles = [-1.85, -0.85, 0.8].map((x) => {
+    mesh(cyl(0.05, 0.05, 0.12, 12), new THREE.MeshPhysicalMaterial({ color: 0xffe6c0, roughness: 0.1, transmission: 0.7, thickness: 0.1 }), x, top + 0.06, 0.02, g);
+    const f = mesh(ball(0.026, 8, 6), glow(4, 2.4, 0.8), x, top + 0.09, 0.02, g);
     f.castShadow = false;
     return f;
   });
-  // festoon lights between four poles
-  const P = [V(-6.6, y0 + 4.3, -3.2), V(6.6, y0 + 4.3, -3.2), V(6.6, y0 + 4.3, 3.2), V(-6.6, y0 + 4.3, 3.2)];
-  P.forEach((p) => mesh(cyl(0.06, 0.08, 4.3, 8), M.iron, p.x, y0 + 2.15, p.z, g));
+  // the windbreak: striped canvas between timber stakes, bellied by the wind off the sea, on the land side
+  {
+    const zW = -2.55, xs = [-4.8, -2.4, 0, 2.4, 4.8], H = 1.35;
+    xs.forEach((x) => mesh(cyl(0.035, 0.045, H + 0.35, 8), M.darkWood, x, y0 + (H + 0.35) / 2 - 0.1, zW, g));
+    const geo = new THREE.PlaneGeometry(9.6, H, 48, 6), p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), u = ((x + 4.8) / 2.4) % 1;
+      p.setZ(i, -Math.sin(Math.PI * u) * 0.16);
+    }
+    geo.computeVertexNormals();
+    const wb = mesh(geo, std({ map: rep(windbreakT, 2, 1), rough: 0.9, side: THREE.DoubleSide, bump: 0.3 }), 0, y0 + H / 2 + 0.12, zW, g);
+    wb.castShadow = true;
+  }
+  // festoon lights from the windbreak's end stakes to two poles on the sea side
+  const P = [V(-4.8, y0 + 2.6, -2.55), V(4.8, y0 + 2.6, -2.55), V(4.8, y0 + 2.6, 2.4), V(-4.8, y0 + 2.6, 2.4)];
+  [P[0], P[1]].forEach((p) => mesh(cyl(0.03, 0.035, 1.2, 6), M.darkWood, p.x, y0 + 2.0, p.z, g));
+  [P[2], P[3]].forEach((p) => mesh(cyl(0.05, 0.07, 2.6, 8), M.iron, p.x, y0 + 1.3, p.z, g));
   const bulbs: THREE.BufferGeometry[] = [], wire: THREE.Vector3[] = [];
   [[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [1, 3]].forEach(([a, b]) => {
-    const n = Math.round(P[a].distanceTo(P[b]) / 0.75);
+    const n = Math.round(P[a].distanceTo(P[b]) / 0.7);
     let prev = P[a].clone();
     for (let i = 1; i <= n; i++) {
-      const t = i / n, p = P[a].clone().lerp(P[b], t);
-      p.y -= Math.sin(Math.PI * t) * 0.9;
-      wire.push(prev, p.clone());
-      prev = p.clone();
-      if (i < n) bulbs.push(ball(0.075, 8, 6).translate(p.x, p.y - 0.1, p.z));
+      const t = i / n, q = P[a].clone().lerp(P[b], t);
+      q.y -= Math.sin(Math.PI * t) * 0.55;
+      wire.push(prev, q.clone());
+      prev = q.clone();
+      if (i < n) bulbs.push(ball(0.065, 8, 6).translate(q.x, q.y - 0.09, q.z));
     }
   });
   lines(wire, 0x1a1a1a, g);
   const festoonM = glow(3.4, 2.3, 1.0);
   g.add(new THREE.Mesh(mergeGeometries(bulbs)!, festoonM));
-  // crates of surplus: apples, squash and greens
-  [[-6.2, 2.2, 0xb5352a], [-5.2, 2.6, 0x7fbf5a], [-6.0, 3.1, 0xe08a2a]].forEach(([x, z, c]) => {
-    mesh(box(0.8, 0.45, 0.6), std({ map: plankT, color: 0xb08a5a, rough: 0.9 }), x, y0 + 0.23, z, g);
-    for (let i = 0; i < 9; i++) mesh(ball(0.11, 10, 8), std({ color: c, rough: 0.5 }), x - 0.25 + (i % 3) * 0.25, y0 + 0.5 + (i > 5 ? 0.08 : 0), z - 0.15 + Math.floor(i / 3) * 0.16, g);
-  });
-  return { group: g, festoonM, candles };
+  // the host's long-john cargo bike, parked at the sea end, its box full of the day's surplus; Pip rides on top
+  const pipSeat = new THREE.Object3D();
+  {
+    const b = new THREE.Group();
+    b.position.set(4.0, y0, 0.9);
+    b.rotation.y = -0.35;
+    g.add(b);
+    const frameM = std({ color: 0x1c7eab, rough: 0.35, metal: 0.4 });
+    const wheel = (x: number, r: number) => {
+      mesh(new THREE.TorusGeometry(r, 0.03, 8, 28), M.iron, x, r, 0, b);
+      mesh(new THREE.TorusGeometry(r - 0.035, 0.012, 6, 28), M.brass, x, r, 0, b);
+      const sp: THREE.Vector3[] = [];
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        sp.push(V(x, r, 0), V(x + Math.cos(a) * (r - 0.03), r + Math.sin(a) * (r - 0.03), 0));
+      }
+      lines(sp, 0x9a9a9a, b);
+      mesh(cyl(0.03, 0.03, 0.1, 8).rotateX(Math.PI / 2), M.iron, x, r, 0, b);
+    };
+    wheel(-1.05, 0.34); // rear
+    wheel(0.95, 0.24); // small front wheel under the box
+    // frame: rear triangle, the long low spine under the box, head tube and bars
+    spar(V(-1.05, 0.34, 0), V(-0.55, 0.95, 0), 0.025, frameM, b);
+    spar(V(-1.05, 0.34, 0), V(-0.45, 0.32, 0), 0.025, frameM, b);
+    spar(V(-0.45, 0.32, 0), V(-0.55, 0.95, 0), 0.028, frameM, b);
+    spar(V(-0.45, 0.32, 0), V(0.95, 0.24, 0), 0.03, frameM, b);
+    spar(V(-0.55, 0.95, 0), V(-0.05, 0.88, 0), 0.025, frameM, b);
+    spar(V(-0.05, 1.05, 0), V(-0.1, 0.45, 0), 0.025, frameM, b);
+    spar(V(-0.15, 1.08, -0.28), V(-0.15, 1.08, 0.28), 0.015, M.iron, b);
+    mesh(box(0.22, 0.05, 0.12), M.darkWood, -0.6, 1.0, 0, b); // saddle
+    // the box between the bars and the front wheel
+    const bx = 0.45, by = 0.62;
+    mesh(box(0.9, 0.04, 0.62), M.teak, bx, by - 0.2, 0, b);
+    [-1, 1].forEach((s) => mesh(box(0.9, 0.44, 0.03), M.teak, bx, by, s * 0.31, b));
+    [-1, 1].forEach((s) => mesh(box(0.03, 0.44, 0.62), M.teak, bx + s * 0.45, by, 0, b));
+    // crates in the box: apples, squash, greens
+    [[0.2, 0xcc3f2f], [0.68, 0xe08a2a]].forEach(([x, col]) => {
+      for (let i = 0; i < 9; i++) mesh(ball(0.07, 10, 8), std({ color: col, rough: 0.5 }), x - 0.12 + (i % 3) * 0.12, by + 0.06, -0.15 + Math.floor(i / 3) * 0.15, b);
+    });
+    for (let i = 0; i < 4; i++) {
+      const lf = mesh(new THREE.ConeGeometry(0.07, 0.3, 6), std({ color: 0x3b793f, rough: 0.7 }), 0.75 + (i % 2) * 0.08, by + 0.2, -0.18 + i * 0.12, b);
+      lf.rotation.z = -0.3 + i * 0.15;
+    }
+    pipSeat.position.set(0.45, by - 0.02, 0);
+    b.add(pipSeat);
+    // more crates stacked on the boards beside the bike
+    [[-0.1, -0.85, 0, 0xcc3f2f], [-0.1, -0.85, 0.47, 0xd9a441], [0.75, -0.9, 0, 0x7a8a5e]].forEach(([x, z, y, col]) => {
+      mesh(box(0.62, 0.42, 0.45), std({ map: plankT, color: 0xb08a5a, rough: 0.9 }), x, y + 0.21, z, b);
+      for (let i = 0; i < 6; i++) mesh(ball(0.09, 10, 8), std({ color: col, rough: 0.55 }), x - 0.18 + (i % 3) * 0.18, y + 0.45, z - 0.1 + Math.floor(i / 3) * 0.2, b);
+    });
+  }
+  // an A-board at the top of the beach, chalked for tonight
+  {
+    const sgn = new THREE.Group();
+    sgn.position.set(-4.3, y0, 1.6);
+    sgn.rotation.y = 0.4;
+    g.add(sgn);
+    [-1, 1].forEach((s) => {
+      const leaf = new THREE.Group();
+      leaf.position.set(0, 0.9, 0);
+      leaf.rotation.x = -s * 0.2;
+      sgn.add(leaf);
+      mesh(box(0.66, 0.92, 0.04), M.darkWood, 0, -0.46, s * 0.02, leaf);
+      mesh(new THREE.PlaneGeometry(0.56, 0.7).rotateY(s > 0 ? 0 : Math.PI), std({ map: signT, rough: 0.95, bump: 0 }), 0, -0.44, s * 0.045, leaf);
+    });
+  }
+  return { group: g, festoonM, candles, pipSeat };
 }
 
 /** a terrace of beach huts in Brighton's colours: Bootcamp Connect and the earlier work. Doors face +z. */

@@ -45,6 +45,11 @@ export function App() {
   const [sailing, setSailing] = useState(false);
   const [near, setNear] = useState<PlaceId | null>(null);
   const [open, setOpen] = useState<PlaceId | null>(null);
+  const [looking, setLooking] = useState(false); // moored, panel tucked away, walking the camera round the place
+  const lookBtn = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (looking) lookBtn.current?.focus({ preventScroll: true });
+  }, [looking]);
   const [found, setFound] = useState<PlaceId[]>(logged); // a place moored at on an earlier visit was found then
   const [waters, setWaters] = useState<keyof typeof WATERS>("strait");
   const [muted, setMuted] = useState(false);
@@ -59,8 +64,13 @@ export function App() {
   const [asking, setAsking] = useState(false); // Pip's question panel
   const [askThread, setAskThread] = useState<AskLine[]>([]); // kept while the panel is shut, so a conversation picks up again
 
+  const look = useCallback((on: boolean) => {
+    setLooking(on);
+    world.current?.look(on);
+  }, []);
   const moor = useCallback((id: PlaceId | null) => {
     setOpen(id);
+    setLooking(false);
     setBound(null);
     setMenu(false);
     setTalk(null);
@@ -154,13 +164,14 @@ export function App() {
       const k = e.key.toLowerCase();
       if (k === "escape") {
         if (menu) closeLog();
+        else if (looking) look(false);
         else if (open) moor(null);
       } else if (k === "m" && lit) toggleSound();
       else if ((k === "e" || k === "enter") && near && !open && sailing && !(e.target as HTMLElement | null)?.closest?.("button,a")) moor(near);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, open, near, sailing, lit, moor, toggleSound]);
+  }, [menu, open, near, sailing, lit, moor, toggleSound, looking, look]);
   useEffect(() => {
     if (open) closeBtn.current?.focus({ preventScroll: true });
   }, [open]);
@@ -231,7 +242,15 @@ export function App() {
           </div>
         )}
 
-        {here && (
+        {here && looking && (
+          <div className={`dp-look is-${here.island}`} role="group" aria-label={`Looking round ${here.name}`}>
+            <p>Drag to walk round {here.name.replace(/^The /, "the ")} · scroll or pinch to come closer · arrow keys too</p>
+            <button type="button" className="dp-btn dp-btn-gold" onClick={() => look(false)} ref={lookBtn}>
+              Back to {here.holds}
+            </button>
+          </div>
+        )}
+        {here && !looking && (
           <aside className={`dp-panel is-${here.island}`} aria-label={`${here.name}: ${here.holds}`}>
             <header>
               <p className={`dp-kicker is-${here.island}`}>{ISLAND_NAME[here.island]} · {here.name}</p>
@@ -242,7 +261,10 @@ export function App() {
               <PlaceBody p={here} weather={weather} />
             </div>
             <footer>
-              <button type="button" className="dp-btn dp-btn-line" onClick={() => moor(null)}>Cast off</button>
+              <span className="dp-foot-l">
+                <button type="button" className="dp-btn dp-btn-line" onClick={() => moor(null)}>Cast off</button>
+                <button type="button" className="dp-btn dp-btn-line" onClick={() => look(true)} title="Hide this panel and walk the view round the place">Look around</button>
+              </span>
               {next && <button type="button" className="dp-btn dp-btn-gold" onClick={() => sailTo(next.id)}>Sail on to {next.name.replace(/^The /, "the ")} →</button>}
             </footer>
           </aside>

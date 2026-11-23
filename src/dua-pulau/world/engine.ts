@@ -51,6 +51,8 @@ export type World = {
   pipTalking: (on: boolean) => void;
   /** follow her from astern, or from her starboard or port side */
   setView: (v: BoatView) => void;
+  /** moored: hide the panel's room and let the camera have the whole screen */
+  look: (on: boolean) => void;
   chart: () => Chart;
   /** where she is now and which way she heads (yaw 0 = east, turning to the north) */
   boat: () => { x: number; z: number; yaw: number };
@@ -67,7 +69,8 @@ const SITES: Site[] = [
   { id: "guesthouse", island: "md", x: -176, z: -18, pad: [19, 3], view: [44, 11] },
   { id: "barong", island: "md", x: -98, z: 46, pad: [8, 3.4], view: [26, 8] },
   { id: "pier", island: "wf", x: 72, z: 22, pad: [7, 3.1], view: [34, 11], focus: PIER_LEN - 6 },
-  { id: "table", island: "wf", x: 112, z: -28, pad: [13, 4.2], view: [21, 6.5] },
+  // down on the shingle at the top of the beach, below the downs
+  { id: "table", island: "wf", x: 105.5, z: -45.6, pad: [10, 1.5], view: [21, 6.5] },
   { id: "huts", island: "wf", x: 128, z: 56, pad: [16, 2.3], view: [38, 9] },
   { id: "lighthouse", island: "wf", x: 178, z: 2, pad: [10, 3.2], view: [54, 16] },
   // she lies on the far side of the medallion: the camera stands to the south, and a mooring there put it inside the hull
@@ -345,21 +348,24 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   const pip = buildPip();
   pip.group.scale.setScalar(0.8);
   {
-    const s = site("table"), d = out(s);
-    pip.group.position.set(s.x + d.x * 8.5, heightAt(s.x, s.z) + 0.16, s.z + d.y * 8.5);
+    // Pip rides in the box of the host's cargo bike
+    supper.group.updateMatrixWorld(true);
+    supper.pipSeat.getWorldPosition(pip.group.position);
+    pip.group.scale.setScalar(0.38);
     scene.add(pip.group);
   }
   // Windfall's shore, dressed as Brighton's: raised beds by the supper table, and groynes combing the shingle
   {
-    const s = site("table"), d = out(s), y = heightAt(s.x, s.z);
+    const s = site("table"), d = out(s);
+    // the raised beds stand behind the supper, where the shingle meets the downs
     [-1, 1].forEach((sd, i) => {
-      const b = buildPlanter(i);
-      b.position.set(s.x + d.x * 6.4 - d.y * sd * 4.6, y, s.z + d.y * 6.4 + d.x * sd * 4.6);
+      const b = buildPlanter(i), px = s.x - d.x * 7.5 - d.y * sd * 5, pz = s.z - d.y * 7.5 + d.x * sd * 5;
+      b.position.set(px, heightAt(px, pz), pz);
       b.rotation.y = Math.atan2(-d.y, d.x) + Math.PI / 2;
       scene.add(b);
     });
     const I = ISLANDS[1];
-    [100, 132, 205, 238].forEach((deg) => {
+    [100, 132, 205, 230].forEach((deg) => {
       const a = THREE.MathUtils.degToRad(deg), dx = Math.cos(a), dz = Math.sin(a);
       let r = I.r * 0.4;
       while (r < I.r * 1.4 && heightAt(I.x + dx * r, I.z + dz * r) > 0.9) r += 0.5; // walk out to the top of the beach
@@ -581,6 +587,15 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   const found = new Set<PlaceId>(seen);
   const keys: Record<string, boolean> = {};
   let pointer: PointerEvent | null = null;
+  // moored, the camera can be walked round the place: drag to circle it, scroll or pinch to come closer, arrows too
+  const orb = { yaw: 0, pitch: 0, zoom: 1 }, orbWant = { yaw: 0, pitch: 0, zoom: 1 };
+  const touches = new Map<number, { x: number; y: number }>();
+  let pinch0 = 0, zoom0 = 1, looking = false;
+  const orbiting = () => !!moored && phase === "sailing";
+  const pinchGap = () => {
+    const [a, b] = [...touches.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
   const flash = new Array(7).fill(-9);
   let beat = 0;
   setSun(NIGHT, AZ0, true);
@@ -588,7 +603,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   const steering = () => phase === "sailing" && !moored;
   const onKey = (e: KeyboardEvent) => {
     const k = e.key.toLowerCase(), down = e.type === "keydown";
-    if (down && !steering()) return;
+    if (down && !steering() && !orbiting()) return;
     if ((e.target as HTMLElement | null)?.closest?.("input,textarea,select,[contenteditable]")) return;
     if (down && inView && ["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) e.preventDefault();
     if (down && k === "v" && !e.repeat) {
@@ -611,13 +626,41 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       ray.setFromCamera(ndc, camera);
       if (ray.intersectObject(crew.group, true).length) return void ev.onPip();
     }
+    if (orbiting()) {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      canvas.setPointerCapture(e.pointerId);
+      if (touches.size === 2) (pinch0 = pinchGap()), (zoom0 = orbWant.zoom);
+      return;
+    }
     if (!steering()) return;
     pointer = e;
     auto = null;
     canvas.setPointerCapture(e.pointerId);
   };
-  const pMove = (e: PointerEvent) => void (pointer && (pointer = e));
-  const pUp = () => void (pointer = null);
+  const pMove = (e: PointerEvent) => {
+    const p = touches.get(e.pointerId);
+    if (p) {
+      if (touches.size === 1) {
+        orbWant.yaw -= (e.clientX - p.x) * 0.006;
+        orbWant.pitch = clamp(orbWant.pitch + (e.clientY - p.y) * 0.004, -0.25, 1.1);
+      }
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (touches.size === 2 && pinch0 > 0) orbWant.zoom = clamp((zoom0 * pinch0) / Math.max(1, pinchGap()), 0.28, 1.8);
+      return;
+    }
+    if (pointer) pointer = e;
+  };
+  const pUp = (e: PointerEvent) => {
+    touches.delete(e.pointerId);
+    pointer = null;
+  };
+  const onWheel = (e: WheelEvent) => {
+    if (!orbiting()) return;
+    e.preventDefault();
+    orbWant.zoom = clamp(orbWant.zoom * Math.exp(e.deltaY * 0.0012), 0.28, 1.8);
+  };
+  canvas.addEventListener("wheel", onWheel, { passive: false });
   canvas.addEventListener("pointerdown", pDown);
   canvas.addEventListener("pointermove", pMove);
   canvas.addEventListener("pointerup", pUp);
@@ -661,27 +704,41 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
         const pull = clamp((ring - r) / 22, -1, 1);
         vx = tx * autoSide + (rx / r) * pull;
         vz = tz * autoSide + (rz / r) * pull;
-      } else {
-        autoIsle = null;
-        // the pier (anything large in the water) lies across her course: keep a beam's length off it and work round
-        // whichever end is nearer the mooring, instead of pressing into it
-        for (const k of rocks) {
-          if (k.r < 2.5) continue;
-          const clear = k.r + 7;
-          let cut = false;
-          for (let s = 0; s <= Math.min(dist, 70) && !cut; s += 3) cut = near2(k, st.x + vx * s, st.z + vz * s).d < clear;
-          if (!cut) continue;
-          const n = near2(k, st.x, st.z), nx = (st.x - n.px) / (n.d || 1), nz = (st.z - n.pz) / (n.d || 1);
+        const l = Math.hypot(vx, vz) || 1;
+        vx /= l;
+        vz /= l;
+      } else autoIsle = null;
+      // the pier (anything large in the water) lies across her course, whether she is heading straight for the mooring
+      // or rounding an island (the bandstand's pier reaches out past the coast she follows): keep a beam's length off
+      // it and work round it on the side her course already favours, instead of pressing into it
+      for (const k of rocks) {
+        if (k.r < 2.5) continue;
+        const clear = k.r + 7;
+        let cut = false;
+        for (let s = 0; s <= Math.min(dist, 70) && !cut; s += 3) cut = near2(k, st.x + vx * s, st.z + vz * s).d < clear;
+        if (!cut) continue;
+        const n = near2(k, st.x, st.z), nx = (st.x - n.px) / (n.d || 1), nz = (st.z - n.pz) / (n.d || 1);
+        const len = Math.hypot(k.bx - k.ax, k.bz - k.az);
+        if (len > 1) {
+          // a pier runs out from the land, so the only way round is past its seaward end: make for a point clear beyond it
+          const sea = heightAt(k.ax, k.az) < heightAt(k.bx, k.bz), ex = sea ? k.ax : k.bx, ez = sea ? k.az : k.bz;
+          const ux = (ex - (sea ? k.bx : k.ax)) / len, uz = (ez - (sea ? k.bz : k.az)) / len;
+          let wx = ex + ux * (clear + 4), wz = ez + uz * (clear + 4);
+          // past the pier's whole length, head and all, not only this stretch of it
+          for (let i = 0; i < 20 && rocks.some((q) => q.r >= 2.5 && near2(q, wx, wz).d < q.r + 9); i++) (wx += ux * 3), (wz += uz * 3);
+          vx = wx - st.x + nx * clamp(clear + 3 - n.d, 0, 6);
+          vz = wz - st.z + nz * clamp(clear + 3 - n.d, 0, 6);
+        } else {
           let tx = -nz, tz = nx;
-          if (tx * dx + tz * dz < 0) (tx = -tx), (tz = -tz);
+          if (tx * vx + tz * vz < 0) (tx = -tx), (tz = -tz);
           const pull = clamp((clear + 3 - n.d) / 6, -0.6, 1);
           vx = tx + nx * pull;
           vz = tz + nz * pull;
-          const l = Math.hypot(vx, vz) || 1;
-          vx /= l;
-          vz /= l;
-          break;
         }
+        const l = Math.hypot(vx, vz) || 1;
+        vx /= l;
+        vz /= l;
+        break;
       }
       const off = wrap(Math.atan2(-vz, vx) - st.yaw);
       turn = clamp(off * 2.2, -1, 1);
@@ -812,11 +869,29 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       const cx = s.x + d.x * (s.focus ?? 0), cz = s.z + d.y * (s.focus ?? 0), ground = Math.max(0, heightAt(cx, cz));
       // stand well off to one side of her: the boat lies on the line from the place straight out to sea, and seen from
       // astern her sails would hide what she has come to see. From the quarter she frames it instead.
-      const ca = Math.cos(0.72), sa = Math.sin(0.72), ox = d.x * ca - d.y * sa, oz = d.y * ca + d.x * sa;
-      wantPos.set(cx + ox * dist * far, h * far + ground * 0.6, cz + oz * dist * far);
-      wantPos.y = Math.max(wantPos.y, heightAt(wantPos.x, wantPos.z) + 4);
+      // ...and from there the visitor can walk the camera round it: arrows or A/D circle, W/S come closer
+      const kTurn = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0), kZoom = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+      orbWant.yaw += kTurn * dt * 0.9;
+      orbWant.zoom = clamp(orbWant.zoom * Math.exp(kZoom * dt * 0.9), 0.28, 1.8);
+      const ko = reduce ? 1 : Math.min(1, dt * 6);
+      orb.yaw += (orbWant.yaw - orb.yaw) * ko;
+      orb.pitch += (orbWant.pitch - orb.pitch) * ko;
+      orb.zoom += (orbWant.zoom - orb.zoom) * ko;
+      const A = 0.72 + orb.yaw, ca = Math.cos(A), sa = Math.sin(A), ox = d.x * ca - d.y * sa, oz = d.y * ca + d.x * sa, r = dist * far * orb.zoom;
+      wantPos.set(cx + ox * r, (h * far + orb.pitch * dist * far) * orb.zoom + ground * 0.6 + (1 - orb.zoom) * ground * 0.4, cz + oz * r);
+      wantPos.y = Math.max(wantPos.y, heightAt(wantPos.x, wantPos.z) + 1.4 + 2.6 * Math.min(1, orb.zoom));
+      // walking round must not put the camera inside her: keep it outside an ellipse round her hull and rig
+      {
+        const bx = wantPos.x - st.x, bz = wantPos.z - st.z, along = bx * fx + bz * fz, across = bx * -fz + bz * fx, L = 19, B = 7;
+        const e = Math.hypot(along / L, across / B);
+        if (e < 1.08 && wantPos.y < 26) {
+          const k2 = 1.08 / Math.max(e, 0.05);
+          wantPos.x = st.x + (along * k2) * fx + (across * k2) * -fz;
+          wantPos.z = st.z + (along * k2) * fz + (across * k2) * fx;
+        }
+      }
       // on a phone the panel rises over the lower half, so aim low and the place sits in the clear upper part
-      wantLook.set(cx, ground + h * 0.42 - (tall ? dist * 0.42 : 0), cz);
+      wantLook.set(cx, ground + h * 0.42 * Math.min(1, 0.45 + orb.zoom * 0.55) - (tall && !looking ? dist * 0.42 * orb.zoom : 0), cz);
       k = Math.min(1, dt * 1.3);
     } else {
       wantPos.copy(followPos);
@@ -833,7 +908,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     camera.position.copy(camPos);
     camera.lookAt(camLook);
     // a panel covers the right of a wide screen while moored: slide the picture left so the place stays in view
-    const w = holder.clientWidth, h = holder.clientHeight, wantShift = moored && !tall && w > 720 ? Math.min(250, w * 0.17) : 0;
+    const w = holder.clientWidth, h = holder.clientHeight, wantShift = moored && !looking && !tall && w > 720 ? Math.min(250, w * 0.17) : 0;
     shift += (wantShift - shift) * (reduce ? 1 : Math.min(1, dt * 2));
     if (shift > 0.5) camera.setViewOffset(w, h, shift, 0, w, h);
     else if (camera.view) camera.clearViewOffset();
@@ -1095,6 +1170,9 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     },
     moor(id) {
       moored = id ? site(id) : null;
+      Object.assign(orbWant, { yaw: 0, pitch: 0, zoom: 1 });
+      touches.clear();
+      looking = false;
       if (!moored) return;
       auto = null;
       st.v = 0;
@@ -1106,6 +1184,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     setMuted: audio.setMuted,
     pipTalking: (on) => void (talking = on),
     setView: (v) => void (view = v),
+    look: (on) => void (looking = on),
     skipTime() {
       if (phase !== "sailing") return;
       const next = PARTS.find((p) => p[0] > tod + 1) ?? PARTS[0];
@@ -1134,6 +1213,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       window.removeEventListener("keyup", onKey);
       window.removeEventListener("blur", clearKeys);
       document.removeEventListener("visibilitychange", onVis);
+      canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("pointerdown", pDown);
       canvas.removeEventListener("pointermove", pMove);
       canvas.removeEventListener("pointerup", pUp);

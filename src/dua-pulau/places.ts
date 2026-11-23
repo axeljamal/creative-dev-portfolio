@@ -93,10 +93,10 @@ export const PLACES: Place[] = [
   {
     id: "table",
     island: "wf",
-    name: "The supper table",
+    name: "Supper on the beach",
     holds: "Windfall",
     quest: "Sit down to supper at Windfall",
-    blurb: "A long table laid for the neighbours, crates of the day's surplus beside it, and Pip waving you in.",
+    blurb: "A trestle laid for eight on the shingle, a striped windbreak against the breeze, and the host's cargo bike full of the day's surplus, with Pip riding in the box.",
     study: study("Windfall"),
     links: [],
   },
