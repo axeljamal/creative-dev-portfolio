@@ -64,6 +64,10 @@ export function heightAt(x: number, z: number) {
 export const slopeAt = (x: number, z: number) => Math.hypot(heightAt(x + 1.5, z) - heightAt(x - 1.5, z), heightAt(x, z + 1.5) - heightAt(x, z - 1.5)) / 3;
 export const nearestIsland = (x: number) => (x < 0 ? ISLANDS[0] : ISLANDS[1]);
 export const onPad = (x: number, z: number, margin = 0) => pads.some((p) => Math.hypot(x - p.x, z - p.z) < p.r + margin);
+/** ground kept free of planting: round a place that stands tall, and along the camera's line to it when moored */
+const clears: { x: number; z: number; r: number }[] = [];
+export const addClear = (c: { x: number; z: number; r: number }) => clears.push(c);
+const cleared = (x: number, z: number) => clears.some((c) => Math.hypot(x - c.x, z - c.z) < c.r);
 
 /** from a site on land, walk away from the island's centre to open water: where the boat moors */
 export function dockFor(x: number, z: number, out = 16) {
@@ -164,7 +168,7 @@ export function scatter(I: Island, count: number, minH: number, maxH: number, ma
     const a = hash(k, seed) * Math.PI * 2, d = Math.sqrt(hash(seed, k * 1.7)) * I.r * 1.25;
     const x = I.x + Math.cos(a) * d, z = I.z + Math.sin(a) * d;
     const y = heightAt(x, z);
-    if (y < minH || y > maxH || onPad(x, z, 2) || slopeAt(x, z) > maxSlope) continue;
+    if (y < minH || y > maxH || onPad(x, z, 2) || cleared(x, z) || slopeAt(x, z) > maxSlope) continue;
     out.push({ x, z, y, r: hash(k * 3.3, seed + 1) });
   }
   return out;

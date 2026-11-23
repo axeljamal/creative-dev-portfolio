@@ -1,5 +1,5 @@
 // Everything standing in the world, built in code: the pinisi and her oil lamp, Marea Dvīpa's gate, meru pavilion,
-// gamelan bale and guest house, the Victorian bandstand, supper table, beach huts and lighthouse, Pip, and the planting.
+// Gong and Tugu Perdamaian, the guest house, the Victorian bandstand, supper table, beach huts and lighthouse, Pip, and the planting.
 // Lengths are in metres. Materials are physically based so the sky lights them.
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -1094,50 +1094,277 @@ export function buildPavilion() {
   return { group: g, lampM };
 }
 
-/** an open bale with the gamelan set out under it: seven kettles and two hanging gongs. Open side faces +x. */
+// ---------- Gong Perdamaian and Tugu Perdamaian: the peace gong and the peace monument on the hill above Palu ----------
+/** grey pavers laid in a running bond, as on the monument's plaza */
+const paverT = tex(256, 256, (g, w, h) => {
+  g.fillStyle = "#8f8d87";
+  g.fillRect(0, 0, w, h);
+  for (let r = 0; r < 16; r++)
+    for (let c = -1; c < 9; c++) {
+      const v = 168 + rnd() * 26;
+      g.fillStyle = `rgb(${v},${v - 1},${v - 5})`;
+      g.fillRect(c * 32 + (r % 2 ? 16 : 0) + 1, r * 16 + 1, 30, 14);
+    }
+});
+/** light grey stone cladding, laid in thin courses */
+const claddingT = tex(256, 256, (g, w, h) => {
+  g.fillStyle = "#b9b6ae";
+  g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 10)
+    for (let x = (y / 10) % 2 ? -20 : 0; x < w; x += 40 + rnd() * 30) {
+      const v = 170 + rnd() * 30;
+      g.fillStyle = `rgb(${v},${v - 2},${v - 8})`;
+      g.fillRect(x + 1, y + 1, 38 + rnd() * 20, 8);
+    }
+});
+/** black glazed tiles */
+const blackTileT = tex(128, 128, (g, w, h) => {
+  g.fillStyle = "#121212";
+  g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 4; i++)
+    for (let j = 0; j < 8; j++) {
+      const v = 26 + rnd() * 22;
+      g.fillStyle = `rgb(${v},${v},${v})`;
+      g.fillRect(i * 32 + 1, j * 16 + 1, 30, 14);
+    }
+});
+/** Merah Putih: red over white */
+const merahPutihT = tex(64, 32, (g, w, h) => {
+  g.fillStyle = "#ce1126";
+  g.fillRect(0, 0, w, h / 2);
+  g.fillStyle = "#f8f8f6";
+  g.fillRect(0, h / 2, w, h / 2);
+});
+/** a white figure: a draped body and a head, as the carved statues by the steps and in the niche */
+function statue(parent: THREE.Object3D, x: number, y: number, z: number, k = 1, turn = 0) {
+  const m = std({ color: 0xeeebe4, rough: 0.5 });
+  const s = new THREE.Group();
+  s.position.set(x, y, z);
+  s.rotation.y = turn;
+  s.scale.setScalar(k);
+  parent.add(s);
+  mesh(new THREE.LatheGeometry([[0.26, 0], [0.24, 0.45], [0.15, 0.88], [0.2, 1.08], [0.11, 1.22], [0, 1.26]].map(([r, yy]) => new THREE.Vector2(r, yy)), 12), m, 0, 0, 0, s);
+  mesh(ball(0.13, 12, 10), m, 0, 1.38, 0, s);
+  [-1, 1].forEach((e) => {
+    const a = mesh(cyl(0.05, 0.05, 0.55, 6), m, 0.08, 0.92, e * 0.2, s);
+    a.rotation.x = e * 0.35;
+  });
+  return s;
+}
+/** a spiky plant: agave (yellow-green) or red cordyline, as planted round the monument */
+function spiky(parent: THREE.Object3D, x: number, y: number, z: number, color: number, k = 1, n = 26) {
+  const sp: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < n; i++) {
+    const tilt = 0.2 + (i % 5) * 0.2, len = 1 + (i % 3) * 0.25;
+    sp.push(new THREE.ConeGeometry(0.07, len, 3).translate(0, len / 2, 0).rotateZ(tilt).rotateY(i * 2.4));
+  }
+  const o = mesh(mergeGeometries(sp)!, std({ color, rough: 0.6 }), x, y, z, parent);
+  o.scale.setScalar(k);
+  o.castShadow = false;
+  return o;
+}
+/** bougainvillea in flower: a green dome scattered evenly with pink */
+function bougainvillea(parent: THREE.Object3D, x: number, y: number, z: number, k = 1, bloom = 0xe2577f) {
+  mesh(ball(0.85, 10, 8), std({ color: 0x3f6a2c, rough: 0.9 }), x, y + 0.6 * k, z, parent).scale.set(1.2 * k, 0.85 * k, k);
+  const pts: THREE.BufferGeometry[] = [], b = ball(0.13, 6, 4);
+  for (let i = 0; i < 70; i++) {
+    const a = i * 2.39996 + x, e = Math.asin(1 - ((i + 0.5) / 70) * 0.92);
+    pts.push(b.clone().translate(Math.cos(a) * Math.cos(e) * 1.18 * k, (0.6 + Math.sin(e) * 0.72) * k, Math.sin(a) * Math.cos(e) * 0.88 * k));
+  }
+  mesh(mergeGeometries(pts)!, std({ color: bloom, rough: 0.7 }), x, y, z, parent).castShadow = false;
+}
+
+/** Gong Perdamaian, the peace gong above Palu, where the Media Lab lives, with Tugu Perdamaian. On a paved hilltop plaza: a raised
+ *  platform of black and grey stone with red railings, climbed by steps lined with white statues, its front wall
+ *  holding a white figure in an orange-framed niche. On it, under a dark tiled roof with a gold finial, Gong
+ *  Perdamaian hangs in a gilded arch, with the seven kettles of the gamelan set before it. Across the plaza stands
+ *  Tugu Perdamaian, the monument itself: a white tower of two balconied storeys and a slender column crowned in gold. Faces +x. */
 export function buildBale() {
   const g = new THREE.Group();
-  mesh(box(12, 1.1, 8.6), M.stone, 0, 0.55, 0, g);
-  mesh(box(12.4, 0.2, 9), M.brick, 0, 1.2, 0, g);
-  for (let i = 0; i < 3; i++) mesh(box(0.5, 0.36, 3), M.stone, 6.45 + i * 0.5, 0.95 - i * 0.36, 0, g);
-  umbul(g, 7.6, 5.6, "terracotta", Math.PI / 2 - 0.25, 7.4);
-  umbul(g, 7.6, -5.6, "indigo", Math.PI / 2 + 0.25, 7.4);
-  const y0 = 1.3;
-  [-5.2, 0, 5.2].forEach((x) => [-3.6, 3.6].forEach((z) => {
-    mesh(cyl(0.17, 0.2, 3.6, 10), M.darkWood, x, y0 + 1.8, z, g);
-    mesh(box(0.5, 0.25, 0.5), M.gold, x, y0 + 3.5, z, g);
+  const y0 = 0.3;
+  const plaza = mesh(cyl(11.6, 11.8, 0.3, 40), std({ map: rep(paverT, 6, 6), rough: 0.85 }), 0, 0.15, 0, g);
+  plaza.receiveShadow = true;
+  const black = std({ map: blackTileT, rough: 0.35 }), clad = std({ map: rep(claddingT, 2, 1), rough: 0.9 });
+  const yellow = std({ color: 0xd9b23c, rough: 0.5, metal: 0.3 }), red = std({ color: 0x7a2a22, rough: 0.55, metal: 0.25 });
+  const lamps: THREE.MeshBasicMaterial[] = [];
+
+  // the platform: grey stone walls, black pillars with gold caps and lanterns, a niche framed in orange
+  const PX = 1.0, PZ = -2.0, PD = 5.6, PW = 8.4, PH = 3.0, front = PX + PD / 2;
+  mesh(box(PD, PH, PW), clad, PX, y0 + PH / 2, PZ, g);
+  mesh(box(PD + 0.9, 0.55, PW + 0.9), black, PX, y0 + 0.27, PZ, g);
+  mesh(box(PD + 0.7, 0.24, PW + 0.7), std({ color: 0xd6d3cc, rough: 0.7 }), PX, y0 + PH + 0.12, PZ, g);
+  mesh(box(PD + 0.74, 0.2, PW + 0.74), yellow, PX, y0 + PH - 0.08, PZ, g);
+  const lanternM = glow(3.4, 1.7, 0.6);
+  lamps.push(lanternM);
+  [-3.7, -1.35, 1.35, 3.7].forEach((dz) => {
+    const z = PZ + dz;
+    mesh(box(0.7, PH - 0.55, 0.7), black, front + 0.12, y0 + 0.55 + (PH - 0.55) / 2, z, g);
+    mesh(box(0.86, 0.22, 0.86), yellow, front + 0.12, y0 + PH - 0.35, z, g);
+    mesh(box(0.86, 0.2, 0.86), yellow, front + 0.12, y0 + 0.65, z, g);
+    mesh(box(0.06, 0.4, 0.3), lanternM, front + 0.5, y0 + 2.0, z, g).castShadow = false;
+  });
+  mesh(box(0.14, 2.3, 2.3), std({ color: 0xe0571f, rough: 0.6 }), front + 0.02, y0 + 1.75, PZ, g);
+  mesh(box(0.16, 1.95, 1.95), black, front + 0.04, y0 + 1.75, PZ, g);
+  mesh(box(0.9, 0.45, 2.4), clad, front + 0.5, y0 + 0.77, PZ, g);
+  mesh(box(0.5, 0.35, 0.5), yellow, front + 0.5, y0 + 1.17, PZ, g);
+  statue(g, front + 0.5, y0 + 1.34, PZ, 1.05, 0);
+  spiky(g, front + 0.55, y0 + 1.0, PZ - 0.85, 0x4f7a34, 0.45);
+  spiky(g, front + 0.55, y0 + 1.0, PZ + 0.85, 0x4f7a34, 0.45);
+  // red cordyline in the beds along the front
+  [-4.6, -3.0, 3.0, 4.6].forEach((dz, i) => spiky(g, front + 1.0, y0, PZ + dz, i % 2 ? 0x8e1f33 : 0xa8283c, 0.75));
+
+  // the steps up from the -z end, lined with white statues
+  const steps = 9, rise = PH / steps, run = 0.44, SX = PX - 0.6, SW = 2.8, z0 = PZ - PW / 2;
+  for (let i = 0; i < steps; i++) mesh(box(SW, rise * (i + 1), run), black, SX, y0 + (rise * (i + 1)) / 2, z0 - (steps - i - 0.5) * run, g);
+  [-1, 1].forEach((s) => {
+    mesh(box(0.5, PH, steps * run), black, SX + s * (SW / 2 + 0.25), y0 + PH / 2 - 0.4, z0 - (steps * run) / 2, g).scale.y = 0.75;
+    [1, 4, 7].forEach((i) => statue(g, SX + s * (SW / 2 + 0.25), y0 + rise * (steps - i) * 0.75 + 0.2, z0 - (i + 0.5) * run, 0.55, s > 0 ? Math.PI : 0));
+  });
+  spiky(g, SX - 2.4, y0, z0 - steps * run - 0.4, 0xc9cf5a, 1.0); // an agave in its pot at the foot
+  mesh(cyl(0.42, 0.32, 0.7, 10), M.stone, SX - 2.4, y0 + 0.35, z0 - steps * run - 0.4, g);
+
+  // red railings round the top, open where the steps arrive
+  const top = y0 + PH + 0.24;
+  const railM = cutout(rep(railT, 1, 1));
+  railM.color.setHex(0x8a3a2c);
+  const railRun = (ax: number, az: number, bx: number, bz: number) => {
+    const l = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bz - az, bx - ax), n = Math.max(1, Math.round(l / 1.3));
+    const m = railM.clone();
+    m.map = rep(railT, n, 1);
+    const p = mesh(new THREE.PlaneGeometry(l, 0.85), m, (ax + bx) / 2, top + 0.5, (az + bz) / 2, g);
+    p.rotation.y = -ang;
+    p.castShadow = false;
+    const r = mesh(box(l + 0.1, 0.09, 0.12), red, (ax + bx) / 2, top + 0.98, (az + bz) / 2, g);
+    r.rotation.y = -ang;
+    const posts = Math.max(1, Math.round(l / 1.6));
+    for (let k = 0; k <= posts; k++) mesh(box(0.12, 1.05, 0.12), red, ax + ((bx - ax) * k) / posts, top + 0.52, az + ((bz - az) * k) / posts, g);
+  };
+  const x0 = PX - PD / 2 + 0.1, x1 = PX + PD / 2 - 0.1, za = PZ - PW / 2 + 0.1, zb = PZ + PW / 2 - 0.1;
+  railRun(x0, zb, x1, zb);
+  railRun(x1, za, x1, zb);
+  railRun(x0, za, x0, zb);
+  railRun(x0, za, SX - SW / 2, za);
+  railRun(SX + SW / 2, za, x1, za);
+
+  // the pavilion: a dark dais, four black columns with gold, the gong in its gilded arch, a dark tiled roof
+  const CX = PX - 0.5, CZ = PZ, cH = 3.3, half = 1.9;
+  mesh(box(4.6, 0.22, 4.6), black, CX, top + 0.11, CZ, g);
+  mesh(box(4.1, 0.22, 4.1), black, CX, top + 0.33, CZ, g);
+  const base = top + 0.44;
+  [-1, 1].forEach((a) => [-1, 1].forEach((b) => {
+    const x = CX + a * half, z = CZ + b * half;
+    mesh(box(0.42, cH, 0.42), black, x, base + cH / 2, z, g);
+    mesh(box(0.62, 0.5, 0.62), M.gold, x, base + 0.25, z, g);
+    mesh(box(0.6, 0.4, 0.6), M.gold, x, base + cH - 0.2, z, g);
   }));
-  mesh(box(11.2, 0.3, 8), M.darkWood, 0, y0 + 3.75, 0, g);
-  roofTier(1.6, 7.4, 2.9, M.thatch, y0 + 3.9, g, 0.7);
-  mesh(box(3.6, 0.3, 0.4), M.lacquer, 0, y0 + 6.9, 0, g);
-  // the kakula: seven bossed kettles on a lacquered frame
-  mesh(box(0.95, 0.5, 6.4), M.lacquer, 1.2, y0 + 0.55, 0, g);
-  mesh(box(1.0, 0.07, 6.5), M.gold, 1.2, y0 + 0.83, 0, g);
-  [-1, 1].forEach((s) => mesh(box(1.1, 0.75, 0.2), M.lacquer, 1.2, y0 + 0.38, s * 3.2, g));
+  [-1, 1].forEach((s) => {
+    mesh(box(2 * half + 0.6, 0.32, 0.3), black, CX, base + cH + 0.16, CZ + s * half, g);
+    mesh(box(0.3, 0.32, 2 * half + 0.6), black, CX + s * half, base + cH + 0.16, CZ, g);
+  });
+  // Gong Perdamaian, in a gilded carved arch, hung on red ribbons
+  const archR = 1.5;
+  const arch = mesh(new THREE.TorusGeometry(archR, 0.17, 8, 28, Math.PI), M.gold, CX, base + 1.55, CZ, g);
+  arch.rotation.y = Math.PI / 2;
+  [-1, 1].forEach((s) => mesh(box(0.3, 1.55, 0.36), M.gold, CX, base + 0.78, CZ + s * archR, g));
+  const gongM = std({ color: 0xb08a3a, rough: 0.32, metal: 1 });
+  const gong = mesh(cyl(1.05, 1.05, 0.14, 44), gongM, CX + 0.05, base + 1.7, CZ, g);
+  gong.rotation.z = Math.PI / 2;
+  [0.95, 0.66, 0.4].forEach((r) => (mesh(new THREE.TorusGeometry(r, 0.035, 6, 40), M.gold, 0, -0.08, 0, gong).rotation.x = Math.PI / 2));
+  mesh(ball(0.2, 14, 10), M.gold, 0, -0.1, 0, gong).scale.y = 0.6;
+  [-1, 1].forEach((s) => mesh(box(0.05, 0.62, 0.08), std({ color: 0xc41e2a, rough: 0.8 }), CX + 0.05, base + 3.0, CZ + s * 0.5, g));
+  // the kakula: seven bossed kettles on a lacquered frame before the gong, the instrument the Media Lab scores for
+  const KX = CX + 1.25, ky = base + 0.35;
+  mesh(box(0.7, 0.36, 3.2), M.lacquer, KX, ky, CZ, g);
+  mesh(box(0.74, 0.05, 3.25), M.gold, KX, ky + 0.2, CZ, g);
   const kettles: THREE.Mesh[] = [];
   for (let i = 0; i < 7; i++) {
     const m = std({ color: 0xb08a4a, rough: 0.3, metal: 1 });
-    const k = mesh(ball(0.34, 20, 14), m, 1.2, y0 + 0.98, -2.55 + i * 0.85, g);
+    const k = mesh(ball(0.19, 16, 12), m, KX, ky + 0.3, CZ - 1.3 + i * 0.433, g);
     k.scale.y = 0.55;
-    mesh(ball(0.11, 12, 10), m, 0, 0.3, 0, k);
+    mesh(ball(0.06, 10, 8), m, 0, 0.17, 0, k);
     kettles.push(k);
   }
-  // two tawa-tawa gongs hanging in a carved stand
-  [-1, 1].forEach((s) => mesh(cyl(0.09, 0.11, 2.6, 8), M.lacquer, -2.6, y0 + 1.3, s * 2.1, g));
-  mesh(box(0.22, 0.22, 4.9), M.lacquer, -2.6, y0 + 2.62, 0, g);
-  mesh(box(0.26, 0.1, 5.1), M.gold, -2.6, y0 + 2.76, 0, g);
-  const gongs = [-1, 1].map((s) => {
-    const gm = std({ color: 0xa67c3d, rough: 0.36, metal: 1 });
-    const o = mesh(cyl(0.82, 0.82, 0.14, 36), gm, -2.6, y0 + 1.55, s * 1.02, g);
-    o.rotation.z = Math.PI / 2;
-    mesh(ball(0.2, 14, 10), gm, 0, -0.1, 0, o).scale.y = 0.6;
-    mesh(new THREE.TorusGeometry(0.82, 0.07, 8, 36), gm, 0, 0, 0, o).rotation.x = Math.PI / 2;
-    return o;
+  // the roof: a gold fascia under dark tiles, upturned gold corners, a tall gold finial
+  const ry = base + cH + 0.32;
+  [-1, 1].forEach((s) => {
+    mesh(box(5.6, 0.36, 0.12), M.gold, CX, ry + 0.18, CZ + s * 2.75, g);
+    mesh(box(0.12, 0.36, 5.6), M.gold, CX + s * 2.75, ry + 0.18, CZ, g);
+    mesh(box(5.62, 0.06, 0.13), std({ color: 0x2f5d47, rough: 0.6 }), CX, ry + 0.05, CZ + s * 2.76, g);
+    mesh(box(0.13, 0.06, 5.62), std({ color: 0x2f5d47, rough: 0.6 }), CX + s * 2.76, ry + 0.05, CZ, g);
   });
-  // the gimba drum
-  const drum = mesh(cyl(0.34, 0.28, 1.1, 16), M.wood, -0.6, y0 + 0.4, 2.6, g);
-  drum.rotation.x = Math.PI / 2;
-  return { group: g, kettles, gongs };
+  const roof = new THREE.Group();
+  roof.position.set(CX, 0, CZ);
+  g.add(roof);
+  roofTier(0.35, 3.1, 1.9, std({ map: rep(tileT, 5, 2), color: 0x4e4c4a, rough: 0.8 }), ry + 0.3, roof);
+  [-1, 1].forEach((a) => [-1, 1].forEach((b) => {
+    const o = mesh(new THREE.ConeGeometry(0.16, 0.9, 5), M.gold, CX + a * 3.0, ry + 0.75, CZ + b * 3.0, g);
+    o.rotation.set(b * 0.6, 0, -a * 0.6);
+  }));
+  mesh(ball(0.22, 12, 10), M.gold, CX, ry + 2.3, CZ, g);
+  mesh(new THREE.ConeGeometry(0.22, 1.2, 8), M.gold, CX, ry + 3.0, CZ, g);
+
+  // Tugu Perdamaian: a white tower of two balconied storeys, lamps at every post, and a slender column crowned in gold
+  const TX = -4.4, TZ = 5.8, white = std({ map: plasterT, rough: 0.6 });
+  const towerGlass = new THREE.MeshStandardMaterial({ color: 0x1c2833, roughness: 0.15, metalness: 0.4, emissive: 0xffc27a, emissiveIntensity: 0 });
+  const storey = (w: number, h: number, y: number, n: number) => {
+    mesh(box(w, h, w), white, TX, y + h / 2, TZ, g);
+    for (let i = 0; i < n; i++)
+      [0, 1, 2, 3].forEach((f) => {
+        const a = (f * Math.PI) / 2, off = -w / 2 + (w / n) * (i + 0.5);
+        const wnd = mesh(box(0.05, h * 0.5, (w / n) * 0.48), towerGlass, TX + Math.cos(a) * (w / 2 + 0.02) - Math.sin(a) * 0, y + h * 0.55, TZ + Math.sin(a) * (w / 2 + 0.02), g);
+        wnd.rotation.y = -a;
+        wnd.position.x += Math.sin(a) * off;
+        wnd.position.z += Math.cos(a) * off;
+        wnd.castShadow = false;
+      });
+    mesh(box(w + 0.3, 0.22, w + 0.3), white, TX, y + h + 0.11, TZ, g);
+  };
+  const balcony = (w: number, y: number, globe: THREE.MeshBasicMaterial) => {
+    mesh(box(w, 0.2, w), white, TX, y + 0.1, TZ, g);
+    const hw = w / 2 - 0.05;
+    const c: [number, number][] = [[-hw, -hw], [hw, -hw], [hw, hw], [-hw, hw]];
+    c.forEach(([ax, az], i) => {
+      const [bx, bz] = c[(i + 1) % 4];
+      const l = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bz - az, bx - ax);
+      const m = railM.clone();
+      m.map = rep(railT, Math.round(l / 1.2), 1);
+      const p = mesh(new THREE.PlaneGeometry(l, 0.75), m, TX + (ax + bx) / 2, y + 0.58, TZ + (az + bz) / 2, g);
+      p.rotation.y = -ang;
+      p.castShadow = false;
+      const r = mesh(box(l, 0.08, 0.1), red, TX + (ax + bx) / 2, y + 0.98, TZ + (az + bz) / 2, g);
+      r.rotation.y = -ang;
+      for (let k = 0; k < 3; k++) {
+        const x = TX + ax + ((bx - ax) * k) / 3, z = TZ + az + ((bz - az) * k) / 3;
+        mesh(cyl(0.05, 0.06, 1.2, 6), red, x, y + 0.8, z, g);
+        mesh(ball(0.16, 10, 8), globe, x, y + 1.5, z, g).castShadow = false;
+      }
+    });
+  };
+  const orange = glow(3.4, 2.0, 0.8), pale = glow(3.2, 3.0, 2.6);
+  lamps.push(orange, pale);
+  mesh(box(6.4, 0.5, 6.4), white, TX, y0 + 0.25, TZ, g);
+  for (let i = 0; i < 3; i++) mesh(box(2.2, 0.17, 0.4), white, TX + 3.3 + i * 0.4, y0 + 0.42 - i * 0.17, TZ, g);
+  storey(5.6, 3.0, y0 + 0.5, 4);
+  balcony(6.3, y0 + 3.72, orange);
+  storey(4.4, 2.6, y0 + 3.92, 3);
+  balcony(5.1, y0 + 6.74, pale);
+  mesh(box(1.6, 1.2, 1.6), white, TX, y0 + 7.54, TZ, g);
+  const col = mesh(cyl(0.36, 0.42, 9, 12), std({ color: 0xd9dcdc, rough: 0.5 }), TX, y0 + 8.14 + 4.5, TZ, g);
+  col.castShadow = true;
+  [0.25, 0.5, 0.75].forEach((f) => mesh(cyl(0.45, 0.45, 0.14, 12), std({ color: 0x7d8a92, rough: 0.5 }), TX, y0 + 8.14 + 9 * f, TZ, g));
+  mesh(cyl(0.7, 0.55, 0.35, 12), white, TX, y0 + 17.3, TZ, g);
+  const dome = mesh(new THREE.LatheGeometry([[0.5, 0], [0.6, 0.35], [0.5, 0.75], [0.25, 1.05], [0.05, 1.3], [0, 1.35]].map(([r, yy]) => new THREE.Vector2(r, yy)), 16), M.gold, TX, y0 + 17.47, TZ, g);
+  dome.castShadow = true;
+  mesh(new THREE.ConeGeometry(0.05, 0.7, 6), M.gold, TX, y0 + 19.1, TZ, g);
+  // Merah Putih on a white pole beside the tower
+  mesh(cyl(0.06, 0.08, 9, 8), white, TX + 4.2, y0 + 4.5, TZ + 3.4, g);
+  const flag = mesh(new THREE.PlaneGeometry(1.8, 1.2, 8, 1), std({ map: merahPutihT, rough: 0.9, side: THREE.DoubleSide }), TX + 4.2 + 0.92, y0 + 8.3, TZ + 3.4, g);
+  flag.castShadow = false;
+
+  // bougainvillea round the plaza's edge, and an agave by the tower's steps
+  [[6.5, 6.5], [-0.5, 9.8], [-9.6, 1.5], [-8.8, -4.5], [4.5, -8.6], [8.8, 2.2]].forEach(([x, z], i) => bougainvillea(g, x, y0, z, 1.1 + (i % 2) * 0.25, i % 3 ? 0xe2577f : 0xd6407a));
+  spiky(g, TX + 3.0, y0, TZ - 2.6, 0xc9cf5a, 0.9);
+  return { group: g, kettles, gongs: [gong], lamps, towerGlass };
 }
 
 /** a small guest house with a pool: the hospitality websites. The veranda faces +x. */

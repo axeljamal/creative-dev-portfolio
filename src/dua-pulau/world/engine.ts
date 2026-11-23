@@ -13,7 +13,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PlaceId } from "../places";
 import * as audio from "./audio";
 import { buildBale, buildBuoy, buildGate, buildGroyne, buildGuestHouse, buildHuts, buildLamp, buildLighthouse, buildPalms, buildPavilion, buildPier, buildPinisi, buildPip, buildPlanter, type PipMood, buildPlinth, buildRocks, buildSupper, buildTrees, glow , groundShade } from "./models";
-import { ISLANDS, addPad, buildShore, buildTerrain, dockFor, heightAt, nearestIsland, scatter, smooth } from "./terrain";
+import { ISLANDS, addClear, addPad, buildShore, buildTerrain, dockFor, heightAt, nearestIsland, scatter, smooth } from "./terrain";
 
 export type WorldEvents = {
   /** the boat is close enough to moor at this place, or has left it */
@@ -63,7 +63,7 @@ const PIER_LEN = 52;
 const SITES: Site[] = [
   { id: "gate", island: "md", x: -70, z: 12, pad: [14, 2.4], view: [46, 12] },
   { id: "pavilion", island: "md", x: -112, z: -34, pad: [17, 8], view: [52, 16] },
-  { id: "bale", island: "md", x: -150, z: 38, pad: [12, 3], view: [34, 8] },
+  { id: "bale", island: "md", x: -150, z: 38, pad: [12, 3], view: [46, 13] },
   { id: "guesthouse", island: "md", x: -176, z: -18, pad: [19, 3], view: [44, 11] },
   { id: "barong", island: "md", x: -98, z: 46, pad: [8, 3.4], view: [26, 8] },
   { id: "pier", island: "wf", x: 72, z: 22, pad: [7, 3.1], view: [34, 11], focus: PIER_LEN - 6 },
@@ -295,6 +295,14 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   const shore = buildShore();
   scene.add(shore);
   const [MD, WF] = ISLANDS;
+  // Gong and Tugu Perdamaian stand on an open hilltop: keep its plaza clear all round, and keep clear the line the
+  // camera looks along when moored there (off the quarter, as aim() sets it), so no palm stands in the way
+  {
+    const s = SITES.find((q) => q.id === "bale")!, I = nearestIsland(s.x), d = new THREE.Vector2(s.x - I.x, s.z - I.z).normalize();
+    const c = Math.cos(0.72), sn = Math.sin(0.72), ox = d.x * c - d.y * sn, oz = d.y * c + d.x * sn;
+    addClear({ x: s.x, z: s.z, r: 18 });
+    for (let k = 14; k <= 44; k += 6) addClear({ x: s.x + ox * k, z: s.z + oz * k, r: 6 + k * 0.15 });
+  }
   scene.add(buildPalms([...scatter(MD, 110, 1.3, 6, 0.5, 2), ...scatter(WF, 26, 1.4, 4, 0.4, 5)]));
   scene.add(buildTrees(scatter(MD, 170, 3.2, 30, 0.7, 9), true));
   scene.add(buildTrees(scatter(WF, 70, 3.4, 20, 0.6, 14), false));
@@ -889,6 +897,10 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     });
     // the bale: its gongs stir (the kettles ring when she moors)
     bale.gongs.forEach((g, i) => (g.rotation.y = Math.sin(t * 2.2 + i) * 0.12 * awake.bale * still));
+    // Gong Perdamaian and Tugu Perdamaian: the lanterns and the tower's balcony lamps light at dusk, and when she moors
+    const tugu = Math.max(dusk, awake.bale);
+    bale.lamps.forEach((m, i) => dim(m, ...WARM, (0.12 + 0.88 * tugu) * flick(t, i)));
+    bale.towerGlass.emissiveIntensity = tugu * 1.4;
     // the guest house: windows and lanterns come on, the door opens, and the loom on the veranda weaves
     const home = smooth(0.4, 1, awake.guesthouse);
     guest.glass.emissiveIntensity = Math.max(dusk * 0.8, awake.guesthouse) * 1.8;

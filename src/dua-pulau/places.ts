@@ -46,10 +46,10 @@ export const PLACES: Place[] = [
   {
     id: "bale",
     island: "md",
-    name: "The gamelan bale",
+    name: "Gong Perdamaian",
     holds: "Media Lab",
     quest: "Hear the gamelan play a motif",
-    blurb: "Seven kettles and two gongs under an open roof. The Media Lab shows how each motif was made and scores it for this ensemble, synthesized in the browser. The music you hear in these waters is played on the same instruments.",
+    blurb: "Gong Perdamaian, the peace gong on the hill above Palu, Central Sulawesi, where I come from, with Tugu Perdamaian, the white peace monument, across the plaza. Seven gamelan kettles are set before the gong. The Media Lab shows how each motif was made and scores it for this ensemble, synthesized in the browser. The music you hear in these waters is played on the same instruments.",
     links: [
       // the Media Lab as a room: this same bale, with the reels on a hung cloth and the gamelan playing each score
       { label: "Step inside the bale", href: "https://marea-dvipa.uk/bale" },
