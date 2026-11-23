@@ -61,7 +61,7 @@ type Site = { id: PlaceId; island: "md" | "wf" | "strait"; x: number; z: number;
 const PIER_LEN = 52;
 // where everything stands. pad: [radius, height]. view: [distance, height] of the camera when moored there.
 const SITES: Site[] = [
-  { id: "gate", island: "md", x: -70, z: 12, pad: [14, 2.4], view: [38, 9] },
+  { id: "gate", island: "md", x: -70, z: 12, pad: [14, 2.4], view: [46, 12] },
   { id: "pavilion", island: "md", x: -112, z: -34, pad: [17, 8], view: [52, 16] },
   { id: "bale", island: "md", x: -150, z: 38, pad: [12, 3], view: [34, 8] },
   { id: "guesthouse", island: "md", x: -176, z: -18, pad: [19, 3], view: [44, 11] },
@@ -892,6 +892,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     // the guest house: windows and lanterns come on, the door opens, and the loom on the veranda weaves
     const home = smooth(0.4, 1, awake.guesthouse);
     guest.glass.emissiveIntensity = Math.max(dusk * 0.8, awake.guesthouse) * 1.8;
+    pinisi.cabinGlass.emissiveIntensity = smooth(0.35, 0.9, dusk) * 0.9; // her cabins light up as the day goes
     dim(guest.lanternM, ...WARM, 0.2 + 0.8 * Math.max(dusk, awake.guesthouse));
     guest.door.rotation.y = -1.25 * home;
     const pick = Math.floor(t * 1.5), beat = (t * 1.5) % 1;

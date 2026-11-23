@@ -81,10 +81,10 @@ export const PLACES: Place[] = [
   {
     id: "pier",
     island: "wf",
-    name: "The pier",
+    name: "The bandstand",
     holds: "The Windfall story",
     quest: "Walk the Windfall story",
-    blurb: "Walk out along the boards. The story tells how Windfall went from an idea to a working app, scroll by scroll, with the real app playing beside each chapter. The demo is the same app on the pilot's sample data.",
+    blurb: "Walk out along the tiles to Brighton's Victorian bandstand, where Marea Dvīpa's look began. The story tells how Windfall went from an idea to a working app, scroll by scroll, with the real app playing beside each chapter. The demo is the same app on the pilot's sample data.",
     links: [
       { label: "Walk the story", href: "https://demo.marea-dvipa.uk/story/" },
       { label: "Play the demo", href: "https://demo.marea-dvipa.uk/" },

@@ -1,8 +1,9 @@
 // Everything standing in the world, built in code: the pinisi and her oil lamp, Marea Dvīpa's gate, meru pavilion,
-// gamelan bale and guest house, Windfall's pier, supper table, beach huts and lighthouse, Pip, and the planting.
+// gamelan bale and guest house, the Victorian bandstand, supper table, beach huts and lighthouse, Pip, and the planting.
 // Lengths are in metres. Materials are physically based so the sky lights them.
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { Reflector } from "three/examples/jsm/objects/Reflector.js";
 
 // ---------- small kit ----------
 type Draw = (g: CanvasRenderingContext2D, w: number, h: number) => void;
@@ -603,7 +604,8 @@ export function buildPinisi() {
     mesh(g, mat, 0, y, 0, boat);
     return half;
   };
-  const wallM = std({ color: 0xf4f1ea, rough: 0.5 }), winM = std({ color: 0x1a2630, rough: 0.12, metal: 0.45 });
+  const wallM = std({ color: 0xf4f1ea, rough: 0.5 }), winM = std({ color: 0x1a2630, rough: 0.12, metal: 0.45, emissive: 0xffb262 }); // cabin lights: the world turns them up at dusk
+  winM.emissiveIntensity = 0;
   const windows = (x0: number, x1: number, half: (x: number) => number, y: number, h: number) => {
     for (let x = x0 + 0.7; x < x1 - 0.5; x += 1.05)
       [-1, 1].forEach((s) => {
@@ -731,7 +733,7 @@ export function buildPinisi() {
   boat.traverse((o) => {
     if (o instanceof THREE.Mesh && o.castShadow !== false && o.geometry !== balG) o.castShadow = true;
   });
-  return { boat, sails, flag, lampAt, pipBow, pipStern };
+  return { boat, sails, flag, lampAt, pipBow, pipStern, cabinGlass: winM };
 }
 
 // ---------- the pelita: a brass oil lamp with a living flame ----------
@@ -825,47 +827,214 @@ export function buildLamp() {
 }
 
 // ---------- Marea Dvīpa ----------
-/** candi bentar: a temple tower split clean in two, the path running through the cut. The path runs along x. */
+/** dark volcanic stone carved all over in relief: bands of scrollwork between ledges, as on a Balinese gate */
+const carvedT = tex(256, 256, (g, w, h) => {
+  g.fillStyle = "#5a554e";
+  g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 2600, ["#3e3a35", "#77716a", "#4a463f"], 3);
+  for (let y = 0; y < h; y += 64) {
+    // a ledge: lit along its top, shadowed under
+    g.fillStyle = "rgba(205,196,180,.35)";
+    g.fillRect(0, y, w, 3);
+    g.fillStyle = "rgba(20,18,15,.55)";
+    g.fillRect(0, y + 3, w, 5);
+    // scrolls: each curl drawn twice, a light edge up and left and a dark one down and right, so it reads as relief
+    for (let x = 0; x < w; x += 32)
+      [["rgba(20,18,15,.6)", 1.5], ["rgba(220,212,196,.38)", -1.2]].forEach(([c, o]) => {
+        g.strokeStyle = c as string;
+        g.lineWidth = 3;
+        const ox = x + 16 + (o as number), oy = y + 36 + (o as number);
+        g.beginPath();
+        g.arc(ox, oy, 10, Math.PI * 0.1, Math.PI * 1.7);
+        g.stroke();
+        g.beginPath();
+        g.arc(ox + 4, oy + 1, 4.5, Math.PI * 1.1, Math.PI * 2.6);
+        g.stroke();
+        g.beginPath();
+        g.moveTo(ox - 14, oy + 18);
+        g.quadraticCurveTo(ox, oy + 8, ox + 14, oy + 18);
+        g.stroke();
+      });
+  }
+});
+age(carvedT, { streak: 0.9, damp: 0.55, green: true });
+/** a pale paras panel set into the body: a framed field with a carved medallion at its heart */
+const panelT = tex(128, 192, (g, w, h) => {
+  g.fillStyle = "#d3cab8";
+  g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 900, ["#a99f8c", "#ece5d6"], 2);
+  g.strokeStyle = "#5c554b";
+  g.lineWidth = 7;
+  g.strokeRect(8, 8, w - 16, h - 16);
+  g.lineWidth = 3;
+  g.strokeRect(20, 20, w - 40, h - 40);
+  g.fillStyle = "#6a6256";
+  g.beginPath();
+  g.ellipse(w / 2, h / 2, 26, 38, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#d3cab8";
+  g.beginPath();
+  g.ellipse(w / 2, h / 2, 17, 27, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#6a6256";
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.beginPath();
+    g.ellipse(w / 2 + Math.cos(a) * 9, h / 2 + Math.sin(a) * 14, 3.5, 6, a, 0, Math.PI * 2);
+    g.fill();
+  }
+});
+age(panelT, { streak: 0.6, damp: 0.3, green: true });
+
+/** candi bentar: a carved temple tower split clean in two, the two halves mirror images, their inner faces sheer and
+ *  plain where the cut runs. Round it: a pavilion either side, spiky agave and bougainvillea, two great shade trees,
+ *  and a still pool laid before the steps. The path runs along x, out to the water at +x. */
 export function buildGate() {
   const g = new THREE.Group();
+  const carved = std({ map: carvedT, rough: 0.92, bump: 1.6 }), carvedS = std({ map: rep(carvedT, 2, 1), rough: 0.92, bump: 1.6 });
+  const panel = std({ map: panelT, rough: 0.9, bump: 1.2 }), cut = std({ color: 0x766e64, rough: 0.8 }), redBrick = std({ map: rep(brickT, 3, 1), rough: 0.9 });
   mesh(box(9, 0.7, 19), M.stone, 0, 0.35, 0, g);
-  for (let i = 0; i < 4; i++) [-1, 1].forEach((s) => mesh(box(0.5, 0.175, 3.4), M.stone, s * (4.75 + i * 0.5), 0.61 - i * 0.175, 0, g));
-  const tiers = [[5.2, 2.3, 3.8], [4.4, 1.7, 3.3], [3.7, 1.5, 2.9], [3.0, 1.35, 2.5], [2.4, 1.25, 2.1], [1.8, 1.15, 1.7], [1.25, 1.05, 1.3], [0.75, 1.3, 0.9]];
+  for (let i = 0; i < 4; i++) [-1, 1].forEach((s) => mesh(box(0.5, 0.175, 2.6), M.stone, s * (4.75 + i * 0.5), 0.61 - i * 0.175, 0, g));
+  const C = 1.25; // half the width of the cut
+  // each half: [depth along the path, width out from the cut, height]
+  const foot: [number, number, number] = [4.2, 4.0, 1.3], body: [number, number, number] = [3.5, 3.35, 4.4];
+  const head: [number, number, number][] = [[3.9, 3.7, 0.55], [3.2, 3.05, 1.2], [2.75, 2.6, 1.1], [2.3, 2.15, 1.05], [1.9, 1.75, 1.0], [1.5, 1.38, 0.95], [1.12, 1.02, 0.9], [0.78, 0.7, 0.85]];
+  const ornament = new THREE.ConeGeometry(0.22, 0.95, 5);
   [-1, 1].forEach((s) => {
     const h = new THREE.Group();
     h.scale.z = s;
     g.add(h);
     let y = 0.7;
-    tiers.forEach(([w, ht, d], i) => {
-      mesh(box(d, ht, w), M.brick, 0, y + ht / 2, 1.25 + w / 2, h);
-      mesh(box(d + 0.45, 0.24, w + 0.28), M.stone, 0, y + ht + 0.12, 1.25 + (w + 0.28) / 2, h);
-      // an upturned stone leaf at each tier's outer corners
-      [-1, 1].forEach((e) => {
-        const a = mesh(new THREE.ConeGeometry(0.2, 0.75, 4), M.stone, e * (d / 2 + 0.1), y + ht + 0.55, 1.25 + w + 0.05, h);
-        a.rotation.x = 0.35;
-      });
-      if (i === 0) mesh(box(d + 0.1, 0.5, 0.5), M.stone, 0, y + 1.1, 1.25 + w + 0.15, h);
-      y += ht + 0.24;
+    const outline: [number, number][] = []; // the cut face's outline, (x, y) up one side and down the other
+    const tier = ([d, w, ht]: [number, number, number], mat: THREE.Material, rim = true) => {
+      mesh(box(d, ht, w), mat, 0, y + ht / 2, C + w / 2, h);
+      outline.push([d / 2, y], [d / 2, y + ht]);
+      y += ht;
+      if (rim) {
+        mesh(box(d + 0.34, 0.2, w + 0.17), carved, 0, y + 0.1, C + (w + 0.17) / 2, h);
+        outline.push([d / 2 + 0.17, y], [d / 2 + 0.17, y + 0.2]);
+        y += 0.2;
+      }
+    };
+    tier(foot, carvedS);
+    // the body: a band of red brick at its foot and head, carved pilasters at the corners, a pale medallion panel each face
+    const by = y;
+    tier(body, carved, false);
+    [by + 0.18, by + body[2] - 0.18].forEach((yy) => mesh(box(body[0] + 0.04, 0.36, body[1] + 0.02), redBrick, 0, yy, C + body[1] / 2, h));
+    [-1, 1].forEach((e) => {
+      mesh(box(0.05, 2.5, 1.55), panel, e * (body[0] / 2 + 0.025), by + 2.1, C + body[1] * 0.52, h);
+      [0.2, body[1] - 0.25].forEach((zz) => mesh(box(0.32, body[2] - 0.6, 0.42), carved, e * (body[0] / 2 - 0.05), by + body[2] / 2, C + zz, h));
     });
-    mesh(new THREE.ConeGeometry(0.3, 1.3, 4), M.stone, 0, y + 0.65, 1.6, h);
-    // the low wall running out from each half
-    mesh(box(1.1, 2.3, 2.9), M.brick, 0, 0.7 + 1.15, 7.9, h);
-    mesh(box(1.4, 0.25, 3.1), M.stone, 0, 0.7 + 2.42, 7.9, h);
+    mesh(box(1.4, 2.2, 0.05), panel, 0, by + 2.2, C + body[1] + 0.03, h);
+    // the head: tier on tier of cornices, each crowned at its corners with upturned flame-leaves (karang simbar)
+    head.forEach((t, i) => {
+      tier(t, i === 0 ? carvedS : carved);
+      const [d, w] = t, k = Math.max(0.55, 1.15 - i * 0.08);
+      [-1, 1].forEach((e) => {
+        const o = mesh(ornament, carved, e * (d / 2 + 0.12), y + 0.42 * k, C + w + 0.05, h);
+        o.scale.setScalar(k);
+        o.rotation.set(0.28, 0, -e * 0.3);
+        if (i < 6) {
+          const m = mesh(ornament, carved, e * (d / 2 + 0.1), y + 0.38 * k, C + w * 0.5, h);
+          m.scale.setScalar(k * 0.85);
+          m.rotation.z = -e * 0.35;
+        }
+      });
+      if (i > 0 && i < 4) mesh(box(0.2, 0.55, 0.7), panel, 0, y - 0.55, C + w + 0.12, h); // a little carved face on the outer side
+    });
+    const tip = mesh(new THREE.ConeGeometry(0.34, 1.9, 5), carved, 0, y + 0.95, C + 0.36, h);
+    tip.scale.z = 1.1;
+    outline.push([0.12, y + 1.6]);
+    // the cut: one sheer, plain face from foot to tip, which is the whole point of a split gate
+    const sh = new THREE.Shape();
+    sh.moveTo(-outline[0][0], outline[0][1]);
+    outline.forEach(([x, yy]) => sh.lineTo(x, yy));
+    [...outline].reverse().forEach(([x, yy]) => sh.lineTo(-x, yy));
+    const face = mesh(new THREE.ShapeGeometry(sh), cut, 0, 0, C - 0.012, h);
+    face.rotation.y = Math.PI; // facing into the cut
+    face.castShadow = false;
+    // a lower carved wing stepping out from each half, with its own little crown, then the low wall beyond
+    const wz = C + body[1] + 0.85;
+    mesh(box(2.5, 4.2, 1.7), carved, 0, 0.7 + 2.1, wz, h);
+    mesh(box(2.84, 0.22, 1.95), carved, 0, 0.7 + 4.31, wz, h);
+    mesh(box(1.6, 0.8, 1.1), carved, 0, 0.7 + 4.82, wz, h);
+    [-1, 1].forEach((e) => {
+      mesh(box(0.05, 1.8, 0.9), panel, e * 1.26, 0.7 + 2.1, wz, h);
+      const o = mesh(ornament, carved, e * 0.95, 0.7 + 4.8, wz + 0.6, h);
+      o.rotation.set(0.3, 0, -e * 0.3);
+    });
+    mesh(new THREE.ConeGeometry(0.28, 1.2, 5), carved, 0, 0.7 + 5.8, wz, h);
+    mesh(box(1.1, 2.3, 2.9), carved, 0, 0.7 + 1.15, wz + 2.3, h);
+    mesh(box(1.4, 0.25, 3.1), carved, 0, 0.7 + 2.42, wz + 2.3, h);
   });
-  tedung(g, 3.6, 3.4, 0xf4eee3);
-  tedung(g, 3.6, -3.4, 0xf4eee3);
+  // the fabric and the janur: poleng tied round the foot of each half, the ceremonial umbrellas, the penjor bowing
+  // over the way down to the water, and the umbul-umbul banners
   const poleng = std({ map: rep(polengT.clone(), 10, 2), rough: 0.9 });
+  tedung(g, 3.2, 3.0, 0xf4eee3);
+  tedung(g, 3.2, -3.0, 0xf4eee3);
   [-1, 1].forEach((s) => {
-    mesh(box(3.86, 0.8, 5.26), poleng, 0, 0.7 + 0.75, s * (1.25 + 2.6), g);
-    penjor(g, 13.4, s * 3.5, s > 0 ? -0.5 : 0.5);
-    umbul(g, 5.2, s * 10.6, s > 0 ? "indigo" : "terracotta", Math.PI / 2 - 0.3 * s);
+    mesh(box(foot[0] + 0.06, 0.8, foot[1] + 0.06), poleng, 0, 0.7 + 0.72, s * (C + foot[1] / 2), g);
+    penjor(g, 13.4, s * 4.6, s > 0 ? -0.5 : 0.5);
+    umbul(g, 8.2, s * 11, s > 0 ? "indigo" : "terracotta", Math.PI / 2 - 0.3 * s);
   });
-  // stone lamps down the path to the water: they light in pairs, from the gate outward, when someone comes
+
+  // a pavilion either side: a stone plinth, four posts and a tiled roof
+  const roofM = std({ map: rep(tileT, 5, 2), color: 0x8e8580, rough: 0.85 });
+  [-1, 1].forEach((s) => {
+    const b = new THREE.Group();
+    b.position.set(3.4, 0, s * 9);
+    g.add(b);
+    mesh(box(3.6, 0.9, 3.6), carvedS, 0, 0.45, 0, b);
+    [-1, 1].forEach((a) => [-1, 1].forEach((c) => mesh(cyl(0.1, 0.12, 2.1, 8), M.darkWood, a * 1.4, 0.9 + 1.05, c * 1.4, b)));
+    mesh(box(3.2, 0.14, 3.2), M.darkWood, 0, 3.0, 0, b);
+    roofTier(0.35, 2.35, 1.5, roofM, 3.05, b);
+    mesh(new THREE.ConeGeometry(0.12, 0.5, 6), M.darkWood, 0, 4.8, 0, b);
+  });
+
+  // planting: spiky yellow agave in stone pots either side of the steps, bougainvillea in flower about the wings
+  const spikes: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < 34; i++) {
+    const a = i * 2.4, tilt = 0.25 + (i % 5) * 0.2, len = 1.1 + (i % 3) * 0.25;
+    spikes.push(new THREE.ConeGeometry(0.06, len, 3).translate(0, len / 2, 0).rotateZ(tilt).rotateY(a));
+  }
+  const agave = mergeGeometries(spikes)!, agaveM = std({ color: 0xcfd264, rough: 0.6 });
+  [[5.7, 2.9], [5.7, -2.9], [-5.4, 3.1], [-5.4, -3.1]].forEach(([x, z]) => {
+    mesh(cyl(0.42, 0.32, 0.7, 10), M.stone, x, 0.35, z, g);
+    const a = mesh(agave, agaveM, x, 0.66, z, g);
+    a.scale.setScalar(1.7);
+    a.castShadow = false;
+  });
+  const leafM = std({ color: 0x3f6a2c, rough: 0.9 }), bloomM = std({ color: 0xe2576f, rough: 0.7 }), bloomG = ball(0.13, 6, 4);
+  [[5.1, 4.9], [5.1, -4.9], [3.6, 6.2], [3.6, -6.2], [-4.2, 5.4], [-4.2, -5.4]].forEach(([x, z], j) => {
+    const k = 1.35;
+    mesh(ball(0.85, 10, 8), leafM, x, 0.6 * k, z, g).scale.set(1.2 * k, 0.85 * k, k);
+    const pts: THREE.BufferGeometry[] = [];
+    for (let i = 0; i < 70; i++) {
+      // spread evenly over the dome of the bush: a golden-angle spiral, from its crown down to its sides
+      const a = i * 2.39996 + j, e = Math.asin(1 - (i + 0.5) / 70 * 0.92);
+      pts.push(bloomG.clone().translate(Math.cos(a) * Math.cos(e) * 0.98 * 1.2 * k, (0.6 + Math.sin(e) * 0.72) * k, Math.sin(a) * Math.cos(e) * 0.88 * k));
+    }
+    mesh(mergeGeometries(pts)!, bloomM, x, 0, z, g).castShadow = false;
+  });
+  // two great shade trees standing behind the pavilions, framing the gate as the banyans do
+  const big = new THREE.Group();
+  big.scale.setScalar(1.7);
+  g.add(big);
+  big.add(buildTrees([{ x: -5.2 / 1.7, z: 12.6 / 1.7, y: 0, r: 0.31 }, { x: -5.2 / 1.7, z: -12.6 / 1.7, y: 0, r: 0.77 }], true));
+
+  // a still pool laid before the steps, so the gate stands in it twice over
+  mesh(box(6.4, 0.3, 6.8), M.stone, 9.6, 0.15, 0, g);
+  // a true mirror, kept small: it draws the world a second time only while it is on screen
+  const pool = new Reflector(new THREE.PlaneGeometry(5.8, 6.2), { textureWidth: 512, textureHeight: 512, color: 0x7f949c, clipBias: 0.003 });
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(9.6, 0.31, 0);
+  g.add(pool);
+  // stone lamps down either side of the pool to the water: they light in pairs, from the gate outward, when someone comes
   const lamps = [0, 1, 2, 3].map((i) => {
     const m = glow(3.2, 2.1, 0.9);
     [-1, 1].forEach((s) => {
-      mesh(box(0.4, 0.9, 0.4), M.stone, 6.4 + i * 1.7, 0.45 - i * 0.12, s * 2.3, g);
-      mesh(ball(0.17), m, 6.4 + i * 1.7, 1.08 - i * 0.12, s * 2.3, g).castShadow = false;
+      mesh(box(0.4, 0.9, 0.4), M.stone, 7.0 + i * 1.7, 0.45, s * 4.0, g);
+      mesh(ball(0.17), m, 7.0 + i * 1.7, 1.08, s * 4.0, g).castShadow = false;
     });
     return m;
   });
@@ -1089,88 +1258,283 @@ export function buildBuoy() {
 }
 
 // ---------- Windfall ----------
-/** a seaside pier with a domed kiosk at its head: the Windfall story. It runs out along +x from the shore. */
+// ---------- Brighton's Victorian bandstand, where Marea Dvīpa's look began ----------
+const GREEN = "#2f5d47";
+/** a cut-out texture: white ironwork drawn on clear, so a flat plane reads as lace */
+const lace = (w: number, h: number, draw: Draw) => {
+  const t = tex(w, h, (g, W, H) => {
+    g.clearRect(0, 0, W, H);
+    g.strokeStyle = g.fillStyle = "#f6f2ea";
+    g.lineCap = "round";
+    draw(g, W, H);
+  });
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+};
+/** one bay of railing: rails top and bottom and a pair of mirrored scrolls meeting in a ring */
+const railT = lace(128, 96, (g, w, h) => {
+  g.lineWidth = 6;
+  g.strokeRect(3, 3, w - 6, h - 6);
+  g.lineWidth = 4.5;
+  [-1, 1].forEach((s) => {
+    g.beginPath();
+    g.moveTo(w / 2, h - 6);
+    g.bezierCurveTo(w / 2 + s * 4, h * 0.55, w / 2 + s * 46, h * 0.85, w / 2 + s * 44, h * 0.42);
+    g.bezierCurveTo(w / 2 + s * 42, h * 0.16, w / 2 + s * 18, h * 0.2, w / 2 + s * 22, h * 0.38);
+    g.stroke();
+    g.beginPath();
+    g.arc(w / 2 + s * 52, h * 0.7, 9, 0, Math.PI * 2);
+    g.stroke();
+  });
+  g.beginPath();
+  g.arc(w / 2, h * 0.3, 10, 0, Math.PI * 2);
+  g.stroke();
+  g.fillRect(w / 2 - 2.5, 4, 5, h * 0.18);
+});
+/** the lace between two columns: an arch with scrollwork above it and a rosette in each upper corner */
+const spandrelT = lace(256, 128, (g, w, h) => {
+  g.lineWidth = 7;
+  g.beginPath();
+  g.moveTo(0, 5);
+  g.lineTo(w, 5);
+  g.stroke();
+  g.lineWidth = 6;
+  g.beginPath();
+  g.moveTo(6, h);
+  g.bezierCurveTo(18, h * 0.3, w * 0.3, h * 0.42, w / 2, h * 0.34);
+  g.bezierCurveTo(w * 0.7, h * 0.42, w - 18, h * 0.3, w - 6, h);
+  g.stroke();
+  g.lineWidth = 3.5;
+  for (let i = 0; i < 7; i++) {
+    const x = 34 + i * ((w - 68) / 6), r = 9 + (i % 2) * 4;
+    g.beginPath();
+    g.arc(x, h * 0.2, r, 0, Math.PI * 2);
+    g.stroke();
+  }
+  [-1, 1].forEach((s) => {
+    for (let k = 0; k < 3; k++) {
+      g.beginPath();
+      g.arc(w / 2 + s * (40 + k * 30), h * 0.34 + 6 + k * 9, 12 - k * 2, Math.PI * (s > 0 ? 1 : 0), Math.PI * (s > 0 ? 2.4 : 1.4));
+      g.stroke();
+    }
+  });
+  // the rosettes: a dark green disc ringed in gold
+  [26, w - 26].forEach((x) => {
+    g.fillStyle = "#c9a44c";
+    g.beginPath();
+    g.arc(x, h * 0.42, 17, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = GREEN;
+    g.beginPath();
+    g.arc(x, h * 0.42, 12, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#c9a44c";
+    g.beginPath();
+    g.arc(x, h * 0.42, 4, 0, Math.PI * 2);
+    g.fill();
+  });
+  g.fillStyle = "#f6f2ea";
+  g.beginPath();
+  g.moveTo(w / 2 - 6, h * 0.34);
+  g.lineTo(w / 2, h * 0.62);
+  g.lineTo(w / 2 + 6, h * 0.34);
+  g.fill();
+});
+/** cresting along the top of the canopy: little fleurs between arches */
+const crestT = lace(128, 32, (g, w, h) => {
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(0, h - 3);
+  g.lineTo(w, h - 3);
+  g.stroke();
+  for (let i = 0; i < 4; i++) {
+    const x = 16 + i * 32;
+    g.beginPath();
+    g.arc(x, h - 3, 12, Math.PI, 0);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(x, h - 15);
+    g.lineTo(x, 4);
+    g.stroke();
+    g.beginPath();
+    g.arc(x, 6, 3.5, 0, Math.PI * 2);
+    g.fill();
+  }
+});
+/** the fascia: white edges and a band of green ironwork lattice between them */
+const friezeT = tex(256, 64, (g, w, h) => {
+  g.fillStyle = "#f3efe6";
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = GREEN;
+  g.fillRect(0, h * 0.28, w, h * 0.5);
+  g.strokeStyle = "#e9e2d2";
+  g.lineWidth = 2;
+  for (let x = -h; x < w + h; x += 16) {
+    g.beginPath();
+    g.moveTo(x, h * 0.28);
+    g.lineTo(x + h * 0.5, h * 0.78);
+    g.moveTo(x + h * 0.5, h * 0.28);
+    g.lineTo(x, h * 0.78);
+    g.stroke();
+  }
+  g.fillStyle = "#c9a44c";
+  g.fillRect(0, h * 0.26, w, 2);
+  g.fillRect(0, h * 0.77, w, 2);
+});
+/** pale square floor tiles */
+const floorT = tex(256, 256, (g, w, h) => {
+  g.fillStyle = "#a7a49c";
+  g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 8; i++)
+    for (let j = 0; j < 8; j++) {
+      const v = 214 + rnd() * 14;
+      g.fillStyle = `rgb(${v},${v - 2},${v - 6})`;
+      g.fillRect(i * 32 + 1.5, j * 32 + 1.5, 29, 29);
+    }
+});
+/** the black and white diamond border that edges the floor */
+const borderT = tex(64, 32, (g, w, h) => {
+  g.fillStyle = "#f1eee6";
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = "#1d1d1b";
+  for (let x = 0; x < w; x += 32) {
+    g.beginPath();
+    g.moveTo(x, h / 2);
+    g.lineTo(x + 16, 0);
+    g.lineTo(x + 32, h / 2);
+    g.lineTo(x + 16, h);
+    g.fill();
+  }
+});
+const cutout = (t: THREE.Texture) => new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.55 });
+
+/** The bandstand: Brighton's octagonal Victorian bandstand on its iron legs, reached by a long tiled walkway with
+ *  white scroll railings and green handrails. Laid out as the pier was, out to sea along +x, so mooring, the
+ *  camera and the hull's course round it are unchanged. */
 export function buildPier(length = 52) {
   const g = new THREE.Group();
-  const deckH = 3.3;
-  mesh(box(length, 0.3, 5.2), std({ map: rep(plankT, length / 2, 1), color: 0x9a7a58, rough: 0.85 }), length / 2, deckH, 0, g);
-  for (let x = 3; x < length + 4; x += 5.5)
+  const deckH = 3.3, head = length - 5, R = 6.2, walkEnd = head - R + 0.4, W = 4.6;
+  const green = std({ color: 0x2f5d47, rough: 0.45, metal: 0.35 }), white = M.white;
+  const spanM = cutout(spandrelT), crestM = cutout(rep(crestT, 1, 1));
+  // the iron legs, braced, standing in the shallows
+  for (let x = 3; x < walkEnd; x += 5.5)
     [-1, 1].forEach((s) => {
-      mesh(cyl(0.16, 0.18, deckH + 8, 8), M.iron, x, deckH / 2 - 4, s * 2.1, g);
-      spar(V(x, deckH - 0.2, s * 2.1), V(x, deckH - 2.6, -s * 2.1), 0.05, M.iron, g);
+      mesh(cyl(0.16, 0.18, deckH + 8, 8), green, x, deckH / 2 - 4, s * (W / 2 - 0.3), g);
+      spar(V(x, deckH - 0.2, s * (W / 2 - 0.3)), V(x, deckH - 2.6, -s * (W / 2 - 0.3)), 0.05, green, g);
     });
-  const head = length - 5;
-  mesh(box(13, 0.3, 12), std({ map: rep(plankT, 6, 3), color: 0x9a7a58, rough: 0.85 }), head, deckH + 0.001, 0, g);
-  [-1, 1].forEach((a) => [-1, 1].forEach((b) => mesh(cyl(0.18, 0.2, deckH + 8, 8), M.iron, head + a * 5.6, deckH / 2 - 4, b * 5.2, g)));
-  // white railings
-  const rails: THREE.BufferGeometry[] = [];
-  const post = (x: number, z: number) => rails.push(box(0.09, 1.1, 0.09).translate(x, deckH + 0.7, z));
-  const rail = (x0: number, z0: number, x1: number, z1: number) => {
-    const l = Math.hypot(x1 - x0, z1 - z0), a = Math.atan2(z1 - z0, x1 - x0);
-    [1.22, 0.75].forEach((y) => rails.push(box(l, 0.07, 0.07).rotateY(-a).translate((x0 + x1) / 2, deckH + y, (z0 + z1) / 2)));
-    for (let k = 0; k <= l; k += 1.3) post(x0 + ((x1 - x0) * k) / l, z0 + ((z1 - z0) * k) / l);
-  };
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    mesh(cyl(0.2, 0.22, deckH + 8, 8), green, head + Math.cos(a) * (R - 0.6), deckH / 2 - 4, Math.sin(a) * (R - 0.6), g);
+  }
+  // the walkway: tiles edged in diamonds, a white fretwork skirt along its side
+  mesh(box(walkEnd, 0.32, W), white, walkEnd / 2, deckH - 0.16, 0, g);
+  const walk = mesh(new THREE.PlaneGeometry(walkEnd, W - 1.1), std({ map: rep(floorT, walkEnd / 4, (W - 1.1) / 4), rough: 0.6 }), walkEnd / 2, deckH + 0.005, 0, g);
+  walk.rotation.x = -Math.PI / 2;
   [-1, 1].forEach((s) => {
-    rail(0, s * 2.5, head - 6.5, s * 2.5);
-    rail(head - 6.5, s * 2.5, head - 6.5, s * 5.9);
-    rail(head - 6.5, s * 5.9, head + 6.4, s * 5.9);
+    const b = mesh(new THREE.PlaneGeometry(walkEnd, 0.45), std({ map: rep(borderT, walkEnd / 0.9, 1), rough: 0.55 }), walkEnd / 2, deckH + 0.006, s * (W / 2 - 0.78), g);
+    b.rotation.x = -Math.PI / 2;
+    const sk = mesh(new THREE.PlaneGeometry(walkEnd, 0.5), cutout(rep(crestT, walkEnd / 1.6, 1)), walkEnd / 2, deckH - 0.55, s * (W / 2 + 0.01), g);
+    sk.rotation.x = Math.PI;
   });
-  rail(head + 6.4, -5.9, head + 6.4, 5.9);
-  mesh(mergeGeometries(rails)!, M.white, 0, 0, 0, g);
-  // lamp standards with white globes
+  /** a run of railing from a to b at the deck's height: scroll panels, a green handrail, green posts with finials */
+  const railRun = (ax: number, az: number, bx: number, bz: number) => {
+    const l = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bz - az, bx - ax), n = Math.max(1, Math.round(l / 1.3));
+    const p = mesh(new THREE.PlaneGeometry(l, 0.95), cutout(rep(railT, n, 1)), (ax + bx) / 2, deckH + 0.55, (az + bz) / 2, g);
+    p.rotation.y = -ang;
+    p.castShadow = false;
+    const r = mesh(box(l + 0.1, 0.1, 0.14), green, (ax + bx) / 2, deckH + 1.08, (az + bz) / 2, g);
+    r.rotation.y = -ang;
+    const posts = Math.max(1, Math.round(l / 3.2));
+    for (let k = 0; k <= posts; k++) {
+      const x = ax + ((bx - ax) * k) / posts, z = az + ((bz - az) * k) / posts;
+      mesh(box(0.14, 1.15, 0.14), green, x, deckH + 0.58, z, g);
+      mesh(ball(0.1, 8, 6), green, x, deckH + 1.25, z, g);
+      mesh(new THREE.ConeGeometry(0.05, 0.2, 6), green, x, deckH + 1.42, z, g);
+    }
+  };
+  [-1, 1].forEach((s) => railRun(0.4, s * (W / 2 - 0.08), walkEnd, s * (W / 2 - 0.08)));
+  // the platform: an octagon of tiles with its diamond border, a fretwork skirt below, railed all round but for the way in
+  const oct = (r: number) => Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2 + Math.PI / 8; return [head + Math.cos(a) * r, Math.sin(a) * r] as const; });
+  const plat = mesh(cyl(R, R, 0.34, 8), white, head, deckH - 0.17, 0, g);
+  plat.rotation.y = Math.PI / 8;
+  const fl = mesh(new THREE.CircleGeometry(R - 0.15, 8), std({ map: rep(floorT, 3, 3), rough: 0.6 }), head, deckH + 0.005, 0, g);
+  fl.rotation.set(-Math.PI / 2, 0, Math.PI / 8);
+  const ring = mesh(new THREE.RingGeometry(R - 0.75, R - 0.3, 8, 1), std({ map: rep(borderT, 12, 1), rough: 0.55 }), head, deckH + 0.007, 0, g);
+  ring.rotation.set(-Math.PI / 2, 0, Math.PI / 8);
+  const skirt = mesh(new THREE.CylinderGeometry(R + 0.01, R + 0.01, 0.6, 8, 1, true), cutout(rep(crestT, 16, 1)), head, deckH - 0.6, 0, g);
+  skirt.rotation.set(Math.PI, Math.PI / 8, 0);
+  const o = oct(R - 0.1);
+  for (let i = 0; i < 8; i++) {
+    const [ax, az] = o[i], [bx, bz] = o[(i + 1) % 8];
+    if ((ax + bx) / 2 < head - R * 0.8) continue; // the side facing the shore stays open to the walkway
+    railRun(ax, az, bx, bz);
+  }
+  // the bandstand: eight slim green columns with white bases and capitals, lace between them, a white and green
+  // fascia under cresting, a bell roof of dark green and a lantern on top
+  const cR = 4.2, colH = 3.7, top = deckH + colH;
+  const cols = oct(cR);
+  cols.forEach(([x, z]) => {
+    mesh(cyl(0.3, 0.34, 0.45, 8), white, x, deckH + 0.22, z, g);
+    mesh(cyl(0.14, 0.14, colH, 10), green, x, deckH + colH / 2, z, g);
+    mesh(cyl(0.2, 0.2, 0.5, 8), white, x, deckH + 1.1, z, g);
+    mesh(cyl(0.34, 0.16, 0.5, 8), white, x, top - 0.3, z, g);
+    mesh(box(0.62, 0.12, 0.62), white, x, top, z, g);
+  });
+  for (let i = 0; i < 8; i++) {
+    const [ax, az] = cols[i], [bx, bz] = cols[(i + 1) % 8], l = Math.hypot(bx - ax, bz - az);
+    const s = mesh(new THREE.PlaneGeometry(l - 0.25, 1.35), spanM, (ax + bx) / 2, top - 0.6, (az + bz) / 2, g);
+    s.rotation.y = -Math.atan2(bz - az, bx - ax);
+    s.castShadow = false;
+  }
+  const eaveR = 5.0;
+  const fascia = mesh(new THREE.CylinderGeometry(eaveR, eaveR, 0.75, 8, 1, true), std({ map: rep(friezeT, 8, 1), rough: 0.6, side: THREE.DoubleSide }), head, top + 0.4, 0, g);
+  fascia.rotation.y = Math.PI / 8;
+  const ceil = mesh(new THREE.CircleGeometry(eaveR, 8), std({ color: 0xf1e9d8, rough: 0.8, side: THREE.DoubleSide }), head, top + 0.04, 0, g);
+  ceil.rotation.set(Math.PI / 2, 0, Math.PI / 8);
+  const lid = mesh(new THREE.CircleGeometry(eaveR + 0.15, 8), std({ color: 0xf3efe6, rough: 0.6, side: THREE.DoubleSide }), head, top + 0.78, 0, g);
+  lid.rotation.set(-Math.PI / 2, 0, Math.PI / 8);
+  const crest = mesh(new THREE.CylinderGeometry(eaveR + 0.05, eaveR + 0.05, 0.42, 8, 1, true), crestM, head, top + 0.98, 0, g);
+  crest.rotation.y = Math.PI / 8;
+  crest.material = cutout(rep(crestT, 10, 1));
+  oct(eaveR + 0.05).forEach(([x, z]) => {
+    mesh(box(0.06, 0.7, 0.06), white, x, top + 1.15, z, g);
+    mesh(box(0.34, 0.06, 0.06), white, x, top + 1.32, z, g).rotation.y = Math.atan2(z, x - head);
+  });
+  // the bell roof: swelling out over the eaves, then drawing in to the lantern
+  const prof = [[4.55, 0], [4.7, 0.35], [4.4, 0.9], [3.6, 1.45], [2.5, 1.8], [1.4, 2.0], [0.9, 2.1]].map(([r, y]) => new THREE.Vector2(r, y));
+  const roofM = std({ color: 0x2d4a3e, rough: 0.4, metal: 0.45 });
+  const roof = mesh(new THREE.LatheGeometry(prof, 8), roofM, head, top + 0.8, 0, g);
+  roof.rotation.y = Math.PI / 8;
+  const kioskGlass = new THREE.MeshStandardMaterial({ color: 0x3a2a40, roughness: 0.15, metalness: 0.3, emissive: 0xd884e0, emissiveIntensity: 0 });
+  const ly = top + 2.9;
+  const drum = mesh(cyl(0.82, 0.82, 0.9, 8), kioskGlass, head, ly + 0.45, 0, g);
+  drum.rotation.y = Math.PI / 8;
+  oct(0.84).forEach(([x, z]) => mesh(box(0.08, 0.95, 0.08), green, x, ly + 0.45, z, g));
+  const cap = mesh(new THREE.LatheGeometry([[1.05, 0], [1.0, 0.2], [0.7, 0.45], [0.25, 0.7], [0.05, 0.75]].map(([r, y]) => new THREE.Vector2(r, y)), 8), roofM, head, ly + 0.9, 0, g);
+  cap.rotation.y = Math.PI / 8;
+  mesh(ball(0.16, 10, 8), roofM, head, ly + 1.75, 0, g);
+  mesh(new THREE.ConeGeometry(0.07, 0.6, 8), roofM, head, ly + 2.15, 0, g);
+  // a little pennant at the very top, as a weathervane
+  mesh(cyl(0.025, 0.025, 1.2, 6), green, head, ly + 2.8, 0, g);
+  const flag = mesh(new THREE.PlaneGeometry(0.8, 0.45), std({ color: 0xc67139, rough: 0.9, side: THREE.DoubleSide }), head + 0.42, ly + 3.15, 0, g);
+  // its lights: a ring of bulbs along the eaves, lit warm at dusk and when someone moors
+  const kioskM = glow(3.2, 2.1, 0.9);
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    mesh(ball(0.09, 8, 6), kioskM, head + Math.cos(a) * (eaveR - 0.25), top - 0.05, Math.sin(a) * (eaveR - 0.25), g).castShadow = false;
+  }
+  // lamp standards down the walkway, in the same green, with white globes
   const lamps: THREE.MeshBasicMaterial[] = []; // shore first
-  for (let x = 5; x < head - 7; x += 9) {
+  for (let x = 5; x < walkEnd - 4; x += 9) {
     const lm = glow(3.2, 2.1, 0.9);
     lamps.push(lm);
     [-1, 1].forEach((s) => {
-      mesh(cyl(0.06, 0.09, 3.3, 8), M.iron, x, deckH + 1.8, s * 2.45, g);
-      mesh(box(0.9, 0.06, 0.06), M.iron, x, deckH + 3.3, s * 2.45, g);
-      [-0.4, 0.4].forEach((o) => (mesh(ball(0.19, 12, 10), lm, x + o, deckH + 3.48, s * 2.45, g).castShadow = false));
+      const z = s * (W / 2 + 0.05);
+      mesh(cyl(0.07, 0.1, 3.3, 8), green, x, deckH + 1.8, z, g);
+      mesh(box(0.9, 0.06, 0.06), green, x, deckH + 3.3, z, g);
+      [-0.4, 0.4].forEach((off) => (mesh(ball(0.19, 12, 10), lm, x + off, deckH + 3.48, z, g).castShadow = false));
     });
   }
-  const kioskGlass = new THREE.MeshStandardMaterial({ color: 0x24353a, roughness: 0.15, metalness: 0.5, emissive: 0xffc070, emissiveIntensity: 0 });
-  // the kiosk
-  mesh(cyl(3.0, 3.0, 3.1, 12), M.white, head, deckH + 1.7, 0, g);
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 + Math.PI / 12;
-    const w = mesh(box(0.08, 1.5, 1.0), i === 0 ? M.terracotta : kioskGlass, head + Math.cos(a) * 3.0, deckH + (i === 0 ? 1.1 : 1.9), Math.sin(a) * 3.0, g);
-    w.rotation.y = -a;
-    if (i === 0) w.scale.y = 1.4;
-  }
-  mesh(cyl(3.5, 3.5, 0.22, 24), M.sage, head, deckH + 3.35, 0, g);
-  const dome = mesh(new THREE.SphereGeometry(3.1, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), M.sage, head, deckH + 3.45, 0, g);
-  dome.scale.y = 0.85;
-  mesh(cyl(0.5, 0.7, 0.8, 10), M.white, head, deckH + 6.3, 0, g);
-  mesh(ball(0.35), M.gold, head, deckH + 6.95, 0, g);
-  mesh(cyl(0.03, 0.03, 2.2, 6), M.iron, head, deckH + 8.2, 0, g);
-  const flag = mesh(new THREE.PlaneGeometry(1.5, 0.85), std({ color: 0xc67139, rough: 0.9, side: THREE.DoubleSide }), head + 0.78, deckH + 8.85, 0, g);
-  [[head - 4, 4.6], [head + 3, 4.6], [head - 4, -4.6], [head + 3, -4.6]].forEach(([x, z]) => {
-    mesh(box(2.2, 0.1, 0.55), M.teak, x, deckH + 0.62, z, g);
-    mesh(box(2.2, 0.55, 0.08), M.teak, x, deckH + 0.95, z + Math.sign(z) * 0.28, g);
-    [-0.9, 0.9].forEach((o) => mesh(box(0.08, 0.5, 0.5), M.iron, x + o, deckH + 0.4, z, g));
-  });
-  const kioskM = glow(3.2, 2.1, 0.9);
-  [0.9, -0.9].forEach((z) => (mesh(ball(0.24, 12, 10), kioskM, head + 3.2, deckH + 2.2, z, g).castShadow = false));
-  // bunting from lamp to lamp down both sides, in Windfall's colours
-  const flags: THREE.BufferGeometry[] = [], strings: THREE.Vector3[] = [], hues = [0xc67139, 0xfff2eb, 0x7a8a5e, 0xf2c14e], col = new THREE.Color();
-  for (let x = 5; x + 9 < head - 7; x += 9)
-    [-1, 1].forEach((sd) => {
-      let prev: THREE.Vector3 | null = null;
-      for (let k = 0; k <= 12; k++) {
-        const f = k / 12, pt = V(x + f * 9, deckH + 3.25 - Math.sin(Math.PI * f) * 0.75, sd * 2.45);
-        if (prev) strings.push(prev, pt);
-        prev = pt;
-        if (k === 0 || k === 12) continue;
-        const tri = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([pt.x - 0.24, pt.y, pt.z, pt.x + 0.24, pt.y, pt.z, pt.x, pt.y - 0.52, pt.z + (k % 2 ? 0.06 : -0.06)], 3));
-        col.setHex(hues[(k + (sd > 0 ? 0 : 2)) % 4]);
-        tri.setAttribute("color", new THREE.Float32BufferAttribute([col.r, col.g, col.b, col.r, col.g, col.b, col.r, col.g, col.b], 3));
-        flags.push(tri);
-      }
-    });
-  const bunt = mergeGeometries(flags)!;
-  bunt.computeVertexNormals();
-  mesh(bunt, std({ vertexColors: true, rough: 0.9, side: THREE.DoubleSide }), 0, 0, 0, g);
-  lines(strings, 0x2a2a28, g);
   return { group: g, flag, lamps, kioskM, kioskGlass };
 }
 
