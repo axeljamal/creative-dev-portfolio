@@ -128,20 +128,20 @@ const plasterT = tex(128, 128, (g, w, h) => {
 /** sailcloth with seams and a rebung (bamboo shoot) border in Marea Dvīpa's gold on indigo */
 /** sailcloth: sewn panels of off-white canvas, weathered, with Marea Dvīpa's indigo foot and gold tumpal along it */
 const sailCloth = (g: CanvasRenderingContext2D, w: number, h: number) => {
-  g.fillStyle = "#ece2cc";
+  g.fillStyle = "#f1e6cd";
   g.fillRect(0, 0, w, h);
   // the weave, then the weather: rain streaks down from the head, grime gathering toward the foot
   speckle(g, w, h, 5200, ["#d9ccb0", "#fbf5e6", "#e3d7bd"], 2);
   for (let i = 0; i < 46; i++) {
     const x = rnd() * w, len = 60 + rnd() * 260, wd = 6 + rnd() * 26, grd = g.createLinearGradient(0, 0, 0, len);
-    grd.addColorStop(0, "rgba(120,104,78,.1)");
+    grd.addColorStop(0, "rgba(120,104,78,.035)"); // kept faint: she is well cared for, her canvas clean cream
     grd.addColorStop(1, "rgba(120,104,78,0)");
     g.fillStyle = grd;
     g.fillRect(x, 0, wd, len);
   }
   const foot = g.createLinearGradient(0, h - 240, 0, h);
   foot.addColorStop(0, "rgba(96,80,56,0)");
-  foot.addColorStop(1, "rgba(96,80,56,.16)");
+  foot.addColorStop(1, "rgba(96,80,56,.06)");
   g.fillStyle = foot;
   g.fillRect(0, h - 240, w, 240);
   // panel seams, each a doubled line of stitching, and two rows of reef points
@@ -164,39 +164,59 @@ const sailCloth = (g: CanvasRenderingContext2D, w: number, h: number) => {
     g.fillStyle = "rgba(70,56,40,.6)";
     for (let x = 16; x < w; x += 32) g.fillRect(x, y - 2, 2, 11);
   });
-  g.fillStyle = "#02213d";
-  g.fillRect(0, h - 76, w, 76);
-  g.fillStyle = "#c39b65";
-  g.fillRect(0, h - 80, w, 5);
+  tumpal(g, w, h, false);
+};
+/** a deep indigo band with a row of tall gold tumpal teeth, at the foot of the cloth or (head) at its top edge */
+const tumpal = (g: CanvasRenderingContext2D, w: number, h: number, head: boolean) => {
+  const B = 96, y0 = head ? 0 : h - B, edge = head ? B : h - B; // edge: where the band meets the cloth
+  const dir = head ? -1 : 1; // teeth point away from the cloth, toward the sail's edge
+  g.fillStyle = "#0d2240";
+  g.fillRect(0, y0, w, B);
+  g.fillStyle = "#d4ab62";
+  g.fillRect(0, head ? B - 2 : h - B - 4, w, 6);
   for (let x = 0; x < w; x += 32) {
     g.beginPath();
-    g.moveTo(x + 3, h - 6);
-    g.lineTo(x + 16, h - 66);
-    g.lineTo(x + 29, h - 6);
+    g.moveTo(x + 3, edge + dir * 90);
+    g.lineTo(x + 16, edge + dir * 12);
+    g.lineTo(x + 29, edge + dir * 90);
     g.closePath();
     g.fill();
   }
 };
 const sailT = tex(512, 512, sailCloth);
-/** the mainsail carries the Dua Pulau medallion, dyed into the cloth in indigo as a batik would be */
-const mainSailT = tex(512, 512, sailCloth);
+/** the gaff sails carry the band along the gaff as well as the foot */
+const gaffSailCloth = (g: CanvasRenderingContext2D, w: number, h: number) => {
+  sailCloth(g, w, h);
+  tumpal(g, w, h, true);
+};
+const foreSailT = tex(512, 512, gaffSailCloth);
+foreSailT.wrapS = foreSailT.wrapT = THREE.ClampToEdgeWrapping;
+/** the mainsail carries the Dua Pulau medallion: a solid indigo disc with the medallion in gold on it, ringed in gold */
+const mainSailT = tex(512, 512, gaffSailCloth);
 mainSailT.wrapS = mainSailT.wrapT = THREE.ClampToEdgeWrapping;
 {
   const img = new Image();
   img.onload = () => {
     const cv = mainSailT.image as HTMLCanvasElement, g = cv.getContext("2d")!;
-    // the motif's own shape, filled with indigo, then laid into the canvas so the weave still shows through it
-    const dye = document.createElement("canvas");
-    dye.width = dye.height = 250;
-    const d = dye.getContext("2d")!;
-    d.drawImage(img, 0, 0, 250, 250);
-    d.globalCompositeOperation = "source-in";
-    d.fillStyle = "#12325a";
-    d.fillRect(0, 0, 250, 250);
+    // a solid indigo disc ringed in gold, and the motif's own shape filled with gold on it
+    const cx = 256, cy = 236, R = 128;
     g.save();
-    g.globalAlpha = 0.62;
-    g.globalCompositeOperation = "multiply";
-    g.drawImage(dye, 131, 96);
+    g.fillStyle = "#d4ab62";
+    g.beginPath();
+    g.arc(cx, cy, R + 7, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = "#0f2a4e";
+    g.beginPath();
+    g.arc(cx, cy, R, 0, Math.PI * 2);
+    g.fill();
+    const dye = document.createElement("canvas");
+    dye.width = dye.height = 220;
+    const d = dye.getContext("2d")!;
+    d.drawImage(img, 0, 0, 220, 220);
+    d.globalCompositeOperation = "source-in";
+    d.fillStyle = "#e2bd72";
+    d.fillRect(0, 0, 220, 220);
+    g.drawImage(dye, cx - 110, cy - 110);
     g.restore();
     mainSailT.needsUpdate = true;
   };
@@ -516,7 +536,7 @@ export function buildPinisi() {
   mesh(hg, std({ vertexColors: true, rough: 0.42, side: THREE.DoubleSide }), 0, 0, 0, boat);
   // two dark sheer stripes along each side, following the sheer from the transom to the stem: flat bands laid just
   // proud of the hull (the hull's own mesh is too coarse to paint bands this thin)
-  const stripeM = std({ color: 0x2a1d14, rough: 0.4, side: THREE.DoubleSide });
+  const stripeM = std({ color: 0x14243c, rough: 0.4, side: THREE.DoubleSide });
   [[0.42, 0.2], [0.78, 0.1]].forEach(([drop, h]) =>
     [-1, 1].forEach((s) => {
       const p: number[] = [], ix: number[] = [], n = 60;
@@ -570,7 +590,8 @@ export function buildPinisi() {
   dg.setIndex(di);
   dg.computeVertexNormals();
   mesh(dg, std({ map: rep(plankT, 1, 8), color: 0xc49a66, rough: 0.75, side: THREE.DoubleSide, bump: 0.35 }), 0, 0, 0, boat);
-  [railL, railR].forEach((r) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(r), 80, 0.13, 6), M.darkWood, 0, 0, 0, boat));
+  const redM = std({ color: 0x9a2a22, rough: 0.45 }); // lacquered red trim: the cap rail and the deckhouse rails
+  [railL, railR].forEach((r) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(r), 80, 0.13, 6), redM, 0, 0, 0, boat));
   // teak balusters along the bulwarks, forward of the deckhouse
   const balG = cyl(0.035, 0.035, 0.6, 6);
   for (let x = -2; x <= 12.5; x += 0.55) {
@@ -626,9 +647,9 @@ export function buildPinisi() {
     pts.push(pts[0].clone());
     for (let i = 0; i < pts.length - 1; i += 1) {
       const a = pts[i], b = pts[i + 1], n = Math.max(1, Math.round(a.distanceTo(b) / 0.5));
-      for (let j = 0; j < n; j++) mesh(balG, M.teak, a.x + ((b.x - a.x) * j) / n, y + 0.3, a.z + ((b.z - a.z) * j) / n, boat).castShadow = false;
+      for (let j = 0; j < n; j++) mesh(balG, redM, a.x + ((b.x - a.x) * j) / n, y + 0.3, a.z + ((b.z - a.z) * j) / n, boat).castShadow = false;
     }
-    mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 90, 0.055, 5, true), M.teak, 0, 0.62, 0, boat);
+    mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 90, 0.055, 5, true), redM, 0, 0.62, 0, boat);
   };
   const base = deckY(FORE) - 0.2, L1 = deckY(AFT) + 2.05, L2 = L1 + 1.75;
   const h1 = slab(AFT, FORE, 0.86, base, L1 - base, wallM);
@@ -678,7 +699,23 @@ export function buildPinisi() {
       mesh(box(len, 0.05, 0.06), M.teak, 0, 0.58, s * 0.48, walk);
     });
   }
-  const sailM = std({ map: sailT, rough: 0.95, side: THREE.DoubleSide }), mainSailM = std({ map: mainSailT, rough: 0.95, side: THREE.DoubleSide });
+  // a ship's lantern hung under the tip of the bowsprit: brass cage, glass that lights up with the cabins at dusk
+  {
+    const tip = bow0.clone().lerp(bow1, 0.93);
+    const lan = new THREE.Group();
+    lan.position.copy(tip).add(V(0, -0.75, 0));
+    spars.add(lan);
+    mesh(cyl(0.012, 0.012, 0.5, 4), M.darkWood, 0, 0.5, 0, lan);
+    mesh(cyl(0.2, 0.24, 0.1, 8), M.brass, 0, 0.27, 0, lan);
+    mesh(new THREE.ConeGeometry(0.2, 0.18, 8), M.brass, 0, 0.4, 0, lan);
+    mesh(cyl(0.17, 0.17, 0.42, 8), winM, 0, 0.03, 0, lan).castShadow = false;
+    mesh(cyl(0.22, 0.2, 0.08, 8), M.brass, 0, -0.2, 0, lan);
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+      mesh(cyl(0.015, 0.015, 0.42, 4), M.brass, Math.cos(a) * 0.18, 0.03, Math.sin(a) * 0.18, lan);
+    }
+  }
+  const sailM = std({ map: sailT, rough: 0.95, side: THREE.DoubleSide }), foreSailM = std({ map: foreSailT, rough: 0.95, side: THREE.DoubleSide }), mainSailM = std({ map: mainSailT, rough: 0.95, side: THREE.DoubleSide });
   const sails: THREE.Mesh[] = [];
   const sail = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3, belly: number, m: THREE.Material = sailM) => {
     const s = mesh(sailGeo(a, b, c, d, belly), m, 0, 0, 0, boat);
@@ -687,7 +724,7 @@ export function buildPinisi() {
   };
   // fore gaff sail and topsail
   const fTack = V(fx - 0.3, fDeck + 2.6, 0), fThroat = V(fx - 0.45, 17.6, 0), fPeak = V(-1.0, 22, 2.7), fClew = V(-2.2, fDeck + 3.2, 3.2); // sheeted out to leeward
-  sail(fTack, fThroat, fPeak, fClew, 1.6);
+  sail(fTack, fThroat, fPeak, fClew, 1.6, foreSailM);
   spar(fThroat, fPeak, 0.11, M.wood, spars);
   spar(fTack, fClew, 0.11, M.wood, spars);
   sail(V(fx - 0.45, 18.1, 0), V(fx - 0.5, FT - 0.6, 0), V(fx - 0.5, FT - 0.6, 0), V(-0.9, 22.4, 2.7), 0.9);
