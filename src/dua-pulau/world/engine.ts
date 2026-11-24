@@ -53,6 +53,8 @@ export type World = {
   pipTalking: (on: boolean) => void;
   /** follow her from astern, or from her starboard or port side */
   setView: (v: BoatView) => void;
+  /** filming only: hold the camera at a fixed point looking at another while she sails past (null: follow again) */
+  filmCam: (c: { pos: [number, number, number]; look: [number, number, number]; track?: boolean } | null) => void;
   /** moored: hide the panel's room and let the camera have the whole screen */
   look: (on: boolean) => void;
   chart: () => Chart;
@@ -850,6 +852,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   // ---------- camera ----------
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), wantPos = new THREE.Vector3(), wantLook = new THREE.Vector3(), lampW = new THREE.Vector3();
   let camSet = false, shift = 0;
+  let filmAt: { pos: [number, number, number]; look: [number, number, number]; track?: boolean } | null = null;
   // the follow view: an angle round her from dead astern (towards starboard is positive), eased, so a change of view
   // swings the camera round behind the stern rather than straight through the hull
   const VIEWS: BoatView[] = ["astern", "starboard", "port"];
@@ -943,6 +946,12 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     } else {
       wantPos.copy(followPos);
       wantLook.copy(followLook);
+    }
+    if (filmAt) {
+      wantPos.set(...filmAt.pos);
+      if (filmAt.track) wantLook.set(st.x + Math.cos(st.yaw) * 4, filmAt.look[1], st.z - Math.sin(st.yaw) * 4); // pan with her
+      else wantLook.set(...filmAt.look);
+      k = 1;
     }
     if (!camSet || reduce) k = 1;
     camSet = true;
@@ -1116,7 +1125,8 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     helm.rotation.y = st.yaw;
     pinisi.boat.rotation.set(Math.sin(t * 0.7) * 0.022 * bob + st.roll, 0, Math.sin(t * 0.53 + 1) * 0.012 * bob + st.v * 0.0016);
     pinisi.sails.forEach((s, i) => (s.scale.z = 1 + Math.sin(t * 0.8 + i) * 0.1 * bob));
-    pinisi.flag.rotation.y = Math.sin(t * 3) * 0.3 * bob;
+    pinisi.flag.rotation.y = Math.PI + Math.sin(t * 3) * 0.3 * bob;
+    pinisi.foreFlag.rotation.y = Math.PI + Math.sin(t * 3 + 1.3) * 0.3 * bob;
     lamp.update(t, lit);
 
     wakeT -= dt * Math.abs(st.v);
@@ -1247,6 +1257,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     setMuted: audio.setMuted,
     pipTalking: (on) => void (talking = on),
     setView: (v) => void (view = v),
+    filmCam: (c) => void (filmAt = c),
     look: (on) => void (looking = on),
     skipTime() {
       if (phase !== "sailing") return;

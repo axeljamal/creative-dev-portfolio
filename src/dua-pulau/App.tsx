@@ -117,6 +117,8 @@ export function App() {
         if (gone || !canvas.current) return;
         world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart, onPip: askPip, onView: setBoatView }, logged());
         setState("ready");
+        // local dev only, for filming: lets a recorder steer the world (never in a production build)
+        if (import.meta.env.DEV) { const w = window as unknown as { __dp?: object }; w.__dp = Object.assign(w.__dp ?? {}, { world: world.current, moor, look }); }
       })
       .catch((e) => {
         console.error(e);

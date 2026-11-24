@@ -128,7 +128,7 @@ const plasterT = tex(128, 128, (g, w, h) => {
 /** sailcloth with seams and a rebung (bamboo shoot) border in Marea Dvīpa's gold on indigo */
 /** sailcloth: sewn panels of off-white canvas, weathered, with Marea Dvīpa's indigo foot and gold tumpal along it */
 const sailCloth = (g: CanvasRenderingContext2D, w: number, h: number) => {
-  g.fillStyle = "#f1e6cd";
+  g.fillStyle = "#f0e2c4";
   g.fillRect(0, 0, w, h);
   // the weave, then the weather: rain streaks down from the head, grime gathering toward the foot
   speckle(g, w, h, 5200, ["#d9ccb0", "#fbf5e6", "#e3d7bd"], 2);
@@ -166,24 +166,18 @@ const sailCloth = (g: CanvasRenderingContext2D, w: number, h: number) => {
   });
   tumpal(g, w, h, false);
 };
-/** a deep indigo band with a row of tall gold tumpal teeth, at the foot of the cloth or (head) at its top edge */
+/** a single navy zigzag sewn a hand's width in from the foot of the cloth or (head) from its top edge */
 const tumpal = (g: CanvasRenderingContext2D, w: number, h: number, head: boolean) => {
-  const B = 96, y0 = head ? 0 : h - B, edge = head ? B : h - B; // edge: where the band meets the cloth
-  const dir = head ? -1 : 1; // teeth point away from the cloth, toward the sail's edge
-  g.fillStyle = "#0d2240";
-  g.fillRect(0, y0, w, B);
-  g.fillStyle = "#d4ab62";
-  g.fillRect(0, head ? B - 2 : h - B - 4, w, 6);
-  for (let x = 0; x < w; x += 32) {
-    g.beginPath();
-    g.moveTo(x + 3, edge + dir * 90);
-    g.lineTo(x + 16, edge + dir * 12);
-    g.lineTo(x + 29, edge + dir * 90);
-    g.closePath();
-    g.fill();
-  }
+  const y = head ? 34 : h - 34, A = 11, P = 34;
+  g.save();
+  g.strokeStyle = "#162c52";
+  g.lineWidth = 7;
+  g.lineJoin = "miter";
+  g.beginPath();
+  for (let x = -P, k = 0; x <= w + P; x += P / 2, k++) (k ? g.lineTo : g.moveTo).call(g, x, y + (k % 2 ? -A : A));
+  g.stroke();
+  g.restore();
 };
-const sailT = tex(512, 512, sailCloth);
 /** the gaff sails carry the band along the gaff as well as the foot */
 const gaffSailCloth = (g: CanvasRenderingContext2D, w: number, h: number) => {
   sailCloth(g, w, h);
@@ -191,38 +185,79 @@ const gaffSailCloth = (g: CanvasRenderingContext2D, w: number, h: number) => {
 };
 const foreSailT = tex(512, 512, gaffSailCloth);
 foreSailT.wrapS = foreSailT.wrapT = THREE.ClampToEdgeWrapping;
-/** the mainsail carries the Dua Pulau medallion: a solid indigo disc with the medallion in gold on it, ringed in gold */
-const mainSailT = tex(512, 512, gaffSailCloth);
+/** the big foresail carries the boat's mark, as painted in the film: a navy disc, a ring of gold sun rays inside its
+ *  rim, and a pale rope-ringed heart with a small navy pyramid at its centre */
+const mainSailT = tex(512, 512, (g, w, h) => {
+  gaffSailCloth(g, w, h);
+  const cx = 256, cy = 250, R = 150;
+  g.fillStyle = "#14295a";
+  g.beginPath();
+  g.arc(cx, cy, R, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = "rgba(226,190,120,.55)";
+  g.lineWidth = 3;
+  g.beginPath();
+  g.arc(cx, cy, R - 9, 0, Math.PI * 2);
+  g.stroke();
+  g.fillStyle = "#dcb46c";
+  for (let r = 0; r < 16; r++) {
+    const a = (r / 16) * Math.PI * 2 - Math.PI / 2, b = 0.13;
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a) * 126, cy + Math.sin(a) * 126);
+    g.lineTo(cx + Math.cos(a - b) * 74, cy + Math.sin(a - b) * 74);
+    g.lineTo(cx + Math.cos(a + b) * 74, cy + Math.sin(a + b) * 74);
+    g.closePath();
+    g.fill();
+  }
+  g.fillStyle = "#ead6ac";
+  g.beginPath();
+  g.arc(cx, cy, 70, 0, Math.PI * 2);
+  g.fill();
+  // the rope ring and a rosette of short strokes round the heart
+  g.strokeStyle = "#b88d4e";
+  g.lineWidth = 4;
+  for (let r = 0; r < 28; r++) {
+    const a = (r / 28) * Math.PI * 2;
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a) * 44, cy + Math.sin(a) * 44);
+    g.lineTo(cx + Math.cos(a + 0.18) * 64, cy + Math.sin(a + 0.18) * 64);
+    g.stroke();
+  }
+  g.fillStyle = "#14295a";
+  g.beginPath();
+  g.moveTo(cx, cy - 24);
+  g.lineTo(cx + 24, cy + 17);
+  g.lineTo(cx - 24, cy + 17);
+  g.closePath();
+  g.fill();
+  g.fillStyle = "#ead6ac";
+  g.beginPath();
+  g.arc(cx, cy + 3, 6, 0, Math.PI * 2);
+  g.fill();
+});
 mainSailT.wrapS = mainSailT.wrapT = THREE.ClampToEdgeWrapping;
-{
-  const img = new Image();
-  img.onload = () => {
-    const cv = mainSailT.image as HTMLCanvasElement, g = cv.getContext("2d")!;
-    // a solid indigo disc ringed in gold, and the motif's own shape filled with gold on it
-    const cx = 256, cy = 236, R = 128;
-    g.save();
-    g.fillStyle = "#d4ab62";
+/** the navy wave scroll painted on each bow */
+const scrollT = tex(256, 96, (g, w, h) => {
+  g.clearRect(0, 0, w, h);
+  g.strokeStyle = "#14295a";
+  g.lineWidth = 7;
+  g.lineCap = "round";
+  [52, 128, 204].forEach((x, i) => {
     g.beginPath();
-    g.arc(cx, cy, R + 7, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = "#0f2a4e";
-    g.beginPath();
-    g.arc(cx, cy, R, 0, Math.PI * 2);
-    g.fill();
-    const dye = document.createElement("canvas");
-    dye.width = dye.height = 220;
-    const d = dye.getContext("2d")!;
-    d.drawImage(img, 0, 0, 220, 220);
-    d.globalCompositeOperation = "source-in";
-    d.fillStyle = "#e2bd72";
-    d.fillRect(0, 0, 220, 220);
-    g.drawImage(dye, cx - 110, cy - 110);
-    g.restore();
-    mainSailT.needsUpdate = true;
-  };
-  img.src = "/motifs/dua-pulau-medallion.png";
-}
-sailT.wrapS = sailT.wrapT = THREE.ClampToEdgeWrapping;
+    for (let k = 0; k <= 40; k++) {
+      const a = (k / 40) * Math.PI * 3.2, r = 30 * (1 - k / 46);
+      const px = x + Math.cos(a + Math.PI) * r, py = 50 + Math.sin(a + Math.PI) * r * 0.8;
+      k ? g.lineTo(px, py) : g.moveTo(px, py);
+    }
+    g.stroke();
+    if (i < 2) {
+      g.beginPath();
+      g.moveTo(x + 30, 50);
+      g.quadraticCurveTo(x + 52, 82, x + 76 - 30, 50);
+      g.stroke();
+    }
+  });
+});
 
 /**
  * Nothing that stands outdoors is clean. Onto a finished texture this lays what weather leaves: rain streaks running
@@ -459,32 +494,6 @@ const hullBottom = (u: number) => -2.2 * Math.pow(Math.sin(Math.PI * (0.05 + 0.9
 /** deck height at a point along the hull (x: -14 stern … +14 bow) */
 export const deckY = (x: number) => hullTop((x + HULL_L / 2) / HULL_L) - 0.35;
 
-function sailGeo(a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3, belly: number, n = 10) {
-  // a: tack, b: head on the mast, c: peak, d: clew. A triangle passes b twice.
-  const pos: number[] = [], uv: number[] = [], idx: number[] = [];
-  const p = V(0, 0, 0), q = V(0, 0, 0);
-  for (let i = 0; i <= n; i++)
-    for (let j = 0; j <= n; j++) {
-      const s = i / n, t = j / n;
-      p.lerpVectors(a, d, s);
-      q.lerpVectors(b, c, s);
-      p.lerp(q, t);
-      p.z += belly * Math.sin(Math.PI * s) * Math.sin(Math.PI * Math.min(1, t * 0.9 + 0.1));
-      pos.push(p.x, p.y, p.z);
-      uv.push(s, t);
-    }
-  for (let i = 0; i < n; i++)
-    for (let j = 0; j < n; j++) {
-      const k = i * (n + 1) + j;
-      idx.push(k, k + n + 1, k + 1, k + 1, k + n + 1, k + n + 2);
-    }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  return g;
-}
 
 /** A Bugis pinisi in the cruising style: a white hull with dark sheer stripes, a long two-storey teak deckhouse aft,
  *  two gaff-rigged masts with topsails and rope ladders, and a long bowsprit with its own walkway. Bow along +x. */
@@ -510,10 +519,10 @@ export function buildPinisi() {
       uv.push(u * 7, (j / S) * 3);
       // paint: red antifouling, a dark boot-top at the waterline, then white topsides with two dark sheer stripes
       const fromTop = top - y;
-      if (y < 0.3) col.push(0.45, 0.1, 0.07);
-      else if (y < 0.44) col.push(0.1, 0.09, 0.08);
-      else if (fromTop < 0.14) col.push(0.32, 0.21, 0.13);
-      else col.push(0.95, 0.94, 0.91);
+      // as in the film: a deep navy bottom up past the waterline, warm cream topsides, a navy line under the rail
+      if (y < 0.44) col.push(0.06, 0.09, 0.17);
+      else if (fromTop < 0.14) col.push(0.08, 0.13, 0.25);
+      else col.push(0.93, 0.89, 0.8);
     }
   }
   for (let i = 0; i < U; i++)
@@ -525,7 +534,7 @@ export function buildPinisi() {
   const sternC = pos.length / 3;
   pos.push(-HULL_L / 2 - 0.5, (hullTop(0) + hullBottom(0)) / 2 + 0.6, 0);
   uv.push(0, 1.5);
-  col.push(0.95, 0.94, 0.91);
+  col.push(0.93, 0.89, 0.8);
   for (let j = 0; j < S; j++) idx.push(sternC, j + 1, j);
   const hg = new THREE.BufferGeometry();
   hg.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
@@ -537,7 +546,7 @@ export function buildPinisi() {
   // two dark sheer stripes along each side, following the sheer from the transom to the stem: flat bands laid just
   // proud of the hull (the hull's own mesh is too coarse to paint bands this thin)
   const stripeM = std({ color: 0x14243c, rough: 0.4, side: THREE.DoubleSide });
-  [[0.42, 0.2], [0.78, 0.1]].forEach(([drop, h]) =>
+  [[0.5, 0.24]].forEach(([drop, h]) =>
     [-1, 1].forEach((s) => {
       const p: number[] = [], ix: number[] = [], n = 60;
       for (let i = 0; i <= n; i++) {
@@ -555,6 +564,39 @@ export function buildPinisi() {
       mesh(g, stripeM, 0, 0, 0, boat).castShadow = false;
     }),
   );
+  // the navy boot band: laid as its own smooth strip so its top edge runs clean along the waterline
+  [-1, 1].forEach((s) => {
+    const p: number[] = [], ix: number[] = [], n = 60;
+    for (let i = 0; i <= n; i++) {
+      const u = 0.015 + (0.97 * i) / n, top = hullTop(u), bot = hullBottom(u);
+      [0.2, 0.95].forEach((y) => {
+        const q = hullAt(u, Math.max(0, Math.min(1, (y - bot) / (top - bot))));
+        p.push(q.x, q.y, s * (q.z + 0.02));
+      });
+      if (i < n) ix.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
+    g.setIndex(ix);
+    g.computeVertexNormals();
+    mesh(g, std({ color: 0x0f1a30, rough: 0.45, side: THREE.DoubleSide }), 0, 0, 0, boat).castShadow = false;
+  });
+  // the stem post in lacquered red, from the forefoot up to the rail, as in the film
+  {
+    const pts: THREE.Vector3[] = [];
+    for (let k = 0; k <= 12; k++) pts.push(hullAt(0.998, 0.08 + (0.92 * k) / 12).setZ(0));
+    mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.16, 6), std({ color: 0x9a2a22, rough: 0.45 }), 0.05, 0, 0, boat);
+  }
+  // the navy wave scroll on each bow
+  {
+    const scM = new THREE.MeshStandardMaterial({ map: scrollT, transparent: true, roughness: 0.5, side: THREE.DoubleSide, depthWrite: false });
+    [-1, 1].forEach((s) => {
+      const u = 0.88, top = hullTop(u), bot = hullBottom(u), q = hullAt(u, (top - 0.75 - bot) / (top - bot)), q2 = hullAt(u + 0.03, (top - 0.75 - bot) / (top - bot));
+      const m = mesh(new THREE.PlaneGeometry(4.2, 1.5), scM, q.x, q.y, s * (q.z + 0.06), boat);
+      m.rotation.y = (s > 0 ? 0 : Math.PI) - s * Math.atan2(q2.z - q.z, q2.x - q.x);
+      m.castShadow = false;
+    });
+  }
   // a row of portholes in the white band below the stripes, both sides
   const portM = std({ color: 0x18222a, rough: 0.15, metal: 0.5 }), rimM = std({ color: 0xc9b48a, rough: 0.35, metal: 0.6 });
   const portG = new THREE.CircleGeometry(0.15, 16), rimG = new THREE.RingGeometry(0.15, 0.21, 16);
@@ -629,7 +671,7 @@ export function buildPinisi() {
     mesh(g, mat, 0, y, 0, boat);
     return half;
   };
-  const wallM = std({ color: 0xf4f1ea, rough: 0.5 }), winM = std({ color: 0x1a2630, rough: 0.12, metal: 0.45, emissive: 0xffb262 }); // cabin lights: the world turns them up at dusk
+  const wallM = std({ color: 0xefe5cf, rough: 0.5 }), winM = std({ color: 0x1a2630, rough: 0.12, metal: 0.45, emissive: 0xffb262 }); // cabin lights: the world turns them up at dusk
   winM.emissiveIntensity = 0;
   const windows = (x0: number, x1: number, half: (x: number) => number, y: number, h: number) => {
     for (let x = x0 + 0.7; x < x1 - 0.5; x += 1.05)
@@ -680,67 +722,51 @@ export function buildPinisi() {
   const fDeck = deckY(fx), mDeck = deckY(mx);
   spar(V(fx, fDeck, 0), V(fx - 0.5, FT, 0), 0.32, M.wood, spars, 0.14);
   spar(V(mx, mDeck, 0), V(mx - 0.5, MT, 0), 0.29, M.wood, spars, 0.13);
+  // the lower masts lacquered red, as in the film, up to the foot of each square sail
+  const mastRed = std({ color: 0xb4422c, rough: 0.45 });
+  spar(V(fx, fDeck, 0), V(fx - 0.15, 7.5, 0), 0.36, mastRed, spars, 0.34);
+  spar(V(mx, mDeck, 0), V(mx - 0.25, 11.1, 0), 0.33, mastRed, spars, 0.3);
   [[fx - 0.42, 21.5, 1.7], [mx - 0.42, 19.5, 1.5]].forEach(([x, y, w]) => {
     spar(V(x, y, -w), V(x, y, w), 0.07, M.wood, spars);
     spar(V(x - 0.5, y + 0.05, 0), V(x + 0.6, y + 0.05, 0), 0.06, M.wood, spars);
   });
   const bow0 = V(13.2, hullTop(0.96) + 0.1, 0), bow1 = V(24.5, 7.4, 0);
-  spar(bow0, bow1, 0.2, M.wood, spars, 0.1);
-  {
-    // the walkway out along the bowsprit, planked and railed, for whoever goes out to the jibs
-    const a = bow0.clone(), b = bow0.clone().lerp(bow1, 0.6), d = b.clone().sub(a), len = d.length();
-    const walk = new THREE.Group();
-    walk.position.copy(a.clone().lerp(b, 0.5)).add(V(0, 0.18, 0));
-    walk.rotation.z = Math.atan2(d.y, d.x);
-    spars.add(walk);
-    mesh(box(len, 0.08, 1.0), M.teak, 0, 0, 0, walk);
-    [-1, 1].forEach((s) => {
-      for (let i = 0; i <= 8; i++) mesh(cyl(0.03, 0.03, 0.55, 5), M.teak, -len / 2 + (len * i) / 8, 0.3, s * 0.48, walk);
-      mesh(box(len, 0.05, 0.06), M.teak, 0, 0.58, s * 0.48, walk);
-    });
-  }
-  // a ship's lantern hung under the tip of the bowsprit: brass cage, glass that lights up with the cabins at dusk
-  {
-    const tip = bow0.clone().lerp(bow1, 0.93);
-    const lan = new THREE.Group();
-    lan.position.copy(tip).add(V(0, -0.75, 0));
-    spars.add(lan);
-    mesh(cyl(0.012, 0.012, 0.5, 4), M.darkWood, 0, 0.5, 0, lan);
-    mesh(cyl(0.2, 0.24, 0.1, 8), M.brass, 0, 0.27, 0, lan);
-    mesh(new THREE.ConeGeometry(0.2, 0.18, 8), M.brass, 0, 0.4, 0, lan);
-    mesh(cyl(0.17, 0.17, 0.42, 8), winM, 0, 0.03, 0, lan).castShadow = false;
-    mesh(cyl(0.22, 0.2, 0.08, 8), M.brass, 0, -0.2, 0, lan);
-    for (let k = 0; k < 4; k++) {
-      const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
-      mesh(cyl(0.015, 0.015, 0.42, 4), M.brass, Math.cos(a) * 0.18, 0.03, Math.sin(a) * 0.18, lan);
-    }
-  }
-  const sailM = std({ map: sailT, rough: 0.95, side: THREE.DoubleSide }), foreSailM = std({ map: foreSailT, rough: 0.95, side: THREE.DoubleSide }), mainSailM = std({ map: mainSailT, rough: 0.95, side: THREE.DoubleSide });
+  spar(bow0, bow1, 0.2, M.darkWood, spars, 0.1);
+  const foreSailM = std({ map: foreSailT, rough: 0.95, side: THREE.DoubleSide }), mainSailM = std({ map: mainSailT, rough: 0.95, side: THREE.DoubleSide });
   const sails: THREE.Mesh[] = [];
-  const sail = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3, belly: number, m: THREE.Material = sailM) => {
-    const s = mesh(sailGeo(a, b, c, d, belly), m, 0, 0, 0, boat);
-    sails.push(s);
-    return s;
+  // two square sails, each bent to a red yard at its head and stretched to another at its foot, braced round 45° so
+  // they fill from astern and read from either side. Built flat across the ship, bellied forward (+z before bracing).
+  const yardM = std({ color: 0x9a2f22, rough: 0.5 });
+  const square = (x: number, foot: number, head: number, half: number, belly: number, m: THREE.Material) => {
+    const g = new THREE.Group();
+    g.position.set(x, 0, 0);
+    g.rotation.y = Math.PI / 2 - Math.PI / 4;
+    boat.add(g);
+    const n = 12, pos: number[] = [], uv: number[] = [], idx: number[] = [];
+    for (let i = 0; i <= n; i++)
+      for (let j = 0; j <= n; j++) {
+        const s = i / n, t = j / n, flare = 1 + 0.08 * (1 - t); // the foot a little wider than the head
+        pos.push((s * 2 - 1) * half * flare, foot + (head - foot) * t, belly * Math.sin(Math.PI * s) * Math.sin(Math.PI * Math.min(1, t * 0.85 + 0.15)));
+        uv.push(s, t);
+      }
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        const k = i * (n + 1) + j;
+        idx.push(k, k + n + 1, k + 1, k + 1, k + n + 1, k + n + 2);
+      }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const sm = mesh(geo, m, 0, 0, 0, g);
+    sails.push(sm);
+    spar(V(-half * 1.06, head + 0.15, 0.1), V(half * 1.06, head + 0.15, 0.1), 0.16, yardM, g, 0.11);
+    spar(V(-half * 1.13, foot - 0.1, 0.25), V(half * 1.13, foot - 0.1, 0.25), 0.13, yardM, g, 0.09);
+    return g;
   };
-  // fore gaff sail and topsail
-  const fTack = V(fx - 0.3, fDeck + 2.6, 0), fThroat = V(fx - 0.45, 17.6, 0), fPeak = V(-1.0, 22, 2.7), fClew = V(-2.2, fDeck + 3.2, 3.2); // sheeted out to leeward
-  sail(fTack, fThroat, fPeak, fClew, 1.6, foreSailM);
-  spar(fThroat, fPeak, 0.11, M.wood, spars);
-  spar(fTack, fClew, 0.11, M.wood, spars);
-  sail(V(fx - 0.45, 18.1, 0), V(fx - 0.5, FT - 0.6, 0), V(fx - 0.5, FT - 0.6, 0), V(-0.9, 22.4, 2.7), 0.9);
-  // main (aft) gaff sail, its foot sheeted high enough to clear the sun deck's canopy, and its topsail
-  const foot = cy + 0.8;
-  const mTack = V(mx - 0.3, foot, 0), mThroat = V(mx - 0.45, 16.6, 0), mPeak = V(-10.8, 20.2, 2.5), mClew = V(-13.2, foot + 0.5, 3.0);
-  sail(mTack, mThroat, mPeak, mClew, 1.3, mainSailM);
-  spar(mThroat, mPeak, 0.1, M.wood, spars);
-  spar(mTack, mClew, 0.1, M.wood, spars);
-  sail(V(mx - 0.45, 17.1, 0), V(mx - 0.5, MT - 0.6, 0), V(mx - 0.5, MT - 0.6, 0), V(-10.6, 20.6, 2.5), 0.7);
-  // three jibs out along the bowsprit
-  [[1, FT - 1.2, 8.2], [0.68, FT - 5.2, 7.8], [0.36, FT - 9.2, 7.4]].forEach(([t, headY, clewY], i) => {
-    const tack = bow0.clone().lerp(bow1, t).add(V(0, 0.15, 0));
-    const head = V(fx - 0.2 + (FT - headY) * 0.02, headY, 0);
-    sail(tack, head, head, V(fx + 1.2 + i * 0.5, clewY, 2.3), 0.9 - i * 0.15);
-  });
+  square(fx - 0.35, 7.6, 23.6, 8.6, 2.2, mainSailM);
+  square(mx - 0.4, 11.2, 21.8, 6.8, 1.7, foreSailM);
   // standing rigging: stays, shrouds with their rope ladders (ratlines), the bobstay and a pennant
   const rig: THREE.Vector3[] = [
     V(fx - 0.5, FT, 0), bow1, V(fx - 0.5, FT, 0), V(mx - 0.5, MT, 0), V(mx - 0.5, MT, 0), V(-14, hullTop(0) + 0.2, 0),
@@ -755,7 +781,14 @@ export function buildPinisi() {
   shrouds(fx, FT - 1, 0.68, 0.72);
   shrouds(mx, MT - 1, 0.36, 0.4);
   lines(rig, 0x241a12, boat);
-  const flag = mesh(new THREE.PlaneGeometry(1.5, 0.9, 6, 1), std({ color: 0xc67139, rough: 0.9, side: THREE.DoubleSide }), mx - 1.3, MT + 0.1, 0, boat);
+  // an orange pennant at each masthead
+  const penG = new THREE.BufferGeometry().setFromPoints([V(0, 0.45, 0), V(0, -0.45, 0), V(1.8, 0, 0)]); // hoist on the pole, streaming aft once turned
+  penG.computeVertexNormals();
+  const penM = std({ color: 0xe0782e, rough: 0.9, side: THREE.DoubleSide });
+  const flag = mesh(penG, penM, mx - 0.5, MT + 0.4, 0, boat), foreFlag = mesh(penG, penM, fx - 0.5, FT + 0.4, 0, boat);
+  spar(V(mx - 0.5, MT, 0), V(mx - 0.5, MT + 1, 0), 0.05, M.wood, spars);
+  spar(V(fx - 0.5, FT, 0), V(fx - 0.5, FT + 1, 0), 0.05, M.wood, spars);
+  flag.rotation.y = foreFlag.rotation.y = Math.PI;
 
   // where the oil lamp stands: a small teak stand on the foredeck
   const lampAt = new THREE.Group();
@@ -774,7 +807,7 @@ export function buildPinisi() {
   boat.traverse((o) => {
     if (o instanceof THREE.Mesh && o.castShadow !== false && o.geometry !== balG) o.castShadow = true;
   });
-  return { boat, sails, flag, lampAt, pipBow, pipStern, cabinGlass: winM };
+  return { boat, sails, flag, foreFlag, lampAt, pipBow, pipStern, cabinGlass: winM };
 }
 
 // ---------- the pelita: a brass oil lamp with a living flame ----------
