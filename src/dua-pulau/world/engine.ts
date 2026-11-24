@@ -9,6 +9,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PlaceId } from "../places";
 import { earlierWork } from "../../content/work";
@@ -266,7 +267,6 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     water.material.uniforms.sunDirection.value.copy(sunDir).normalize();
     water.material.uniforms.sunColor.value.setRGB(1, 0.84 + 0.12 * high, 0.62 + 0.3 * high).multiplyScalar(up);
     water.material.uniforms.waterColor.value.copy(cA.set(0x020c16)).lerp(cB.set(0x0c4a50), day).lerp(cB.set(0x06607a), high);
-    sun.position.copy(sunDir).multiplyScalar(600);
     sun.intensity = 4.6 * up;
     sun.color.copy(cA.set(0xff8a45)).lerp(cB.set(0xffd9a6), smooth(1, 9, elev)).lerp(cB.set(0xfff6ea), high);
     hemi.intensity = 0.2 + 0.75 * day;
@@ -543,6 +543,34 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   // ---------- render pipeline ----------
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  // ambient occlusion: the darkening where things meet (a chair on the boards, a hut on the promenade, a rock in the sand)
+  // that tells the eye they are touching. It costs a frame's worth of depth and normals, so phones go without.
+  const gtao = coarse ? null : new GTAOPass(scene, camera, 800, 500);
+  if (gtao) {
+    gtao.blendIntensity = 0.85;
+    gtao.updateGtaoMaterial({ radius: 1.4, distanceExponent: 1.6, thickness: 1.2, scale: 1, samples: 16 });
+    gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+    composer.addPass(gtao);
+    // it reads depth and normals with one plain material, which knows nothing of transparency: the sky, the sea,
+    // the clouds and every glow or halo would come out as solid shapes. Hide them while it looks, and only then.
+    const skip: THREE.Object3D[] = [];
+    let found = -1;
+    const render = gtao.render.bind(gtao);
+    gtao.render = (...args: Parameters<GTAOPass["render"]>) => {
+      if (found !== scene.children.length) {
+        found = scene.children.length;
+        skip.length = 0;
+        scene.traverse((o) => {
+          const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+          if (o === sky || o === water || o instanceof THREE.Sprite || o instanceof THREE.Points || (m && !Array.isArray(m) && (m.transparent || (m as THREE.MeshBasicMaterial).userData?.glow))) skip.push(o);
+        });
+      }
+      const was = skip.map((o) => o.visible);
+      skip.forEach((o) => (o.visible = false));
+      render(...args);
+      skip.forEach((o, i) => (o.visible = was[i]));
+    };
+  }
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.42, 0.6, 2.1);
   composer.addPass(bloom);
   // the grade: a little more colour, shadows leaning to indigo and lights to gold (Marea Dvīpa's own pair), and the
@@ -571,6 +599,9 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     if (!w || !h) return;
     renderer.setSize(w, h, false);
     composer.setSize(w, h);
+    // occlusion is soft by nature: work it out at half the resolution
+    const pr = renderer.getPixelRatio();
+    gtao?.setSize(Math.round((w * pr) / 2), Math.round((h * pr) / 2));
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
@@ -585,6 +616,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   const st = { x: -8, z: 128, yaw: Math.PI / 2, v: 0, roll: 0 };
   let phase: "dark" | "lighting" | "sailing" = "dark";
   let litAt = 0, lit = 0, elev = NIGHT, tod = TOD0, ffTo = -1, dayPart: DayPart = "First light";
+  let todHold = false; // dev only: hold the clock still, for comparing looks
   let auto: Site | null = null, autoSide = 0, autoIsle: (typeof ISLANDS)[number] | null = null, moored: Site | null = null, near: PlaceId | null = null;
   let waters = "";
   const found = new Set<PlaceId>(seen);
@@ -1066,7 +1098,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
           const stepS = reduce ? left : Math.min(left, dt * Math.max(24, left * 1.6));
           tod = (tod + stepS) % (DAY_S + NIGHT_S);
           if (left - stepS < 0.01) ffTo = -1;
-        } else if (!reduce) tod = (tod + dt) % (DAY_S + NIGHT_S);
+        } else if (!reduce && !todHold) tod = (tod + dt) % (DAY_S + NIGHT_S);
         const sp = sunAt(tod);
         if (Math.abs(sp.elev - elev) > 0.02 || ffTo >= 0) setSun((elev = sp.elev), sp.az);
         const part = partAt(tod);
@@ -1167,6 +1199,20 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     audio.ambience(Math.min(1, Math.abs(st.v) / 13), 1 - Math.min(1, Math.abs(st.x) / 60), lit);
 
     aim(t, dt);
+    // the sun's shadow follows the view: a box sized to what the camera is looking at, so up close a texel is a
+    // centimetre or two and a chair leg casts a real shadow, while out at sea it widens to take in the islands
+    {
+      const reach = clamp(camPos.distanceTo(camLook) * 1.5 + 22, moored ? 34 : 90, 330), sc = sun.shadow.camera;
+      const texel = (2 * reach) / sun.shadow.mapSize.x;
+      const fx = Math.round(camLook.x / texel) * texel, fz = Math.round(camLook.z / texel) * texel;
+      sun.target.position.set(fx, 0, fz);
+      sun.position.copy(sun.target.position).addScaledVector(sunDir, 600);
+      if (Math.abs(sc.right - reach) > reach * 0.1) {
+        Object.assign(sc, { left: -reach, right: reach, top: reach, bottom: -reach });
+        sc.updateProjectionMatrix();
+        sun.shadow.normalBias = 0.04 + (0.46 * reach) / 330;
+      }
+    }
     composer.render();
   }
   raf = requestAnimationFrame(frame);
@@ -1241,6 +1287,6 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       renderer.dispose();
     },
   };
-  if (import.meta.env.DEV) Object.assign(window, { __dp: { api, st, pip: () => { const v = crew.group.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, crew.group.scale.y * 1.1, 0)).project(camera), r = canvas.getBoundingClientRect(); return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height, onScreen: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1 }; }, skip: () => ((phase = "sailing"), (lit = 1), setSun((elev = DAY), AZ0, true)) } });
+  if (import.meta.env.DEV) Object.assign(window, { __dp: { api, st, pip: () => { const v = crew.group.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, crew.group.scale.y * 1.1, 0)).project(camera), r = canvas.getBoundingClientRect(); return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height, onScreen: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1 }; }, skip: () => ((phase = "sailing"), (lit = 1), setSun((elev = DAY), AZ0, true)), tod: (f: number) => ((tod = f * DAY_S), (todHold = true)), r: { renderer, gtao, sun, bloom, THREE } } });
   return api;
 }

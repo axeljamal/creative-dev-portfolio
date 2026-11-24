@@ -154,9 +154,130 @@ export function buildTerrain() {
   grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
   grain.repeat.set(64, 40);
   grain.anisotropy = 8;
-  const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, map: grain, bumpMap: grain, bumpScale: 0.45, roughness: 0.94, metalness: 0 }));
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: grain, bumpMap: grain, bumpScale: 0.45, roughness: 0.94, metalness: 0 });
+  groundDetail(mat);
+  const mesh = new THREE.Mesh(g, mat);
   mesh.receiveShadow = true;
   return mesh;
+}
+
+/** The ground up close: what each kind of land is made of, as a height field in one tileable texture.
+ *  R: Brighton's shingle, a bed of rounded flints, each its own shade. G: turf, a mat of short blades.
+ *  B: Sulawesi's coral sand, fine grain over wind ripples (and, much larger, the earth of a steep bank). */
+function detailTexture() {
+  const N = 1024, R = new Float32Array(N * N), G = new Float32Array(N * N), B = new Float32Array(N * N);
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+  // shingle: flints packed close, each a low dome; the gaps between them read dark
+  R.fill(0.12);
+  for (let i = 0; i < 2600; i++) {
+    const cx = rnd() * N, cy = rnd() * N, rx = 5 + rnd() * 13, ry = rx * (0.55 + rnd() * 0.45), a = rnd() * Math.PI, tone = 0.35 + rnd() * 0.65;
+    const ca = Math.cos(a), sa = Math.sin(a), ext = Math.ceil(rx) + 1;
+    for (let dy = -ext; dy <= ext; dy++)
+      for (let dx = -ext; dx <= ext; dx++) {
+        const u = (dx * ca + dy * sa) / rx, v = (-dx * sa + dy * ca) / ry, d = u * u + v * v;
+        if (d >= 1) continue;
+        const x = (Math.floor(cx + dx) + N) % N, y = (Math.floor(cy + dy) + N) % N, k = y * N + x;
+        const h = tone * (0.55 + 0.45 * Math.sqrt(1 - d)) * (1 - 0.25 * Math.max(0, u + v) * 0.5); // lit a little from one side
+        if (h > R[k]) R[k] = h;
+      }
+  }
+  // turf: thousands of short blades leaning every way, brighter at the tips
+  G.fill(0.25);
+  for (let i = 0; i < 52000; i++) {
+    const x0 = rnd() * N, y0 = rnd() * N, len = 8 + rnd() * 22, a = -Math.PI / 2 + (rnd() - 0.5) * 1.8, b = 0.45 + rnd() * 0.55;
+    for (let t = 0; t <= 1; t += 1 / len) {
+      const x = (Math.floor(x0 + Math.cos(a) * len * t) + N) % N, y = (Math.floor(y0 + Math.sin(a) * len * t) + N) % N, k = y * N + x;
+      const h = b * (0.4 + 0.6 * t);
+      if (h > G[k]) G[k] = h;
+    }
+  }
+  // sand: ripples from whole-number waves (so the tile repeats seamlessly), bent by a slower swell, over a fine grain
+  for (let y = 0; y < N; y++)
+    for (let x = 0; x < N; x++) {
+      const u = (x / N) * Math.PI * 2, v = (y / N) * Math.PI * 2;
+      const warp = Math.sin(u * 2 + Math.sin(v * 3) * 1.5) * 0.9 + Math.sin(v * 2 - u) * 0.6;
+      const rip = 0.5 + 0.5 * Math.sin(u * 11 + v * 5 + warp * 2.2);
+      B[y * N + x] = 0.25 + 0.4 * rip * rip + 0.35 * rnd();
+    }
+  const img = new ImageData(N, N);
+  for (let k = 0; k < N * N; k++) {
+    img.data[k * 4] = Math.min(255, R[k] * 255);
+    img.data[k * 4 + 1] = Math.min(255, G[k] * 255);
+    img.data[k * 4 + 2] = Math.min(255, B[k] * 255);
+    img.data[k * 4 + 3] = 255;
+  }
+  const c = document.createElement("canvas");
+  c.width = c.height = N;
+  c.getContext("2d")!.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 8;
+  t.colorSpace = THREE.NoColorSpace;
+  return t;
+}
+
+/** gives the ground its surface where the camera is close: shingle on Windfall's beaches, sand on Marea Dvīpa's,
+ *  blades in the turf and bare earth on steep banks, each shading the colour and bending the light. It fades out
+ *  with distance into the plain colour, which reads better from far off than a repeating pattern would. */
+function groundDetail(mat: THREE.MeshStandardMaterial) {
+  const tDet = detailTexture();
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.tDet = { value: tDet };
+    sh.vertexShader = sh.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNor;")
+      .replace("#include <project_vertex>", "#include <project_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNor = normalize(mat3(modelMatrix) * objectNormal);");
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+varying vec3 vWPos;
+varying vec3 vWNor;
+uniform sampler2D tDet;
+float gH, gFade, gWet;
+vec3 gBump(vec3 p, vec3 n, vec2 dH, float fd) {
+  vec3 sx = normalize(dFdx(p)), sy = normalize(dFdy(p));
+  vec3 r1 = cross(sy, n), r2 = cross(n, sx);
+  float det = dot(sx, r1) * fd;
+  return normalize(abs(det) * n - sign(det) * (dH.x * r1 + dH.y * r2));
+}`
+      )
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+{
+  vec2 p = vWPos.xz;
+  float dist = length(vWPos - cameraPosition);
+  gFade = 1.0 - smoothstep(30.0, 170.0, dist);
+  float wf = smoothstep(-6.0, 6.0, vWPos.x);
+  float turf = smoothstep(0.0, 0.07, vColor.g - vColor.r);
+  float steep = smoothstep(0.2, 0.42, 1.0 - vWNor.y) * step(0.5, vWPos.y);
+  float under = 1.0 - smoothstep(-1.2, -0.3, vWPos.y);
+  gWet = (1.0 - smoothstep(-0.4, 0.5, vWPos.y)) * (1.0 - under);
+  float peb = texture2D(tDet, p / 2.6).r;
+  float sand = texture2D(tDet, p / 3.7).b;
+  float grass = texture2D(tDet, p / 2.2).g;
+  float soil = texture2D(tDet, p / 9.0 + 0.31).b;
+  float beachPeb = (1.0 - turf) * wf * (1.0 - under), beachSand = (1.0 - turf) * (1.0 - wf) + under * wf;
+  gH = beachPeb * peb + beachSand * sand + turf * grass;
+  float amt = beachPeb * 1.0 + beachSand * 0.35 + turf * 0.75;
+  gH = mix(gH, soil, steep);
+  amt = mix(amt, 0.6, steep);
+  diffuseColor.rgb *= mix(1.0, 0.52 + 0.95 * gH, gFade * amt);
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.12, 1.1, 0.78), smoothstep(0.6, 1.0, grass) * turf * (1.0 - steep) * 0.5 * gFade);
+  diffuseColor.rgb *= 1.0 - 0.28 * gWet;
+  gH *= amt;
+}`
+      )
+      .replace(
+        "#include <roughnessmap_fragment>",
+        "#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.32, gWet * 0.8);"
+      )
+      .replace(
+        "#include <normal_fragment_maps>",
+        "#include <normal_fragment_maps>\nnormal = gBump(-vViewPosition, normal, vec2(dFdx(gH), dFdy(gH)) * 1.6 * gFade, faceDirection);"
+      );
+  };
 }
 
 /** scatter points on an island's land, away from the building sites */

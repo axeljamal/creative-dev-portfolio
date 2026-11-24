@@ -4,6 +4,10 @@
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Reflector } from "three/examples/jsm/objects/Reflector.js";
+import type { Baked, GateStone } from "./carving";
+
+// phones get lighter foliage
+const COARSE = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 
 // ---------- small kit ----------
 type Draw = (g: CanvasRenderingContext2D, w: number, h: number) => void;
@@ -273,7 +277,7 @@ const M = {
   warm: glow(3.2, 2.1, 0.9),
 };
 
-function mesh(geo: THREE.BufferGeometry, mat: THREE.Material, x = 0, y = 0, z = 0, parent?: THREE.Object3D) {
+function mesh(geo: THREE.BufferGeometry, mat: THREE.Material | THREE.Material[], x = 0, y = 0, z = 0, parent?: THREE.Object3D) {
   const o = new THREE.Mesh(geo, mat);
   o.position.set(x, y, z);
   o.castShadow = o.receiveShadow = true;
@@ -827,153 +831,221 @@ export function buildLamp() {
 }
 
 // ---------- Marea Dvīpa ----------
-/** dark volcanic stone carved all over in relief: bands of scrollwork between ledges, as on a Balinese gate */
-const carvedT = tex(256, 256, (g, w, h) => {
-  g.fillStyle = "#5a554e";
-  g.fillRect(0, 0, w, h);
-  speckle(g, w, h, 2600, ["#3e3a35", "#77716a", "#4a463f"], 3);
-  for (let y = 0; y < h; y += 64) {
-    // a ledge: lit along its top, shadowed under
-    g.fillStyle = "rgba(205,196,180,.35)";
-    g.fillRect(0, y, w, 3);
-    g.fillStyle = "rgba(20,18,15,.55)";
-    g.fillRect(0, y + 3, w, 5);
-    // scrolls: each curl drawn twice, a light edge up and left and a dark one down and right, so it reads as relief
-    for (let x = 0; x < w; x += 32)
-      [["rgba(20,18,15,.6)", 1.5], ["rgba(220,212,196,.38)", -1.2]].forEach(([c, o]) => {
-        g.strokeStyle = c as string;
-        g.lineWidth = 3;
-        const ox = x + 16 + (o as number), oy = y + 36 + (o as number);
-        g.beginPath();
-        g.arc(ox, oy, 10, Math.PI * 0.1, Math.PI * 1.7);
-        g.stroke();
-        g.beginPath();
-        g.arc(ox + 4, oy + 1, 4.5, Math.PI * 1.1, Math.PI * 2.6);
-        g.stroke();
-        g.beginPath();
-        g.moveTo(ox - 14, oy + 18);
-        g.quadraticCurveTo(ox, oy + 8, ox + 14, oy + 18);
-        g.stroke();
-      });
+let gateStone: ReturnType<typeof makeGateStone> | null = null;
+/** the gate's stone materials. They start plain, in the stone's own colour, and take their carving when the worker
+ *  that cuts it reports back, a second or so in: by then the boat is still far out. */
+function makeGateStone() {
+  const m = (color: number, rough: number) => new THREE.MeshStandardMaterial({ color, roughness: rough });
+  const mats = { wall: m(0xa8a296, 0.9), plain: m(0xb4aea2, 0.85), frieze: m(0x9a958a, 0.9), panel: m(0xc4bdb0, 0.85), frame: m(0xa8a296, 0.9), band: m(0x56534d, 0.92) };
+  const tex2 = (b: Baked, data: Uint8Array, srgb: boolean) => {
+    const t = new THREE.DataTexture(data, b.W, b.H, THREE.RGBAFormat);
+    t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.generateMipmaps = true;
+    t.anisotropy = 8;
+    t.needsUpdate = true;
+    return t;
+  };
+  const apply = (baked: GateStone) => {
+    (Object.keys(baked) as (keyof GateStone)[]).forEach((k) => {
+      const b = baked[k], mat = mats[k];
+      mat.map = tex2(b, b.col, true);
+      mat.normalMap = tex2(b, b.nor, false);
+      mat.color.set(0xffffff);
+      mat.needsUpdate = true;
+    });
+    // the cornice bands share the frieze's carving, kept dark: on Lempuyang the crowns are the blackest stone
+    mats.band.map = mats.frieze.map;
+    mats.band.normalMap = mats.frieze.normalMap;
+    mats.band.color.set(0x7a766e);
+    mats.band.needsUpdate = true;
+  };
+  try {
+    const w = new Worker(new URL("./carving.worker.ts", import.meta.url), { type: "module" });
+    w.onmessage = (e: MessageEvent<GateStone>) => {
+      apply(e.data);
+      w.terminate();
+    };
+    w.postMessage(COARSE ? 512 : 1024);
+  } catch {
+    // no workers: the gate keeps its plain stone, which still reads from the water
   }
-});
-age(carvedT, { streak: 0.9, damp: 0.55, green: true });
-/** a pale paras panel set into the body: a framed field with a carved medallion at its heart */
-const panelT = tex(128, 192, (g, w, h) => {
-  g.fillStyle = "#d3cab8";
-  g.fillRect(0, 0, w, h);
-  speckle(g, w, h, 900, ["#a99f8c", "#ece5d6"], 2);
-  g.strokeStyle = "#5c554b";
-  g.lineWidth = 7;
-  g.strokeRect(8, 8, w - 16, h - 16);
-  g.lineWidth = 3;
-  g.strokeRect(20, 20, w - 40, h - 40);
-  g.fillStyle = "#6a6256";
-  g.beginPath();
-  g.ellipse(w / 2, h / 2, 26, 38, 0, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = "#d3cab8";
-  g.beginPath();
-  g.ellipse(w / 2, h / 2, 17, 27, 0, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = "#6a6256";
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    g.beginPath();
-    g.ellipse(w / 2 + Math.cos(a) * 9, h / 2 + Math.sin(a) * 14, 3.5, 6, a, 0, Math.PI * 2);
-    g.fill();
-  }
-});
-age(panelT, { streak: 0.6, damp: 0.3, green: true });
+  return mats;
+}
+/** a box whose texture keeps to scale on every face: tile metres to a repeat. band: on the sides the texture's height
+ *  spans the box's height exactly, as a cornice's frieze does. */
+function stoneBox(w: number, h: number, d: number, tile = 1, band = false) {
+  const g = box(w, h, d), uv = g.attributes.uv as THREE.BufferAttribute;
+  const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]], ou = rnd(), ov = rnd();
+  for (let f = 0; f < 6; f++)
+    for (let k = 0; k < 4; k++) {
+      const i = f * 4 + k, [a, b] = dims[f], side = f < 2 || f > 3;
+      uv.setXY(i, uv.getX(i) * (a / tile) + ou, band && side ? uv.getY(i) : uv.getY(i) * (b / tile) + ov);
+    }
+  return g;
+}
+/** karang simbar: the upturned flame-leaf that stands on every corner and along every cornice, pierced at its eye */
+let simbarGeo: THREE.BufferGeometry | null = null;
+function simbar() {
+  if (simbarGeo) return simbarGeo;
+  const sh = new THREE.Shape();
+  sh.moveTo(-0.22, 0);
+  sh.bezierCurveTo(-0.36, 0.3, -0.04, 0.48, -0.14, 0.74);
+  sh.bezierCurveTo(-0.2, 0.9, 0.04, 1.06, 0.22, 0.95);
+  sh.bezierCurveTo(0.1, 0.9, 0.04, 0.8, 0.12, 0.66);
+  sh.bezierCurveTo(0.3, 0.44, 0.32, 0.2, 0.22, 0);
+  sh.closePath();
+  const eye = new THREE.Path();
+  eye.absellipse(0.0, 0.36, 0.06, 0.09, 0, Math.PI * 2, true, 0);
+  sh.holes.push(eye);
+  simbarGeo = new THREE.ExtrudeGeometry(sh, { depth: 0.07, bevelEnabled: true, bevelThickness: 0.035, bevelSize: 0.03, bevelSegments: 2, curveSegments: 7 }).translate(0, 0, -0.035);
+  return simbarGeo;
+}
 
 /** candi bentar: a carved temple tower split clean in two, the two halves mirror images, their inner faces sheer and
  *  plain where the cut runs. Round it: a pavilion either side, spiky agave and bougainvillea, two great shade trees,
  *  and a still pool laid before the steps. The path runs along x, out to the water at +x. */
 export function buildGate() {
   const g = new THREE.Group();
-  const carved = std({ map: carvedT, rough: 0.92, bump: 1.6 }), carvedS = std({ map: rep(carvedT, 2, 1), rough: 0.92, bump: 1.6 });
-  const panel = std({ map: panelT, rough: 0.9, bump: 1.2 }), cut = std({ color: 0x766e64, rough: 0.8 }), redBrick = std({ map: rep(brickT, 3, 1), rough: 0.9 });
+  gateStone ??= makeGateStone();
+  const S = gateStone;
+  // what the carving is cut in, after Pura Lempuyang's gate: pale paras weathered grey, the hooked crowns and the great
+  // flame gone near black with mould and lichen
+  const sooty = rockSurface(new THREE.MeshStandardMaterial({ color: 0x6a665e, roughness: 0.92 }), 0.35);
+  const greyed = rockSurface(new THREE.MeshStandardMaterial({ color: 0x8c877c, roughness: 0.9 }), 0.5);
   mesh(box(9, 0.7, 19), M.stone, 0, 0.35, 0, g);
   for (let i = 0; i < 4; i++) [-1, 1].forEach((s) => mesh(box(0.5, 0.175, 2.6), M.stone, s * (4.75 + i * 0.5), 0.61 - i * 0.175, 0, g));
-  const C = 1.25; // half the width of the cut
-  // each half: [depth along the path, width out from the cut, height]
-  const foot: [number, number, number] = [4.2, 4.0, 1.3], body: [number, number, number] = [3.5, 3.35, 4.4];
-  const head: [number, number, number][] = [[3.9, 3.7, 0.55], [3.2, 3.05, 1.2], [2.75, 2.6, 1.1], [2.3, 2.15, 1.05], [1.9, 1.75, 1.0], [1.5, 1.38, 0.95], [1.12, 1.02, 0.9], [0.78, 0.7, 0.85]];
-  const ornament = new THREE.ConeGeometry(0.22, 0.95, 5);
+  // Each half after Pura Lempuyang's gate: a stack of tiers leaning on the sheer face of the cut, stepping down outward
+  // in two wings to a low wall, every step crowned by a dark hooked curl. Built in metres (y up from the paving, z out
+  // from the cut, x along the path), 10 m to the tip and 4 m out, scaled a little; the plan's depth comes from the
+  // Benoa shop drawing, and the niche on the inner face from its Tampak B.
+  const K = 1.2, C = 1.5;
+  const charcoal = rockSurface(new THREE.MeshStandardMaterial({ color: 0x3f3d39, roughness: 0.95 }), 0.3); // the hooks, blackest of all
+  const medal = mergeGeometries([
+    new THREE.CylinderGeometry(0.17, 0.17, 0.08, 8).rotateX(Math.PI / 2),
+    new THREE.CylinderGeometry(0.12, 0.135, 0.07, 8).rotateX(Math.PI / 2).translate(0, 0, 0.07),
+    new THREE.SphereGeometry(0.075, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2).translate(0, 0, 0.1),
+  ])!;
+  const place = (out: THREE.BufferGeometry[], geo: THREE.BufferGeometry, x: number, y: number, z: number, face: number, sx: number, sy = sx, lean = 0) =>
+    out.push((geo.index ? geo.toNonIndexed() : geo.clone()).applyMatrix4(new THREE.Matrix4().compose(V(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(lean, face, 0, "YXZ")), V(sx, sy, sx))));
+  // the hooked curl: it rises waisted off the ledge, swells into a round head turned outward with a fin on its crown,
+  // and is pierced at the eye of the curl. Drawn 1 high, outward along +z.
+  const hookShape = new THREE.Shape();
+  hookShape.moveTo(0, 0);
+  hookShape.lineTo(0.62, 0);
+  hookShape.bezierCurveTo(0.7, 0.2, 0.6, 0.36, 0.72, 0.5);
+  hookShape.bezierCurveTo(0.95, 0.62, 0.98, 0.92, 0.72, 1.0);
+  hookShape.bezierCurveTo(0.56, 1.05, 0.44, 0.98, 0.4, 0.9);
+  hookShape.lineTo(0.3, 1.14);
+  hookShape.bezierCurveTo(0.22, 1.0, 0.18, 0.88, 0.14, 0.78);
+  hookShape.bezierCurveTo(0.08, 0.55, 0.12, 0.3, 0, 0);
+  hookShape.closePath();
+  const eye = new THREE.Path();
+  eye.absellipse(0.64, 0.74, 0.09, 0.11, 0, Math.PI * 2, true, 0);
+  hookShape.holes.push(eye);
+  const hookGeo = new THREE.ExtrudeGeometry(hookShape, { depth: 0.4, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.04, bevelSegments: 2, curveSegments: 10 }).translate(0, 0, -0.2).rotateY(-Math.PI / 2);
   [-1, 1].forEach((s) => {
     const h = new THREE.Group();
-    h.scale.z = s;
+    h.position.set(0, 0.7, s * C);
+    h.scale.set(K, K, K * s);
     g.add(h);
-    let y = 0.7;
-    const outline: [number, number][] = []; // the cut face's outline, (x, y) up one side and down the other
-    const tier = ([d, w, ht]: [number, number, number], mat: THREE.Material, rim = true) => {
-      mesh(box(d, ht, w), mat, 0, y + ht / 2, C + w / 2, h);
-      outline.push([d / 2, y], [d / 2, y + ht]);
-      y += ht;
-      if (rim) {
-        mesh(box(d + 0.34, 0.2, w + 0.17), carved, 0, y + 0.1, C + (w + 0.17) / 2, h);
-        outline.push([d / 2 + 0.17, y], [d / 2 + 0.17, y + 0.2]);
-        y += 0.2;
-      }
-    };
-    tier(foot, carvedS);
-    // the body: a band of red brick at its foot and head, carved pilasters at the corners, a pale medallion panel each face
-    const by = y;
-    tier(body, carved, false);
-    [by + 0.18, by + body[2] - 0.18].forEach((yy) => mesh(box(body[0] + 0.04, 0.36, body[1] + 0.02), redBrick, 0, yy, C + body[1] / 2, h));
-    [-1, 1].forEach((e) => {
-      mesh(box(0.05, 2.5, 1.55), panel, e * (body[0] / 2 + 0.025), by + 2.1, C + body[1] * 0.52, h);
-      [0.2, body[1] - 0.25].forEach((zz) => mesh(box(0.32, body[2] - 0.6, 0.42), carved, e * (body[0] / 2 - 0.05), by + body[2] / 2, C + zz, h));
-    });
-    mesh(box(1.4, 2.2, 0.05), panel, 0, by + 2.2, C + body[1] + 0.03, h);
-    // the head: tier on tier of cornices, each crowned at its corners with upturned flame-leaves (karang simbar)
-    head.forEach((t, i) => {
-      tier(t, i === 0 ? carvedS : carved);
-      const [d, w] = t, k = Math.max(0.55, 1.15 - i * 0.08);
+    const dark: THREE.BufferGeometry[] = [], ribs: THREE.BufferGeometry[] = [];
+    // a box in the half, from z0 to z1 out from the cut; one that starts at the cut shows its sheer plain face there
+    const piece = (mat: THREE.Material, dx: number, y0: number, y1: number, z0: number, z1: number, tile = 1, band = false) =>
+      mesh(stoneBox(dx, y1 - y0, z1 - z0, tile, band), z0 <= 0 ? [mat, mat, mat, mat, mat, S.plain] : mat, 0, (y0 + y1) / 2, (z0 + z1) / 2, h);
+    // a hook at each corner of a ledge, front and back, scaled to height sc; its curl carved as a rib on both faces
+    const hooks = (hd: number, y: number, z: number, sc: number) =>
       [-1, 1].forEach((e) => {
-        const o = mesh(ornament, carved, e * (d / 2 + 0.12), y + 0.42 * k, C + w + 0.05, h);
-        o.scale.setScalar(k);
-        o.rotation.set(0.28, 0, -e * 0.3);
-        if (i < 6) {
-          const m = mesh(ornament, carved, e * (d / 2 + 0.1), y + 0.38 * k, C + w * 0.5, h);
-          m.scale.setScalar(k * 0.85);
-          m.rotation.z = -e * 0.35;
-        }
+        const x = e * (hd - 0.24);
+        dark.push(hookGeo.clone().applyMatrix4(new THREE.Matrix4().compose(V(x, y, z - 0.62 * sc), new THREE.Quaternion(), V(1, sc, sc))));
+        [-1, 1].forEach((f) => {
+          const pts = Array.from({ length: 22 }, (_, i) => {
+            const t = i / 21, r = 0.24 * sc * (1 - 0.7 * t), a = Math.PI * 0.6 - t * Math.PI * 1.9;
+            return V(x + f * 0.26, y + 0.74 * sc + Math.sin(a) * r, z - 0.62 * sc + 0.64 * sc + Math.cos(a) * r);
+          });
+          ribs.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.035 * Math.max(1, sc), 6, false));
+        });
       });
-      if (i > 0 && i < 4) mesh(box(0.2, 0.55, 0.7), panel, 0, y - 0.55, C + w + 0.12, h); // a little carved face on the outer side
+    // a cornice: a plain lip, a dark carved band with a row of studs below it, and a top lip
+    const cornice = (hd: number, y: number, z0: number, z1: number, ht = 0.42) => {
+      piece(S.wall, 2 * hd + 0.12, y, y + 0.06, z0, z1 + 0.06);
+      piece(S.band, 2 * hd + 0.26, y + 0.06, y + ht - 0.08, z0, z1 + 0.13, 0.4, true);
+      piece(S.band, 2 * hd + 0.36, y + ht - 0.08, y + ht, z0, z1 + 0.18, 0.4, true);
+      [-1, 1].forEach((e) => {
+        for (let z = z0 + 0.2; z < z1; z += 0.34) place(dark, medal, e * (hd + 0.14), y + 0.12, z, (e * Math.PI) / 2, 0.55);
+      });
+      return y + ht;
+    };
+    // the dark foot course that runs under everything, and the low wall stepping away from the gate
+    piece(S.frieze, 2.7, 0, 0.32, 0, 4.0, 0.4, true);
+    piece(S.plain, 0.7, 0.32, 1.6, 3.6, 5.0);
+    piece(S.frieze, 0.82, 1.6, 1.85, 3.6, 5.06, 0.4, true);
+    // the outer wing, the inner wing, then the shaft at the cut: [z0, z1, half-depth, body top, hook size]
+    ([[2.9, 3.6, 0.8, 2.1, 0.62], [1.5, 2.9, 1.0, 3.2, 1.1]] as const).forEach(([z0, z1, hd, top, hk]) => {
+      piece(S.plain, 2 * hd, 0.32, top, z0, z1);
+      piece(S.frieze, 2 * hd + 0.08, 1.1, 1.28, z0, z1 + 0.04, 0.4, true);
+      [-1, 1].forEach((e) => mesh(box(0.06, (top - 1.4) * 0.8, (z1 - z0) * 0.6), S.frame, e * (hd + 0.03), 1.32 + (top - 1.32) / 2, (z0 + z1) / 2, h));
+      const y = cornice(hd, top, z0, z1);
+      hooks(hd, y, z1 + 0.05, hk);
     });
-    const tip = mesh(new THREE.ConeGeometry(0.34, 1.9, 5), carved, 0, y + 0.95, C + 0.36, h);
-    tip.scale.z = 1.1;
-    outline.push([0.12, y + 1.6]);
-    // the cut: one sheer, plain face from foot to tip, which is the whole point of a split gate
-    const sh = new THREE.Shape();
-    sh.moveTo(-outline[0][0], outline[0][1]);
-    outline.forEach(([x, yy]) => sh.lineTo(x, yy));
-    [...outline].reverse().forEach(([x, yy]) => sh.lineTo(-x, yy));
-    const face = mesh(new THREE.ShapeGeometry(sh), cut, 0, 0, C - 0.012, h);
-    face.rotation.y = Math.PI; // facing into the cut
-    face.castShadow = false;
-    // a lower carved wing stepping out from each half, with its own little crown, then the low wall beyond
-    const wz = C + body[1] + 0.85;
-    mesh(box(2.5, 4.2, 1.7), carved, 0, 0.7 + 2.1, wz, h);
-    mesh(box(2.84, 0.22, 1.95), carved, 0, 0.7 + 4.31, wz, h);
-    mesh(box(1.6, 0.8, 1.1), carved, 0, 0.7 + 4.82, wz, h);
-    [-1, 1].forEach((e) => {
-      mesh(box(0.05, 1.8, 0.9), panel, e * 1.26, 0.7 + 2.1, wz, h);
-      const o = mesh(ornament, carved, e * 0.95, 0.7 + 4.8, wz + 0.6, h);
-      o.rotation.set(0.3, 0, -e * 0.3);
+    // the shaft and its tiers, each narrower and set back from the last, the last a blade-thin tip at the cut
+    piece(S.plain, 2.5, 0.32, 4.8, 0, 1.5);
+    piece(S.frieze, 2.58, 1.1, 1.28, 0, 1.54, 0.4, true);
+    [-1, 1].forEach((e) => mesh(box(0.06, 3.1, 0.75), S.frame, e * 1.28, 1.4 + 1.55, 0.5, h)); // the carved strip up the face
+    let y = cornice(1.25, 4.8, 0, 1.6, 0.8);
+    hooks(1.25, y, 1.85, 1.0);
+    const tiers = [[1.1, 1.55, 1.15, 0.9], [0.98, 1.38, 0.85, 0.78], [0.85, 1.18, 0.62, 0.62]];
+    tiers.forEach(([hd, w, ht, hk], i) => {
+      piece(S.plain, 2 * hd, y, y + ht, 0, w);
+      // a little niche window in each tier's face
+      [-1, 1].forEach((e) => {
+        mesh(box(0.04, ht * 0.55, w * 0.32), sooty, e * (hd + 0.01), y + ht * 0.48, w * 0.45, h);
+        mesh(box(0.08, 0.08, w * 0.42), S.frieze, e * (hd + 0.03), y + ht * 0.8, w * 0.45, h);
+      });
+      y = cornice(hd, y + ht, 0, w, 0.32);
+      hooks(hd, y, w + 0.12, hk);
+      if (i === 2) {
+        // the crest: a last little hook either side, and the tip rising sheer from the cut
+        hooks(0.55, y, 0.78, 0.5);
+        piece(S.wall, 0.5, y, y + 0.9, 0, 0.3);
+        piece(S.frieze, 0.6, y + 0.9, y + 1.05, 0, 0.36, 0.4, true);
+        const tip = new THREE.Shape();
+        tip.moveTo(0, 0);
+        tip.lineTo(0.3, 0);
+        tip.quadraticCurveTo(0.24, 0.35, 0, 0.75);
+        tip.closePath();
+        mesh(new THREE.ExtrudeGeometry(tip, { depth: 0.4, bevelEnabled: false }).translate(0, 0, -0.2).rotateY(-Math.PI / 2), sooty, 0, y + 1.05, 0, h);
+      }
     });
-    mesh(new THREE.ConeGeometry(0.28, 1.2, 5), carved, 0, 0.7 + 5.8, wz, h);
-    mesh(box(1.1, 2.3, 2.9), carved, 0, 0.7 + 1.15, wz + 2.3, h);
-    mesh(box(1.4, 0.25, 3.1), carved, 0, 0.7 + 2.42, wz + 2.3, h);
+    // the niche on the sheer inner face (Tampak B): a pale paras frame standing out into the passage, dark at its back,
+    // with a little shrine on the sill: a lotus seat, a bell and a bud, where an offering can be set
+    {
+      const nz = -0.01, ny = 2.5;
+      mesh(box(0.9, 1.6, 0.02), sooty, 0, ny + 0.8, nz, h);
+      [-1, 1].forEach((e) => mesh(stoneBox(0.14, 1.66, 0.16, 0.5), S.wall, e * 0.52, ny + 0.83, -0.08, h));
+      mesh(stoneBox(1.26, 0.22, 0.22, 0.4, true), S.frieze, 0, ny + 1.77, -0.11, h);
+      mesh(stoneBox(1.34, 0.08, 0.26), S.wall, 0, ny + 1.92, -0.13, h);
+      mesh(stoneBox(1.22, 0.14, 0.32, 0.4, true), S.frieze, 0, ny - 0.07, -0.16, h);
+      const crownLeaf: THREE.BufferGeometry[] = [];
+      place(crownLeaf, simbar(), 0, ny + 1.96, -0.13, Math.PI, 0.55);
+      [-1, 1].forEach((e) => place(crownLeaf, simbar(), e * 0.56, ny + 1.96, -0.13, Math.PI + e * 0.5, 0.38, 0.38, 0.2));
+      mesh(mergeGeometries(crownLeaf)!, sooty, 0, 0, 0, h);
+      mesh(stoneBox(0.42, 0.14, 0.26), S.wall, 0, ny + 0.07, -0.16, h);
+      const seat = new THREE.LatheGeometry([[0, 0], [0.17, 0], [0.2, 0.06], [0.13, 0.12], [0.16, 0.2], [0.1, 0.24], [0.11, 0.3], [0, 0.3]].map(([a, b]) => new THREE.Vector2(a, b)), 10);
+      mesh(seat, greyed, 0, ny + 0.14, -0.16, h);
+      const bell = new THREE.LatheGeometry([[0, 0], [0.14, 0], [0.12, 0.08], [0.07, 0.3], [0.04, 0.42], [0, 0.46]].map(([a, b]) => new THREE.Vector2(a, b)), 10);
+      mesh(bell, sooty, 0, ny + 0.44, -0.16, h);
+    }
+    mesh(mergeGeometries(dark)!, charcoal, 0, 0, 0, h);
+    mesh(mergeGeometries(ribs)!, charcoal, 0, 0, 0, h);
   });
-  // the fabric and the janur: poleng tied round the foot of each half, the ceremonial umbrellas, the penjor bowing
+  // the fabric and the janur: the ceremonial umbrellas, the penjor bowing
   // over the way down to the water, and the umbul-umbul banners
-  const poleng = std({ map: rep(polengT.clone(), 10, 2), rough: 0.9 });
   tedung(g, 3.2, 3.0, 0xf4eee3);
   tedung(g, 3.2, -3.0, 0xf4eee3);
   [-1, 1].forEach((s) => {
-    mesh(box(foot[0] + 0.06, 0.8, foot[1] + 0.06), poleng, 0, 0.7 + 0.72, s * (C + foot[1] / 2), g);
     penjor(g, 13.4, s * 4.6, s > 0 ? -0.5 : 0.5);
     umbul(g, 8.2, s * 11, s > 0 ? "indigo" : "terracotta", Math.PI / 2 - 0.3 * s);
   });
@@ -984,7 +1056,7 @@ export function buildGate() {
     const b = new THREE.Group();
     b.position.set(3.4, 0, s * 9);
     g.add(b);
-    mesh(box(3.6, 0.9, 3.6), carvedS, 0, 0.45, 0, b);
+    mesh(stoneBox(3.6, 0.9, 3.6), S.wall, 0, 0.45, 0, b);
     [-1, 1].forEach((a) => [-1, 1].forEach((c) => mesh(cyl(0.1, 0.12, 2.1, 8), M.darkWood, a * 1.4, 0.9 + 1.05, c * 1.4, b)));
     mesh(box(3.2, 0.14, 3.2), M.darkWood, 0, 3.0, 0, b);
     roofTier(0.35, 2.35, 1.5, roofM, 3.05, b);
@@ -2515,14 +2587,42 @@ export function buildPalms(spots: Spot[]) {
 }
 
 /** a spray of leaves on clear ground: the canopy is built from many of these, so its edge is leaves, not a ball */
-const sprayT = tex(128, 128, (g, w, h) => {
+const sprayT = tex(512, 512, (g, w, h) => {
+  // a spray of real leaves: pointed blades on short stalks, each with a paler midrib and its own shade of near-white
+  // green (the tree's colour tints them), the inner ones darker as they sit in the shade of the outer ones
   g.clearRect(0, 0, w, h);
-  for (let i = 0; i < 90; i++) {
-    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 52, x = w / 2 + Math.cos(a) * r, y = h / 2 + Math.sin(a) * r, v = rnd();
-    g.fillStyle = `rgb(${150 + v * 90},${165 + v * 85},${120 + v * 70})`; // near-white greens: the tree's own colour tints them
+  const leaf = (x: number, y: number, len: number, wid: number, a: number, v: number, depth: number) => {
+    g.save();
+    g.translate(x, y);
+    g.rotate(a);
+    const k = 0.72 + 0.28 * depth;
+    g.fillStyle = `rgb(${(140 + v * 95) * k},${(160 + v * 90) * k},${(105 + v * 70) * k})`;
     g.beginPath();
-    g.ellipse(x, y, 5 + rnd() * 7, 2.2 + rnd() * 2.6, rnd() * Math.PI, 0, Math.PI * 2);
+    g.moveTo(0, 0);
+    g.quadraticCurveTo(len * 0.45, -wid, len, 0);
+    g.quadraticCurveTo(len * 0.45, wid, 0, 0);
     g.fill();
+    g.strokeStyle = `rgba(255,255,240,${0.18 + v * 0.15})`;
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.moveTo(len * 0.05, 0);
+    g.lineTo(len * 0.9, 0);
+    g.stroke();
+    g.restore();
+  };
+  // twigs first, then leaves along them, back to front
+  for (let t = 0; t < 7; t++) {
+    const a0 = rnd() * Math.PI * 2, L = 120 + rnd() * 90, cx = w / 2, cy = h / 2;
+    g.strokeStyle = "rgba(90,70,50,.9)";
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(cx - Math.cos(a0) * 40, cy - Math.sin(a0) * 40);
+    g.lineTo(cx + Math.cos(a0) * L, cy + Math.sin(a0) * L);
+    g.stroke();
+  }
+  for (let i = 0; i < 260; i++) {
+    const depth = i / 260, a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 215;
+    leaf(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, 26 + rnd() * 26, 7 + rnd() * 6, rnd() * Math.PI * 2, rnd(), depth);
   }
 });
 sprayT.wrapS = sprayT.wrapT = THREE.ClampToEdgeWrapping;
@@ -2537,16 +2637,16 @@ function treeGeometry(spread: number) {
   const lobes = [[0, 5.2, 0, 2.5], [1.9, 4.5, 0.5, 1.9], [-1.6, 4.4, -0.9, 1.8], [0.3, 6.3, 1.0, 1.5], [-0.5, 4.2, 1.7, 1.6], [0.8, 4.1, -1.7, 1.5]];
   const q = new THREE.Quaternion(), e = new THREE.Euler(), n = new THREE.Vector3();
   lobes.forEach(([lx, ly, lz, lr]) => {
-    const count = Math.round(lr * lr * 5.2);
+    const count = Math.round(lr * lr * (COARSE ? 6 : 9.5));
     for (let i = 0; i < count; i++) {
       // points over the lobe's shell, a few sunk inside so no gap shows the far side
       const u = rnd() * 2 - 1, a = rnd() * Math.PI * 2, rr = lr * (0.62 + rnd() * 0.42), s = Math.sqrt(1 - u * u);
       n.set(s * Math.cos(a), u * 0.8 + 0.12, s * Math.sin(a)).normalize();
-      const size = 1.5 + rnd() * 1.1, g = new THREE.PlaneGeometry(size, size);
+      const size = 1.15 + rnd() * 0.9, g = new THREE.PlaneGeometry(size, size);
       q.setFromEuler(e.set(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3));
       g.applyQuaternion(q);
       g.translate((lx + n.x * rr) * spread, ly * (spread > 1 ? 0.82 : 1) + n.y * rr * (spread > 1 ? 0.7 : 1), (lz + n.z * rr) * spread);
-      const nrm = g.attributes.normal as THREE.BufferAttribute, shade = 0.5 + 0.5 * Math.min(1, Math.max(0, n.y * 0.7 + 0.55)) * (0.75 + 0.25 * (rr / lr));
+      const nrm = g.attributes.normal as THREE.BufferAttribute, shade = (0.5 + 0.5 * Math.min(1, Math.max(0, n.y * 0.7 + 0.55)) * (0.75 + 0.25 * (rr / lr))) * (0.85 + rnd() * 0.3);
       const col = new Float32Array(12);
       for (let k = 0; k < 4; k++) {
         nrm.setXYZ(k, n.x, n.y * 0.9 + 0.25, n.z);
@@ -2566,7 +2666,10 @@ function treeGeometry(spread: number) {
     return g;
   };
   const k = spread > 1 ? 0.82 : 1;
+  // a bough out to every lobe, so wherever the crown thins a branch shows through it as on a real tree
+  const boughs = lobes.map(([lx, ly, lz, lr]) => limb([0.15, 2.6 * k, 0.05], [lx * spread * 0.8, (ly - lr * 0.3) * k, lz * spread * 0.8], 0.15, 0.05));
   const trunk = mergeGeometries([
+    ...boughs,
     limb([0, -0.4, 0], [0.15, 2.6 * k, 0.05], 0.34, 0.24),
     limb([0.15, 2.6 * k, 0.05], [1.5 * spread, 4.3 * k, 0.4 * spread], 0.2, 0.09),
     limb([0.15, 2.6 * k, 0.05], [-1.3 * spread, 4.2 * k, -0.7 * spread], 0.19, 0.09),
@@ -2586,7 +2689,7 @@ export function buildTrees(spots: Spot[], west: boolean) {
     else c.setRGB(0.42 + v * 0.1, 0.5 + v * 0.1, 0.27 + v * 0.07);
   };
   const g = new THREE.Group();
-  g.add(instances(trunk, std({ color: 0x55402f, rough: 1 }), spots, place));
+  g.add(instances(trunk, rockSurface(new THREE.MeshStandardMaterial({ color: 0x5a4433, roughness: 1 }), 0.6), spots, place)); // bark: the stone grain reads as fissured bark at this size
   const leaves = instances(crown, new THREE.MeshStandardMaterial({ map: sprayT, alphaTest: 0.5, vertexColors: true, side: THREE.DoubleSide, roughness: 0.85 }), spots, place, true);
   // shadows are cut to the leaves too, so the ground under a tree is dappled, not a blot
   leaves.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: sprayT, alphaTest: 0.5 });
@@ -2646,28 +2749,97 @@ export function groundShade(r: number) {
 
 /** a boulder: a ball pushed out of round by a few broad swells, so it reads as worn by water, not broken */
 function boulder() {
-  const raw = new THREE.IcosahedronGeometry(1, 3);
+  // a weathered stone: lumpy all over, then split along a few flat planes the way rock really breaks
+  const raw = new THREE.IcosahedronGeometry(1, 4);
   raw.deleteAttribute("normal");
   raw.deleteAttribute("uv");
   const g = mergeVertices(raw, 1e-3);
   const p = g.attributes.position as THREE.BufferAttribute;
   const col = new Float32Array(p.count * 3);
+  const cuts = [V(0.2, 1, 0.1), V(1, 0.15, 0.3), V(-0.6, 0.3, 0.8), V(-0.3, -0.2, -1), V(0.7, -0.5, -0.5), V(-1, 0.6, -0.2)].map((n) => n.normalize());
+  const offs = [0.72, 0.8, 0.86, 0.78, 0.9, 0.84];
+  const d = new THREE.Vector3();
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-    const k = 1 + 0.2 * Math.sin(x * 2.3 + y * 1.7) * Math.cos(z * 2.1 + x * 1.3) + 0.1 * Math.sin(y * 3.9 + z * 2.6) + 0.035 * Math.sin(x * 9 + z * 7) * Math.cos(y * 8);
-    p.setXYZ(i, x * k, y * k, z * k);
-    const shade = 0.55 + 0.45 * Math.min(1, Math.max(0, y * 0.7 + 0.5));
+    let k = 1 + 0.16 * Math.sin(x * 2.3 + y * 1.7) * Math.cos(z * 2.1 + x * 1.3) + 0.08 * Math.sin(y * 3.9 + z * 2.6) + 0.03 * Math.sin(x * 9 + z * 7) * Math.cos(y * 8) + 0.012 * Math.sin(x * 23 + y * 19 + z * 17);
+    d.set(x, y, z).normalize();
+    cuts.forEach((n, j) => {
+      const dn = d.dot(n);
+      if (dn > 0.05 && k * dn > offs[j]) k = offs[j] / dn + 0.006 * Math.sin(x * 31 + z * 27); // a split face, not quite flat
+    });
+    p.setXYZ(i, d.x * k, d.y * k, d.z * k);
+    const shade = 0.6 + 0.4 * Math.min(1, Math.max(0, d.y * 0.7 + 0.5));
     col.set([shade, shade, shade], i * 3);
   }
   g.setAttribute("color", new THREE.BufferAttribute(col, 3));
   g.computeVertexNormals();
   return g;
 }
+/** stone up close: a grain of mineral flecks and hairline cracks, darker in the hollows, with lichen and a paler
+ *  weathered skin on the faces that look up at the sky. Worked out from where each point is in the world, so no two
+ *  rocks match and nothing needs unwrapping. */
+export function rockSurface(mat: THREE.MeshStandardMaterial, lichen = 1) {
+  mat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vRP;\nvarying vec3 vRN;")
+      .replace(
+        "#include <project_vertex>",
+        `#include <project_vertex>
+mat4 rM = modelMatrix;
+#ifdef USE_INSTANCING
+rM = modelMatrix * instanceMatrix;
+#endif
+vRP = (rM * vec4(transformed, 1.0)).xyz;
+vRN = normalize(mat3(rM) * objectNormal);`
+      );
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+varying vec3 vRP;
+varying vec3 vRN;
+float rH;
+float rHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float rNoise(vec3 x) {
+  vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(rHash(i), rHash(i + vec3(1,0,0)), f.x), mix(rHash(i + vec3(0,1,0)), rHash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(rHash(i + vec3(0,0,1)), rHash(i + vec3(1,0,1)), f.x), mix(rHash(i + vec3(0,1,1)), rHash(i + vec3(1,1,1)), f.x), f.y), f.z);
+}
+vec3 rBump(vec3 p, vec3 n, vec2 dH, float fd) {
+  vec3 sx = normalize(dFdx(p)), sy = normalize(dFdy(p));
+  vec3 r1 = cross(sy, n), r2 = cross(n, sx);
+  float det = dot(sx, r1) * fd;
+  return normalize(abs(det) * n - sign(det) * (dH.x * r1 + dH.y * r2));
+}`
+      )
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+{
+  vec3 q = vRP * 1.7;
+  float n1 = rNoise(q), n2 = rNoise(q * 3.1 + 7.0), n3 = rNoise(q * 9.7 + 3.0), n4 = rNoise(q * 27.0);
+  float crack = smoothstep(0.035, 0.0, abs(rNoise(q * 1.3 + 11.0) - 0.5)) * 0.8 + smoothstep(0.03, 0.0, abs(n2 - 0.5)) * 0.4;
+  rH = n1 * 0.45 + n2 * 0.3 + n3 * 0.17 + n4 * 0.08 - crack * 0.35;
+  float fleck = smoothstep(0.82, 0.95, n4) * 0.25 - smoothstep(0.25, 0.1, n4) * 0.12;
+  diffuseColor.rgb *= 0.72 + 0.5 * rH + fleck;
+  float up = smoothstep(0.35, 0.9, vRN.y);
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.25 + 0.03, up * 0.35); // the weathered top
+  float li = smoothstep(0.62, 0.72, rNoise(vRP * 2.3 + 5.0) * 0.7 + n3 * 0.3) * up * ${lichen.toFixed(2)};
+  diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(0.62, 0.6, 0.38), vec3(0.78, 0.62, 0.3), n2), li * 0.75);
+}`
+      )
+      .replace(
+        "#include <normal_fragment_maps>",
+        "#include <normal_fragment_maps>\nnormal = rBump(-vViewPosition, normal, vec2(dFdx(rH), dFdy(rH)) * 2.2, faceDirection);"
+      );
+  };
+  return mat;
+}
 export function buildRocks(spots: Spot[]) {
   // dark basalt on the volcanic island, brown flint on the other, every one a little lighter on top where the weather reaches it
   return instances(
     boulder(),
-    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82 }),
+    rockSurface(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88 })),
     spots,
     (s, o, c) => {
       o.rotation.set(s.r * 3, s.r * 7, s.r * 5);
