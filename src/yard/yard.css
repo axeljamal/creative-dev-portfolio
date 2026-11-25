@@ -1,0 +1,347 @@
+/* Pinisi Yard: a toy theme park's signage over a brick-built yard. Chunky rounded type (Fredoka), primary colours,
+   white boards with a thick dark outline, and buttons that press down like a brick clicking into place.
+   Desktop: a board on the right. Phone: a sheet along the bottom, the boat above it. */
+html,
+body {
+  background: #9fd0f5;
+  overscroll-behavior: none;
+}
+.yd {
+  --red: #c91a09;
+  --yellow: #ffcf00;
+  --blue: #0055bf;
+  --green: #00852b;
+  --ink: #1b1b1b;
+  --paper: #ffffff;
+  --mist: #eef3f8;
+  --edge: 3px solid var(--ink);
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: Fredoka, "Arial Rounded MT Bold", system-ui, sans-serif;
+}
+.yd > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  outline: none;
+}
+.yd-fail {
+  position: absolute;
+  inset: 40% 0 auto;
+  text-align: center;
+  font-weight: 600;
+}
+.yd-kicker {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+/* header: a yellow sign with studs along its top, and two blue tabs */
+.yd-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-left)) 0;
+  pointer-events: none;
+}
+.yd-top a {
+  pointer-events: auto;
+  text-decoration: none;
+}
+.yd-home {
+  position: relative;
+  display: block;
+  padding: 8px 18px 9px;
+  background: var(--yellow);
+  border: var(--edge);
+  border-radius: 14px;
+  box-shadow: 0 5px 0 var(--ink);
+  color: var(--ink);
+  rotate: -2deg;
+}
+.yd-home::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: -9px;
+  height: 9px;
+  background: radial-gradient(circle at 50% 100%, var(--yellow) 0 5.5px, var(--ink) 6px 8px, transparent 8.5px) 0 0 / 22px 18px repeat-x;
+}
+.yd-home .yd-kicker {
+  color: var(--red);
+  font-size: 11px;
+}
+.yd-title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+.yd-links {
+  display: flex;
+  gap: 8px;
+}
+.yd-links a {
+  font-weight: 600;
+  font-size: 15px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: var(--blue);
+  color: #fff;
+  border: var(--edge);
+  box-shadow: 0 4px 0 var(--ink);
+}
+.yd-links a:hover {
+  translate: 0 1px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.yd-links a:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+/* the board */
+.yd-panel {
+  position: absolute;
+  top: 92px;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: 18px;
+  width: min(380px, 40vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 18px 16px;
+  background: var(--paper);
+  border: var(--edge);
+  border-radius: 22px;
+  box-shadow: 0 7px 0 var(--ink);
+  overflow: hidden;
+}
+.yd-name h1 {
+  margin: 2px 0 0;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.yd-meters {
+  display: grid;
+  gap: 8px;
+}
+.yd-meter {
+  display: grid;
+  grid-template-columns: 78px 1fr 36px;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.yd-meter b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* each meter is a row of ten studs that fill in */
+.yd-bar {
+  position: relative;
+  height: 16px;
+  border-radius: 6px;
+  border: 2px solid var(--ink);
+  background: var(--mist);
+  overflow: hidden;
+}
+.yd-bar i {
+  display: block;
+  height: 100%;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.45) 0 3px, transparent 3.5px) 0 0 / 10% 100% repeat-x, var(--green);
+  transition: width 0.35s ease;
+}
+.yd-meter.warn .yd-bar i { background-color: var(--yellow); }
+.yd-meter.bad .yd-bar i { background-color: var(--red); }
+.yd-meter.bad b { color: var(--red); }
+.yd-warn p {
+  margin: 0 0 4px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: #fff4c2;
+  border: 2px solid var(--ink);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.yd-warn:empty { display: none; }
+
+.yd-tabs {
+  display: flex;
+  gap: 6px;
+}
+.yd-tabs button {
+  flex: 1;
+  border: var(--edge);
+  border-radius: 12px;
+  padding: 8px 4px;
+  background: var(--mist);
+  color: var(--ink);
+  font: 600 15px/1 Fredoka, sans-serif;
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+}
+.yd-tabs button[aria-selected="true"] {
+  background: var(--red);
+  color: #fff;
+}
+.yd-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px 4px 4px 0;
+}
+.yd-choice {
+  border: 0;
+  margin: 0 0 14px;
+  padding: 0;
+}
+.yd-choice legend,
+.yd-field span {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+.yd-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.yd-opt {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 15px/1.15 Fredoka, sans-serif;
+  text-align: left;
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+}
+.yd-opt:has(.yd-swatch) {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.yd-opt small {
+  font-weight: 400;
+  font-size: 13px;
+  color: #4a4a4a;
+}
+.yd-opt[aria-pressed="true"] {
+  background: var(--yellow);
+  translate: 0 2px;
+  box-shadow: 0 1px 0 var(--ink);
+}
+.yd-opt:hover { background: #fff7d1; }
+.yd-opt[aria-pressed="true"]:hover { background: var(--yellow); }
+/* a swatch is a 1x1 brick seen from above: a square with its stud */
+.yd-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid var(--ink);
+  flex: none;
+  box-shadow: inset 0 0 0 4px rgba(0, 0, 0, 0.08);
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0 4px, transparent 4.5px);
+}
+.yd-field {
+  display: grid;
+}
+.yd-field input {
+  font: 600 20px/1.2 Fredoka, sans-serif;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: var(--edge);
+  background: var(--paper);
+  color: var(--ink);
+}
+.yd-field input:focus { outline: 3px solid var(--yellow); outline-offset: 1px; }
+.yd-actions {
+  display: flex;
+  gap: 10px;
+}
+.yd-go,
+.yd-ghost {
+  border-radius: 14px;
+  padding: 12px 20px;
+  border: var(--edge);
+  font: 700 18px/1 Fredoka, sans-serif;
+  box-shadow: 0 5px 0 var(--ink);
+  cursor: pointer;
+  transition: translate 0.06s, box-shadow 0.06s;
+}
+.yd-go {
+  flex: 1;
+  background: var(--green);
+  color: #fff;
+}
+.yd-ghost {
+  background: var(--yellow);
+  color: var(--ink);
+}
+.yd-go:active:not(:disabled),
+.yd-ghost:active {
+  translate: 0 4px;
+  box-shadow: 0 1px 0 var(--ink);
+}
+.yd-go:disabled { opacity: 0.55; cursor: default; }
+.yd button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.yd-after { display: grid; gap: 12px; }
+.yd-big {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.yd-ok {
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: #d6f5dd;
+  border: 2px solid var(--ink);
+  font-weight: 600;
+  font-size: 14px;
+}
+.yd-quiet { margin: 0; font-size: 14px; }
+.yd-quiet a { color: var(--blue); font-weight: 600; }
+
+@media (max-width: 720px), (max-aspect-ratio: 4/5) {
+  .yd-title { font-size: 22px; }
+  .yd-links a { padding: 6px 11px; font-size: 14px; }
+  .yd-panel {
+    top: auto;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 52vh;
+    padding: 14px;
+    gap: 9px;
+  }
+  .yd-name h1 { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yd-bar i, .yd-go, .yd-ghost { transition: none; }
+}

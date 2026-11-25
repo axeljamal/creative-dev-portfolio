@@ -12,8 +12,8 @@ export default defineConfig({
       build: {
         rollupOptions: {
           // the home page is Dua Pulau; the classic portfolio lives at /portfolio/, /dua-pulau/ only forwards to the home page,
-          // /race/ is the sailing race game built on the same world, and /crew/ is the players' community (LEGO.js bricks)
-          input: { main: "index.html", portfolio: "portfolio/index.html", admin: "admin/index.html", "dua-pulau": "dua-pulau/index.html", race: "race/index.html", crew: "crew/index.html" },
+          // /race/ is the sailing race game built on the same world, /crew/ is the players' community (LEGO.js bricks), and /yard/ is Pinisi Yard, the boat builder
+          input: { main: "index.html", portfolio: "portfolio/index.html", admin: "admin/index.html", "dua-pulau": "dua-pulau/index.html", race: "race/index.html", crew: "crew/index.html", yard: "yard/index.html" },
         },
       },
     },
