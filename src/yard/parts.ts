@@ -1,4 +1,4 @@
-// Pinisi Yard: real brick shapes from the LDraw parts library (CC BY 2.0, packed by scripts/pack-ldraw.mjs into
+// Pinisi Yard: real brick shapes from the LDraw parts library (CC BY 2.0, packed by scripts/pack_ldraw.py into
 // public/ldraw). Each part is loaded once with three.js's LDrawLoader and merged into a single geometry in "pitch"
 // units: 1 = one stud's spacing (20 LDU), y up, the part's top face at y = 0 and its studs above it. Bricks scales
 // them by its pitch and instances them. Until they load (or if they cannot), Bricks draws its simple shapes instead.

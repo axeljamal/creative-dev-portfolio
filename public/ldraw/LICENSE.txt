@@ -1,3 +1,3 @@
 Part geometry from the LDraw Parts Library (https://library.ldraw.org), © LDraw.org contributors,
 licensed under Creative Commons Attribution 2.0 (https://creativecommons.org/licenses/by/2.0/).
-Packed for Pinisi Yard by scripts/pack-ldraw.mjs. LDraw is not affiliated with the LEGO Group.
+Packed for Pinisi Yard by scripts/pack_ldraw.py. LDraw is not affiliated with the LEGO Group.
