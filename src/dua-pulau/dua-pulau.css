@@ -59,6 +59,7 @@
 }
 .dp-gate.is-out { opacity: 0; visibility: hidden; pointer-events: none; }
 .dp-gate > .dp-home { position: absolute; top: clamp(16px, 3vw, 28px); left: clamp(20px, 5vw, 64px); }
+.dp-gate > .dp-home.dp-other { left: auto; right: clamp(20px, 5vw, 64px); }
 .dp-gate-in { max-width: 34rem; display: grid; gap: 16px; }
 .dp-gate h1 {
   font-family: var(--font-display);
@@ -325,3 +326,62 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
   .dp-gate, .dp-hud { transition: none; }
   .dp-panel, .dp-foot .dp-btn { animation: none; }
 }
+
+/* ---------- Dua Pulau in bricks (/bricks/): the same interface as toy signage. Blue boards with a thick dark outline
+   that sit on a hard shadow, yellow for what is lit or chosen, and one rounded face throughout ---------- */
+.dp.is-brick {
+  --dp-gold: #ffcf00;
+  --dp-gold-deep: #f2cd37;
+  --dp-ember: #fe8a18;
+  --dp-teal: #9fd0f5;
+  --dp-glass: rgba(0, 85, 191, 0.95);
+  --dp-line: #1b1b1b;
+  --font-display: Fredoka, "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-sans: Fredoka, "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-mono: Fredoka, "Arial Rounded MT Bold", system-ui, sans-serif;
+}
+.dp.is-brick .dp-pill,
+.dp.is-brick .dp-menu,
+.dp.is-brick .dp-talk,
+.dp.is-brick .dp-panel {
+  border: 3px solid #1b1b1b;
+  box-shadow: 0 5px 0 #1b1b1b;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.dp.is-brick .dp-pill { border-radius: 12px; font-size: 14px; font-weight: 600; letter-spacing: 0; }
+.dp.is-brick button.dp-pill:active { translate: 0 3px; box-shadow: 0 2px 0 #1b1b1b; }
+.dp.is-brick .dp-btn { border-radius: 14px; border: 3px solid #1b1b1b; box-shadow: 0 4px 0 #1b1b1b; }
+.dp.is-brick .dp-btn:active { transform: none; translate: 0 3px; box-shadow: 0 1px 0 #1b1b1b; }
+.dp.is-brick .dp-btn-gold:hover { background: #ffe066; }
+.dp.is-brick .dp-hud { background: none; }
+.dp.is-brick .dp-hud-tl strong {
+  justify-self: start;
+  color: #1b1b1b;
+  background: var(--dp-gold);
+  border: 3px solid #1b1b1b;
+  border-radius: 14px;
+  box-shadow: 0 5px 0 #1b1b1b;
+  padding: 4px 14px 6px;
+  text-shadow: none;
+  rotate: -2deg;
+}
+.dp.is-brick .dp-hud-tl span,
+.dp.is-brick .dp-hud-tl .dp-home { letter-spacing: 0.06em; font-weight: 600; }
+.dp.is-brick .dp-gate h1 { font-weight: 700; }
+/* the sky in bricks is bright: the small links and the waters' name sit on white tags so they read */
+.dp.is-brick .dp-hud-tl { text-shadow: none; gap: 6px; }
+.dp.is-brick .dp-hud-tl .dp-home,
+.dp.is-brick .dp-hud-tl span {
+  justify-self: start;
+  color: #1b1b1b;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #1b1b1b;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.dp.is-brick .dp-hud-tl span { margin-top: 4px; }
+.dp.is-brick .dp-log-foot { background: #003e8c; border-top: 3px solid #1b1b1b; }
+.dp.is-brick .dp-panel { background: rgba(0, 72, 163, 0.97); }
+.dp.is-brick .dp-panel .dp-btn-line { background: #003e8c; border-color: #1b1b1b; }

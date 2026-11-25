@@ -36,6 +36,9 @@ const logged = (): PlaceId[] => {
 };
 const WATERS = { md: "Marea Dvīpa waters", wf: "Windfall waters", strait: "The strait", open: "Open sea" } as const;
 
+/** Dua Pulau in bricks: the same world and the same work, served at /bricks/ */
+const BRICK = typeof location !== "undefined" && location.pathname.startsWith("/bricks");
+
 export function App() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const world = useRef<World | null>(null);
@@ -115,7 +118,7 @@ export function App() {
     import("./world/engine")
       .then(({ createWorld }) => {
         if (gone || !canvas.current) return;
-        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart, onPip: askPip, onView: setBoatView }, logged());
+        world.current = createWorld(canvas.current, { onNear: setNear, onArrive: (id) => moor(id), onWaters: setWaters, onFound: setFound, onWeather: setWeather, onTime: setDayPart, onPip: askPip, onView: setBoatView }, logged(), { brick: BRICK });
         setState("ready");
         // local dev only, for filming: lets a recorder steer the world (never in a production build)
         if (import.meta.env.DEV) { const w = window as unknown as { __dp?: object }; w.__dp = Object.assign(w.__dp ?? {}, { world: world.current, moor, look }); }
@@ -182,16 +185,17 @@ export function App() {
   const next = here ? PLACES[(PLACES.indexOf(here) + 1) % PLACES.length] : null;
 
   return (
-    <main className="dp">
+    <main className={`dp${BRICK ? " is-brick" : ""}`}>
       <section id="world" className={`dp-world${open ? " has-panel" : ""}${talk !== null ? " has-talk" : ""}${menu || asking ? " has-log" : ""}`} aria-label="Dua Pulau, a world of two islands">
         <canvas ref={canvas} tabIndex={-1} aria-label="A pinisi schooner on the sea between two islands: Marea Dvīpa to the west and Windfall to the east. Every place in it is listed below the world." />
 
         <div className={`dp-gate${lit ? " is-out" : ""}`} aria-hidden={lit}>
           <a className="dp-home" href="/portfolio/">Classic portfolio →</a>
+          <a className="dp-home dp-other" href={BRICK ? "/" : "/bricks/"}>{BRICK ? "The real world →" : "Build it in bricks →"}</a>
           <div className="dp-gate-in">
-            <p className="dp-kicker">Dua Pulau · two islands</p>
+            <p className="dp-kicker">{BRICK ? "Dua Pulau · in bricks" : "Dua Pulau · two islands"}</p>
             <h1>
-              A lamp on the <em>water</em>.
+              {BRICK ? <>Two islands, <em>brick by brick</em>.</> : <>A lamp on the <em>water</em>.</>}
             </h1>
             <p>Light the pelita at her bow and the day comes up. Then sail the pinisi between two islands, Marea Dvīpa and Windfall, and moor at the work.</p>
             <div className="dp-btns">
@@ -209,6 +213,7 @@ export function App() {
             <div className="dp-hud-tl">
               <a className="dp-home" href="/portfolio/">Classic portfolio →</a>
               <a className="dp-home" href="/race/">Race the regatta →</a>
+              <a className="dp-home" href={BRICK ? "/" : "/bricks/"}>{BRICK ? "The real world →" : "In bricks →"}</a>
               <strong>Dua Pulau</strong>
               <span>{WATERS[waters]}</span>
             </div>

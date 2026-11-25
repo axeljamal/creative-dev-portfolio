@@ -6,6 +6,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PlaceId } from "../places";
 import { buildBale, buildBuoy, buildGate, buildGroyne, buildGuestHouse, buildHuts, buildLighthouse, buildPalms, buildPavilion, buildPier, buildPip, buildPlanter, buildPlinth, buildRocks, buildSupper, buildTrees, glow, groundShade, type HutProject } from "./models";
 import { NIGHT, type Stage, clamp, reduce, wrap } from "./stage";
+import { buildBrickFlora, buildBrickLand } from "./brick";
 import { ISLANDS, addClear, addPad, buildShore, buildTerrain, dockFor, heightAt, nearestIsland, scatter, smooth } from "./terrain";
 
 /** temp in °C, wind in km/h, from: the compass bearing the wind blows from */
@@ -44,13 +45,14 @@ export type Isles = {
 };
 
 /** markers: false leaves out the place beacons (the mooring floats and their beams) */
-export function buildIsles(stage: Stage, opts: { huts: HutProject[]; markers?: boolean; /** the last beach hut stands to let (default); false: it carries a seventh board */ toLet?: boolean }): Isles {
+export function buildIsles(stage: Stage, opts: { huts: HutProject[]; markers?: boolean; /** the last beach hut stands to let (default); false: it carries a seventh board */ toLet?: boolean; /** the brick world: land, palms, trees and rocks built of bricks */ brick?: boolean }): Isles {
   const { scene, camera } = stage;
 
   // ---------- land ----------
   SITES.forEach((s) => s.pad && addPad({ x: s.x, z: s.z, r: s.pad[0], h: s.pad[1] }));
-  scene.add(buildTerrain());
+  scene.add(opts.brick ? buildBrickLand() : buildTerrain());
   const shore = buildShore();
+  shore.visible = !opts.brick; // bricks have no foam; the sheet is kept so its clock still runs
   scene.add(shore);
   const [MD, WF] = ISLANDS;
   // Gong and Tugu Perdamaian stand on an open hilltop: keep its plaza clear all round, and keep clear the line the
@@ -61,10 +63,13 @@ export function buildIsles(stage: Stage, opts: { huts: HutProject[]; markers?: b
     addClear({ x: s.x, z: s.z, r: 18 });
     for (let k = 14; k <= 44; k += 6) addClear({ x: s.x + ox * k, z: s.z + oz * k, r: 6 + k * 0.15 });
   }
-  scene.add(buildPalms([...scatter(MD, 110, 1.3, 6, 0.5, 2), ...scatter(WF, 26, 1.4, 4, 0.4, 5)]));
-  scene.add(buildTrees(scatter(MD, 170, 3.2, 30, 0.7, 9), true));
-  scene.add(buildTrees(scatter(WF, 70, 3.4, 20, 0.6, 14), false));
-  scene.add(buildRocks([...scatter(MD, 46, -0.9, 1.1, 2, 21), ...scatter(WF, 60, -0.9, 1.3, 2, 23)]));
+  if (opts.brick) scene.add(buildBrickFlora());
+  else {
+    scene.add(buildPalms([...scatter(MD, 110, 1.3, 6, 0.5, 2), ...scatter(WF, 26, 1.4, 4, 0.4, 5)]));
+    scene.add(buildTrees(scatter(MD, 170, 3.2, 30, 0.7, 9), true));
+    scene.add(buildTrees(scatter(WF, 70, 3.4, 20, 0.6, 14), false));
+    scene.add(buildRocks([...scatter(MD, 46, -0.9, 1.1, 2, 21), ...scatter(WF, 60, -0.9, 1.3, 2, 23)]));
+  }
 
   const site = (id: PlaceId) => SITES.find((s) => s.id === id)!;
   const out = (s: Site) => {

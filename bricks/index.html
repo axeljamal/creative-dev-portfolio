@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0055bf" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Dua Pulau built as a toy: the same two islands, the pinisi and every project, in studded bricks. Sail between Marea Dvīpa and Windfall and moor at the work. Built in code with Three.js."
+    />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap"
+    />
+    <title>Dua Pulau in bricks · Axel Jamal</title>
+    <link rel="canonical" href="https://axelle.marea-dvipa.uk/bricks/" />
+    <script>
+      try {
+        var theme = localStorage.getItem("theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/dua-pulau/main.tsx"></script>
+  </body>
+</html>

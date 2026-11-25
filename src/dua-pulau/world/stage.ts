@@ -4,6 +4,7 @@
 import * as THREE from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { Water } from "three/examples/jsm/objects/Water.js";
+import { buildBrickSea } from "./brick";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -107,7 +108,7 @@ function cloudTexture(seed: number) {
   return t;
 }
 
-export function createStage(canvas: HTMLCanvasElement, opts: { quality?: Quality } = {}): Stage {
+export function createStage(canvas: HTMLCanvasElement, opts: { quality?: Quality; /** the brick world: a studded plastic sea instead of real water */ brick?: boolean } = {}): Stage {
   const quality = opts.quality ?? "high", isHigh = quality === "high", low = quality === "low";
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !coarse, powerPreference: "high-performance" });
   renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio, coarse || !isHigh ? 1.5 : 2));
@@ -162,6 +163,10 @@ export function createStage(canvas: HTMLCanvasElement, opts: { quality?: Quality
   water.rotation.x = -Math.PI / 2;
   water.material.uniforms.size.value = 4;
   scene.add(water);
+  if (opts.brick) {
+    water.visible = false; // hidden, it renders no mirror either
+    scene.add(buildBrickSea());
+  }
 
   const starPos = new Float32Array(1400 * 3);
   for (let i = 0; i < 1400; i++) {

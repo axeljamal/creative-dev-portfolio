@@ -5,6 +5,7 @@ import * as THREE from "three";
 import type { PlaceId } from "../places";
 import { earlierWork } from "../../content/work";
 import * as audio from "./audio";
+import { plasticize } from "./brick";
 import { buildIsles, type Site, type Weather } from "./isles";
 import { buildLamp, buildPip, type PipMood } from "./models";
 import { pilot, type PilotMem } from "./pilot";
@@ -60,8 +61,8 @@ export type World = {
 const ease = (t: number) => t * t * (3 - 2 * t);
 
 /** seen: places found on an earlier visit (the log's ticks), so the counts and the chart pick up where they stopped */
-export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: PlaceId[] = []): World {
-  const stage = createStage(canvas);
+export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: PlaceId[] = [], opts: { /** Dua Pulau in bricks (/bricks/) */ brick?: boolean } = {}): World {
+  const stage = createStage(canvas, { brick: opts.brick });
   const { scene, camera } = stage;
 
   // The day: tod counts seconds through it (the sun's course is the stage's). The lamp is lit at first light, so
@@ -72,6 +73,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
 
   // ---------- the islands, and what stands in the water round them ----------
   const isles = buildIsles(stage, {
+    brick: opts.brick,
     huts: [{ name: "Bootcamp Connect", line: "A team app for bootcamp graduates: an AI CV and LinkedIn import, Google sign-in and a ranked feed." }, ...earlierWork.map((w) => ({ name: w.name, line: w.details }))],
   });
   const { site } = isles, SITES = isles.sites, { bale, placed, out } = isles.parts;
@@ -362,12 +364,17 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   }
 
   // ---------- the loop ----------
-  let raf = 0, last = performance.now(), disposed = false;
+  let raf = 0, last = performance.now(), disposed = false, toyAt = 0;
   function frame(now: number) {
     if (disposed) return;
     raf = requestAnimationFrame(frame);
     if (!stage.inView() || document.hidden) return void (last = now);
     const dt = Math.min(0.05, (now - last) / 1000), t = now / 1000;
+    // the brick world: finish every model in plastic, and again now and then for any that arrive later
+    if (opts.brick && t > toyAt) {
+      plasticize(scene);
+      toyAt = t + 2;
+    }
     last = now;
 
     if (phase !== "dark") {
