@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { buildIsles, type Isles } from "../dua-pulau/world/isles";
 import { plasticize } from "../dua-pulau/world/brick";
-import type { Design } from "../yard/design";
+import { handling, type Design } from "../yard/design";
 import { buildYardPinisi } from "../yard/boat";
 import { buildBuoy, type HutProject } from "../dua-pulau/world/models";
 import { DAY_S, clamp, createStage, reduce, wrap, type Quality } from "../dua-pulau/world/stage";
@@ -536,6 +536,7 @@ export function createRaceWorld(canvas: HTMLCanvasElement, opts: { quality: Qual
           : design === "cruising" ? createVessel<Built>(scene, { ghost, wake, build: () => buildCruisingPinisi(tint) })
           : (createVessel(scene, { tint, ghost, wake }) as Vessel<Built>);
         if (rival) lighten(v.pinisi), others.add(v);
+        if (id === "you" && yard) v.st.kit = handling(yard); // the yard boat sails as her stats say
         fleet.set(id, v);
         player ??= v;
       }

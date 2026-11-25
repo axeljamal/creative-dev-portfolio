@@ -8,6 +8,9 @@ import { clean, decode, type Design } from "../yard/design";
 /** true on /bricks/race/ */
 export const BRICK = typeof location !== "undefined" && location.pathname.startsWith("/bricks");
 
+/** where the race leaves for: Dua Pulau, in bricks from the brick race */
+export const HOME = BRICK ? "/bricks/" : "/";
+
 /** the key Pinisi Yard keeps the last design under (src/yard/App.tsx) */
 const YARD_KEY = "pinisi-yard-design";
 

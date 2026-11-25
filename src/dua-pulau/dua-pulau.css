@@ -139,6 +139,13 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
 .dp-menu span { font-size: 13px; color: rgba(244, 238, 227, 0.65); }
 /* the log: the menu, with what the page is at its head, a tick for each place moored at, and a count at its foot */
 .dp-log { width: min(360px, calc(100% - 24px)); max-height: calc(100% - 96px); }
+/* every panel's ×: pinned to the panel's top right as it scrolls (it takes no room of its own in the grid) */
+.dp-menu button.dp-menu-x { position: sticky; top: 0; z-index: 2; justify-self: end; align-self: flex-end; flex: none; display: grid; place-items: center; width: 36px; height: 36px; margin: 0 0 -50px auto; padding: 0; border-radius: 50%; border: 1px solid var(--dp-line); background: rgba(14, 12, 9, 0.7); color: var(--dp-pearl); font-size: 22px; line-height: 1; text-align: center; }
+.dp-menu button.dp-menu-x:hover { border-color: var(--dp-gold); color: var(--dp-gold); background: rgba(14, 12, 9, 0.85); }
+.dp.is-brick .dp-menu button.dp-menu-x { border: 3px solid #1b1b1b; background: #ffcf00; color: #1b1b1b; font-weight: 700; box-shadow: 0 3px 0 #1b1b1b; }
+.dp-menu .dp-log-head { padding-right: 44px; }
+.dp-log-acts { display: inline-flex; gap: 8px; }
+.dp-log .dp-log-foot .dp-btn.dp-btn-line { background: transparent; color: inherit; border: 1px solid var(--dp-line); }
 .dp-log-head { padding: 2px 8px 0; display: grid; gap: 6px; }
 .dp-log-head h2 { font-family: var(--font-display); font-size: 26px; font-weight: 600; line-height: 1.05; margin: 0; }
 .dp-log-head p:last-child { margin: 0; font-size: 14px; line-height: 1.45; color: rgba(244, 238, 227, 0.8); }

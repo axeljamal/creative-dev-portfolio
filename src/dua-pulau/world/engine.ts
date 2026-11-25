@@ -12,7 +12,7 @@ import { pilot, type PilotMem } from "./pilot";
 import { AZ0, DAY, DAY_S, NIGHT, NIGHT_S, clamp, createStage, reduce, wrap } from "./stage";
 import { ISLANDS, heightAt, smooth } from "./terrain";
 import { createVessel, stepHull, type Built, type Vessel } from "./vessel";
-import type { Design } from "../../yard/design";
+import { handling, type Design } from "../../yard/design";
 
 export type WorldEvents = {
   /** the boat is close enough to moor at this place, or has left it */
@@ -539,6 +539,9 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       const astern = crew.group.parent === pinisi.pipStern;
       next.pinisi.lampAt.add(lamp.lamp);
       (astern ? next.pinisi.pipStern : next.pinisi.pipBow).add(crew.group);
+      // a yard boat sails as her stats say; the pinisi of every age handle as one
+      if (id === "yard" && design) st.kit = handling(design);
+      else delete st.kit;
       vessel.dispose();
       vessel = next;
       pinisi = next.pinisi;

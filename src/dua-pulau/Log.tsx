@@ -11,7 +11,16 @@ export const TALK = [
   "Steer her yourself, or pick a place from the log and she will take you there. Moor to read the work, and tap me any time to ask about Axel.",
 ];
 
-export function Talk({ line, onNext, onSkip }: { line: number; onNext: () => void; onSkip: () => void }) {
+/** the × at the top of every panel: it stays in view as the panel scrolls */
+export function CloseX({ label, onClose }: { label: string; onClose: () => void }) {
+  return (
+    <button type="button" className="dp-menu-x" aria-label={label} onClick={onClose}>
+      ×
+    </button>
+  );
+}
+
+export function Talk({ line, onNext, onSkip, onClose }: { line: number; onNext: () => void; onSkip: () => void; onClose: () => void }) {
   const next = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     next.current?.focus({ preventScroll: true });
@@ -22,7 +31,7 @@ export function Talk({ line, onNext, onSkip }: { line: number; onNext: () => voi
       <p className="dp-kicker">Pip · {line + 1} of {TALK.length}</p>
       <p className="dp-talk-line" aria-live="polite">{TALK[line]}</p>
       <div className="dp-talk-btns">
-        {!last && <button type="button" className="dp-talk-skip" onClick={onSkip}>Skip</button>}
+        {last ? <button type="button" className="dp-talk-skip" onClick={onClose}>Close</button> : <button type="button" className="dp-talk-skip" onClick={onSkip}>Skip</button>}
         <button ref={next} type="button" className="dp-btn dp-btn-gold" onClick={onNext}>{last ? "Open the log" : "Next →"}</button>
       </div>
     </div>
@@ -34,6 +43,7 @@ export function Log({ visited, first, onSail, onClose, brick = false }: { visite
   const done = visited.length === PLACES.length;
   return (
     <nav id="dp-log" className="dp-menu dp-log" aria-label="The ship's log: what to do here, and a way to sail to each place">
+      <CloseX label="Close the log" onClose={onClose} />
       <div className="dp-log-head">
         <p className="dp-kicker">The log</p>
         <h2>A portfolio you sail.</h2>
@@ -65,7 +75,7 @@ export function Log({ visited, first, onSail, onClose, brick = false }: { visite
       </div>
       <div className="dp-log-foot">
         <span aria-live="polite">{visited.length} / {PLACES.length} logged</span>
-        {done ? <a className="dp-btn dp-btn-gold" href="/portfolio/#contact">Write a message</a> : <button type="button" className="dp-btn dp-btn-gold" onClick={onClose}>{first ? "Set sail" : "Close"}</button>}
+        {done ? <span className="dp-log-acts"><button type="button" className="dp-btn dp-btn-line" onClick={onClose}>Close</button><a className="dp-btn dp-btn-gold" href="/portfolio/#contact">Write a message</a></span> : <button type="button" className="dp-btn dp-btn-gold" onClick={onClose}>{first ? "Set sail" : "Close"}</button>}
       </div>
     </nav>
   );
@@ -79,13 +89,14 @@ export const SHIPS = [
 ] as const;
 
 /** choose the ship to sail; the last choice is your own, built in the yard (or a way to go and build her) */
-export function Ships({ ship, yardName, onPick, onClose }: { ship: ShipId; yardName: string | null; onPick: (id: ShipId) => void; onClose: () => void }) {
+export function Ships({ ship, yardName, yardNote, onPick, onClose }: { ship: ShipId; yardName: string | null; yardNote: string; onPick: (id: ShipId) => void; onClose: () => void }) {
   return (
     <nav id="dp-ships" className="dp-menu dp-log dp-ships" aria-label="Choose the ship to sail">
+      <CloseX label="Close the ship chooser" onClose={onClose} />
       <div className="dp-log-head">
         <p className="dp-kicker">Your ship</p>
         <h2>Change the ship.</h2>
-        <p>She changes where she is, under way or moored. Pip and the lamp come too.</p>
+        <p>She changes where she is, under way or moored. Pip and the lamp come too. The pinisi all sail alike; a yard boat sails as her stats say.</p>
       </div>
       <div>
         {SHIPS.map((s) => (
@@ -99,7 +110,7 @@ export function Ships({ ship, yardName, onPick, onClose }: { ship: ShipId; yardN
           <button type="button" className={ship === "yard" ? "is-done" : ""} aria-pressed={ship === "yard"} onClick={() => onPick("yard")}>
             <i aria-hidden="true">{ship === "yard" ? "✓" : ""}</i>
             <b>{yardName}</b>
-            <span>Your own, built brick by brick in Pinisi Yard</span>
+            <span>Your own from Pinisi Yard: {yardNote}</span>
           </button>
         ) : null}
         <a className="dp-log-go" href="/yard/">

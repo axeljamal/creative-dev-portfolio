@@ -1,5 +1,6 @@
 // Ask Pip: a visitor's questions about Axel and the work, answered from the portfolio's own words by /api/ask.
 // When one place holds the answer he offers to sail there, through the same autopilot as the Log.
+import { CloseX } from "./Log";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { place, type PlaceId } from "./places";
 
@@ -54,6 +55,7 @@ export function Ask({ thread, setThread, onSail, onClose }: { thread: AskLine[];
 
   return (
     <section id="dp-ask" className="dp-menu dp-ask" aria-label="Ask Pip about Axel and the work" onKeyDown={(e) => e.key === "Escape" && onClose()}>
+      <CloseX label="Close Ask Pip" onClose={onClose} />
       <div className="dp-log-head">
         <p className="dp-kicker">Pip, the crew</p>
         <h2>Ask me about Axel.</h2>

@@ -181,6 +181,8 @@ body {
   line-height: 1.35;
 }
 .yd-warn:empty { display: none; }
+/* how her stats sail: the handling she takes to the Regatta and Dua Pulau */
+.yd-sails { margin: 6px 0 0; font-size: 13px; font-weight: 600; opacity: 0.8; }
 
 .yd-tabs {
   display: flex;

@@ -2,6 +2,7 @@
 // control for keyboard, touch and gamepad. And photo: the screen cleared but for a small bar, the camera hers to walk
 // round the boat, and Save picture.
 import { useEffect, useRef } from "react";
+import { HOME } from "./brick";
 import { copy } from "./copy";
 import type { Mode } from "./rules/types";
 
@@ -48,6 +49,9 @@ export function Pause({ mode, muted, canRecover, photo, onResume, onRestart, onR
           <button type="button" className="rg-btn rg-btn-quiet" onClick={onChange}>
             {copy.change}
           </button>
+          <a className="rg-btn rg-btn-quiet" href={HOME}>
+            {copy.home}
+          </a>
         </div>
         <label className="rg-switch">
           <input type="checkbox" role="switch" checked={!muted} onChange={(e) => onMute(!e.target.checked)} />

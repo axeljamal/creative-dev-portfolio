@@ -6,7 +6,12 @@ import { clamp } from "./num";
 import { heightAt } from "./terrain";
 
 /** where she is and how she lies: yaw 0 = east, turning to the north; v her speed ahead (m/s); roll her heel */
-export type Hull = { x: number; z: number; yaw: number; v: number; roll: number };
+export type Hull = { x: number; z: number; yaw: number; v: number; roll: number; /** how this boat handles; none: the pinisi's own (all 1) */ kit?: Handling };
+/** how a boat handles, against the pinisi (1 each): pace scales the speed she settles to, turn how fast she comes
+ *  round, heel how far she leans in a turn. A boat that leans past TENDER loses way until she comes upright. */
+export type Handling = { pace: number; turn: number; heel: number };
+/** her lean, in radians, past which she spills wind and slows */
+export const TENDER = 0.13;
 /** turn −1…1 (positive to port), thrust −0.4…1; swing: under her own pilot she may turn smartly even with little way on */
 export type Steer = { turn: number; thrust: number; swing?: number };
 
@@ -18,10 +23,15 @@ export const beamAt = (o: number) => 3.6 * Math.pow(Math.sin(Math.PI * (0.08 + 0
 export function stepHull(st: Hull, s: Steer, dt: number, isles: Pick<Isles, "rocks" | "near2">, opts: { speed?: number } = {}): boolean {
   const { rocks, near2 } = isles, { thrust } = s, swing = s.swing ?? 0;
   const turn = clamp(s.turn, -1, 1);
-  st.yaw += turn * dt * 0.3 * Math.max(swing * 1.6, 0.35 + Math.min(1, Math.abs(st.v) / 7)); // a 28 m schooner turns slowly
-  if (opts.speed !== undefined) st.v += (opts.speed - st.v) * dt * 0.55;
-  else st.v += (thrust * 13 - st.v) * dt * (thrust ? 0.55 : 0.4);
-  st.roll += (turn * Math.min(1, Math.abs(st.v) / 9) * 0.1 - st.roll) * Math.min(1, dt * 2);
+  const k = st.kit;
+  st.yaw += turn * dt * 0.3 * (k?.turn ?? 1) * Math.max(swing * 1.6, 0.35 + Math.min(1, Math.abs(st.v) / 7)); // a 28 m schooner turns slowly
+  const pace = k?.pace ?? 1;
+  if (opts.speed !== undefined) st.v += (opts.speed * pace - st.v) * dt * 0.55;
+  else st.v += (thrust * 13 * pace - st.v) * dt * (thrust ? 0.55 : 0.4);
+  st.roll += (turn * Math.min(1, Math.abs(st.v) / 9) * 0.1 * (k?.heel ?? 1) - st.roll) * Math.min(1, dt * 2);
+  // a tender boat heeled hard spills her wind: she loses way while she leans past TENDER
+  const over = Math.abs(st.roll) - TENDER;
+  if (over > 0) st.v *= 1 - Math.min(0.5, over * 6) * dt;
   const fx = Math.cos(st.yaw), fz = -Math.sin(st.yaw);
   st.x += fx * st.v * dt;
   st.z += fz * st.v * dt;

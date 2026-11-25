@@ -95,6 +95,30 @@ export function stats(d: Design): Stats {
   return { speed: round1(speed), stability: round1(stability), charm: round1(charm), capsizes: stability < 2, warnings };
 }
 
+/** how she sails, from her stats, against the pinisi the Regatta and Dua Pulau are built round (1 each). Kept in a
+ *  narrow band so the race stays a race: speed 0…10 → pace 0.86…1.08 (the yard's default, 6.4, is about 1); a tender
+ *  boat (low stability) turns quicker but heels further, past the point where she spills wind and slows; a steady one
+ *  turns slower and stays upright; a short hull turns quicker. */
+export function handling(d: Design): { pace: number; turn: number; heel: number } {
+  const s = stats(d), len = HULLS[d.hull].length;
+  return {
+    pace: round2(0.86 + s.speed * 0.022),
+    turn: round2(clamp(0.78 + (10 - s.stability) * 0.045 + (22 - len) * 0.03, 0.75, 1.3)),
+    heel: round2(clamp(1 + (5.5 - s.stability) * 0.22, 0.6, 2.2)),
+  };
+}
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+/** her handling in words, for wherever she is chosen: "104% of a pinisi's pace, turns sharp, leans hard in turns" */
+export function handlingNote(h: { pace: number; turn: number; heel: number }): string {
+  const parts = [`${Math.round(h.pace * 100)}% of a pinisi's pace`];
+  if (h.turn >= 1.1) parts.push("turns sharp");
+  else if (h.turn <= 0.9) parts.push("turns wide");
+  if (h.heel >= 1.4) parts.push("leans hard in turns and slows");
+  else if (h.heel <= 0.85) parts.push("stays upright");
+  return parts.join(", ");
+}
+
 /** a design from anything (saved data, a shared link), with every unknown or missing part put back to the default */
 export function clean(raw: unknown): Design {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;

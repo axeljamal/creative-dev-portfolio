@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clean, decode, DEFAULT_DESIGN, encode, stats, type Design } from "./design";
+import { clean, decode, DEFAULT_DESIGN, encode, handling, stats, type Design } from "./design";
 
 const d = (over: Partial<Design>): Design => ({ ...DEFAULT_DESIGN, ...over });
 
@@ -60,5 +60,32 @@ describe("saving and sharing", () => {
       name: `b${"x".repeat(23)}`,
     });
     expect(clean(null)).toEqual(DEFAULT_DESIGN);
+  });
+});
+
+describe("handling", () => {
+  it("sails the default boat about as the pinisi does", () => {
+    const h = handling(DEFAULT_DESIGN);
+    expect(h.pace).toBeGreaterThan(0.96);
+    expect(h.pace).toBeLessThan(1.02);
+    expect(h.turn).toBeCloseTo(1, 0);
+    expect(h.heel).toBeCloseTo(1, 0);
+  });
+  it("keeps every design within a fair band for the race", () => {
+    for (const hull of ["trader", "racer", "house"] as const)
+      for (const rig of ["gaff", "tanja", "square"] as const)
+        for (const masts of [1, 2, 3] as const)
+          for (const cabin of ["none", "low", "tall"] as const) {
+            const h = handling(d({ hull, rig, masts, cabin }));
+            expect(h.pace).toBeGreaterThanOrEqual(0.86);
+            expect(h.pace).toBeLessThanOrEqual(1.08);
+            expect(h.turn).toBeGreaterThanOrEqual(0.75);
+            expect(h.turn).toBeLessThanOrEqual(1.3);
+          }
+  });
+  it("makes a racer quicker and more tender than a houseboat", () => {
+    const racer = handling(d({ hull: "racer", masts: 2, cabin: "none" })), house = handling(d({ hull: "house", masts: 1, cabin: "low" }));
+    expect(racer.pace).toBeGreaterThan(house.pace);
+    expect(racer.heel).toBeGreaterThan(house.heel);
   });
 });

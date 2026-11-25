@@ -2,6 +2,7 @@
 // on: race again or change course; in a cup, the table so far and the next race, and after the third the final table
 // with the best cup kept.
 import { useEffect, useRef } from "react";
+import { HOME } from "./brick";
 import { clock, copy, gapText } from "./copy";
 import { CupTable, type CupRow } from "./CupTable";
 import type { Mode, WindSet } from "./rules/types";
@@ -86,6 +87,9 @@ export function Results({ course, mode, r, cup, onAgain, onChange, onNext, onCup
         <button type="button" className="rg-btn rg-btn-quiet" onClick={onChange}>
           {copy.change}
         </button>
+        <a className="rg-btn rg-btn-quiet" href={HOME}>
+          {copy.home}
+        </a>
       </div>
     </section>
   );

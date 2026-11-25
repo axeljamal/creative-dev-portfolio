@@ -3,7 +3,7 @@
 // device and travels in a share link (?boat=), and a member of the Crew gets their "build your first boat" quest ticked.
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CABINS, clean, decode, DEFAULT_DESIGN, encode, HULLS, MOTIFS, NAME_MAX, PAINTS, RIGS, SAILS, stats,
+  CABINS, clean, decode, DEFAULT_DESIGN, encode, HULLS, MOTIFS, NAME_MAX, PAINTS, RIGS, SAILS, stats, handling, handlingNote,
   type Design, type Masts,
 } from "./design";
 import type { Phase, Yard } from "./scene";
@@ -166,6 +166,7 @@ export function App() {
           <Meter label="Stability" value={s.stability} tone={toneOf(s.stability)} />
           <Meter label="Charm" value={s.charm} />
         </div>
+        {!s.capsizes && <p className="yd-sails">At sea: {handlingNote(handling(design))}</p>}
         <div className="yd-warn" aria-live="polite">
           {s.warnings.map((w) => <p key={w}>{w}</p>)}
         </div>

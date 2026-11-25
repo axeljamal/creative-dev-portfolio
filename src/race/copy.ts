@@ -55,6 +55,9 @@ export const copy = {
   cup: "Race the cup",
   cupLine: "All three courses in turn, for points",
   byline: "by Axelle Jamal",
+  /** the way out of the race, on the title, the pause and the results */
+  home: "Back to Dua Pulau",
+  homeShort: "← Dua Pulau",
   noBest: "No best yet",
   bestLabel: (t: string) => `Best ${t}`,
   /** each course's shape, a few words: on the title and on the beach huts' boards */

@@ -19,7 +19,8 @@ import type { CourseId, Helm, Mode, WindSet } from "./rules/types";
 import { effectiveWind } from "./rules/wind";
 import type { CardView, Finish, Session } from "./session";
 import { Title } from "./Title";
-import { BRICK, yardDesign } from "./brick";
+import { BRICK, HOME, yardDesign } from "./brick";
+import { handling, handlingNote } from "../yard/design";
 import type { Weather } from "./weather";
 import type { RaceWorld } from "./world";
 
@@ -317,11 +318,16 @@ export function App() {
       <canvas ref={canvas} aria-label="The sea round two islands, and your pinisi" />
       {screen !== "title" && <h1 className="rg-sr">{copy.title}</h1>}
       {state === "failed" && <p className="rg-note" role="alert">{copy.failed}</p>}
+      {(screen === "title" || state === "failed") && (
+        <a className="rg-home" href={HOME}>
+          {copy.homeShort}
+        </a>
+      )}
       {BRICK && screen === "title" && (
         <p className="rg-yard">
           {YARD ? (
             <>
-              Racing <b>{YARD.name.trim() || "your boat"}</b>, built in Pinisi Yard. <a href="/yard/">Rebuild her →</a>
+              Racing <b>{YARD.name.trim() || "your boat"}</b>, built in Pinisi Yard: {handlingNote(handling(YARD))}. <a href="/yard/">Rebuild her →</a>
             </>
           ) : (
             <>

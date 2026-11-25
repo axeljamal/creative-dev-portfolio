@@ -8,6 +8,7 @@ import { ISLAND_NAME, PLACES, place, type Island, type Place, type PlaceId } fro
 import { Chart } from "./Chart";
 import { Log, Ships, TALK, Talk } from "./Log";
 import { yardDesign } from "../race/brick";
+import { handling, handlingNote } from "../yard/design";
 import { Ask, type AskLine } from "./Ask";
 import { PipCorner } from "./PipCorner";
 import type { BoatView, DayPart, ShipId, Weather, World } from "./world/engine";
@@ -108,10 +109,11 @@ export function App() {
     }
   }, [visited]);
   // the welcome ends, by its last line or by Skip: the log opens in its place
-  const endTalk = () => {
+  /** the welcome is over: on to the log, or (log false) straight out to sea */
+  const endTalk = (log = true) => {
     setTalk(null);
-    setFirstLog(true);
-    setMenu(true);
+    setFirstLog(log);
+    setMenu(log);
     try {
       localStorage.setItem(SEEN, "1");
     } catch {
@@ -198,7 +200,12 @@ export function App() {
       if ((e.target as HTMLElement | null)?.closest?.("input,textarea")) return;
       const k = e.key.toLowerCase();
       if (k === "escape") {
-        if (menu) closeLog();
+        // the topmost thing open closes first: a menu, then the controls card, then looking round, then the place
+        if (ships) setShips(false);
+        else if (asking) setAsking(false);
+        else if (menu) closeLog();
+        else if (talk !== null) endTalk(false);
+        else if (tools) setTools(false);
         else if (looking) look(false);
         else if (open) moor(null);
       } else if (k === "m" && lit) toggleSound();
@@ -206,7 +213,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, open, near, sailing, lit, moor, toggleSound, looking, look]);
+  }, [menu, open, near, sailing, lit, moor, toggleSound, looking, look, ships, asking, talk, tools]);
   useEffect(() => {
     if (open) closeBtn.current?.focus({ preventScroll: true });
   }, [open]);
@@ -216,7 +223,7 @@ export function App() {
 
   return (
     <main className={`dp${BRICK ? " is-brick" : ""}`}>
-      <section id="world" className={`dp-world${open ? " has-panel" : ""}${talk !== null ? " has-talk" : ""}${menu || asking ? " has-log" : ""}`} aria-label="Dua Pulau, a world of two islands">
+      <section id="world" className={`dp-world${open ? " has-panel" : ""}${talk !== null ? " has-talk" : ""}${menu || asking || ships ? " has-log" : ""}`} aria-label="Dua Pulau, a world of two islands">
         <canvas ref={canvas} tabIndex={-1} aria-label="A pinisi schooner on the sea between two islands: Marea Dvīpa to the west and Windfall to the east. Every place in it is listed below the world." />
 
         <div className={`dp-gate${lit ? " is-out" : ""}`} aria-hidden={lit}>
@@ -264,7 +271,7 @@ export function App() {
               <button type="button" className="dp-pill" aria-pressed={!muted} onClick={toggleSound}>{muted ? "Sound off" : "Sound on"}</button>
               </div>
             </div>
-            {ships && <Ships ship={ship} yardName={YARD ? YARD.name.trim() || "Your boat" : null} onPick={setShip} onClose={() => setShips(false)} />}
+            {ships && <Ships ship={ship} yardName={YARD ? YARD.name.trim() || "Your boat" : null} yardNote={YARD ? handlingNote(handling(YARD)) : ""} onPick={setShip} onClose={() => setShips(false)} />}
             {menu && <Log visited={visited} first={firstLog} onSail={sailTo} onClose={closeLog} brick={BRICK} />}
             {asking && <Ask thread={askThread} setThread={setAskThread} onSail={sailTo} onClose={() => setAsking(false)} />}
             {sailing && world.current && <Chart world={world.current} found={found} bound={bound} onSail={sailTo} />}
@@ -272,7 +279,7 @@ export function App() {
             {!open && (
               <div className="dp-foot" aria-live="polite">
                 {talk !== null ? (
-                  <Talk line={talk} onNext={() => (talk < TALK.length - 1 ? setTalk(talk + 1) : endTalk())} onSkip={endTalk} />
+                  <Talk line={talk} onNext={() => (talk < TALK.length - 1 ? setTalk(talk + 1) : endTalk())} onSkip={() => endTalk()} onClose={() => endTalk(false)} />
                 ) : near ? (
                   <button type="button" className={`dp-btn dp-btn-gold is-${place(near).island}`} onClick={() => moor(near)}>
                     Moor at {place(near).name.replace(/^The /, "the ")} <span>· {place(near).holds}</span>
