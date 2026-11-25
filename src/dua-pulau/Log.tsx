@@ -28,7 +28,8 @@ export function Talk({ line, onNext, onSkip }: { line: number; onNext: () => voi
   );
 }
 
-export function Log({ visited, first, onSail, onClose }: { visited: PlaceId[]; first: boolean; onSail: (id: PlaceId) => void; onClose: () => void }) {
+/** brick: the log of Dua Pulau in bricks, whose way out leads to the brick Regatta */
+export function Log({ visited, first, onSail, onClose, brick = false }: { visited: PlaceId[]; first: boolean; onSail: (id: PlaceId) => void; onClose: () => void; brick?: boolean }) {
   const done = visited.length === PLACES.length;
   return (
     <nav id="dp-log" className="dp-menu dp-log" aria-label="The ship's log: what to do here, and a way to sail to each place">
@@ -52,6 +53,15 @@ export function Log({ visited, first, onSail, onClose }: { visited: PlaceId[]; f
           })}
         </div>
       ))}
+      {/* the way on from the islands: the Regatta is raced round them, on a page of its own */}
+      <div>
+        <p className="dp-kicker">Beyond the islands</p>
+        <a className="dp-log-go" href={brick ? "/bricks/race/" : "/race/"}>
+          <i aria-hidden="true">→</i>
+          <b>Race the regatta</b>
+          <span>{brick ? "Three courses round the islands, in the boat you built in Pinisi Yard" : "Three courses round the islands, against three rival pinisi"}</span>
+        </a>
+      </div>
       <div className="dp-log-foot">
         <span aria-live="polite">{visited.length} / {PLACES.length} logged</span>
         {done ? <a className="dp-btn dp-btn-gold" href="/portfolio/#contact">Write a message</a> : <button type="button" className="dp-btn dp-btn-gold" onClick={onClose}>{first ? "Set sail" : "Close"}</button>}

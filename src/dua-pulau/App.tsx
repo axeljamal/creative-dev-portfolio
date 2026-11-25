@@ -235,7 +235,7 @@ export function App() {
               <button type="button" className="dp-pill" aria-pressed={!muted} onClick={toggleSound}>{muted ? "Sound off" : "Sound on"}</button>
               </div>
             </div>
-            {menu && <Log visited={visited} first={firstLog} onSail={sailTo} onClose={closeLog} />}
+            {menu && <Log visited={visited} first={firstLog} onSail={sailTo} onClose={closeLog} brick={BRICK} />}
             {asking && <Ask thread={askThread} setThread={setAskThread} onSail={sailTo} onClose={() => setAsking(false)} />}
             {sailing && world.current && <Chart world={world.current} found={found} bound={bound} onSail={sailTo} />}
             <PipCorner away={!sailing || asking || !!open || menu || tools || talk !== null} onAsk={() => { closeLog(); setTools(false); setAsking(true); }} />
