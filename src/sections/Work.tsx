@@ -20,7 +20,11 @@ export function Work() {
         <a href="/" className="font-bold text-ink underline decoration-accent decoration-2 underline-offset-4">
           Dua Pulau
         </a>{" "}
-        is all of this as a world of two islands, with a pinisi to cross between them.
+        is all of this as a world of two islands, with a pinisi to cross between them. And on the same sea there is a game:{" "}
+        <a href="/race/" className="font-bold text-ink underline decoration-accent decoration-2 underline-offset-4">
+          Dua Pulau Regatta
+        </a>
+        , a sailing race round both islands.
       </p>
       <div className="flex flex-col gap-6 sm:gap-10">
         {caseStudies.map((study, i) => (

@@ -208,6 +208,7 @@ export function App() {
           <div className={`dp-hud${sailing ? " is-on" : ""}`}>
             <div className="dp-hud-tl">
               <a className="dp-home" href="/portfolio/">Classic portfolio →</a>
+              <a className="dp-home" href="/race/">Race the regatta →</a>
               <strong>Dua Pulau</strong>
               <span>{WATERS[waters]}</span>
             </div>

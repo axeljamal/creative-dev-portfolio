@@ -11,8 +11,9 @@ export default defineConfig({
     client: {
       build: {
         rollupOptions: {
-          // the home page is Dua Pulau; the classic portfolio lives at /portfolio/, and /dua-pulau/ only forwards to the home page
-          input: { main: "index.html", portfolio: "portfolio/index.html", admin: "admin/index.html", "dua-pulau": "dua-pulau/index.html" },
+          // the home page is Dua Pulau; the classic portfolio lives at /portfolio/, /dua-pulau/ only forwards to the home page,
+          // and /race/ is the sailing race game built on the same world
+          input: { main: "index.html", portfolio: "portfolio/index.html", admin: "admin/index.html", "dua-pulau": "dua-pulau/index.html", race: "race/index.html" },
         },
       },
     },

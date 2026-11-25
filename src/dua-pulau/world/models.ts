@@ -2361,11 +2361,12 @@ const stripeT = (cols: string[]) =>
 export type HutProject = { name: string; line: string };
 /** a terrace of Hove-style beach huts on a concrete promenade, one for each project that came before, and the last to
  * let. Each is hollow: its doors swing open on a poster of the project lit inside. Doors face +z. */
-export function buildHuts(projects: HutProject[]) {
+export function buildHuts(projects: HutProject[], toLet = true) {
   const g = new THREE.Group();
   const colours = [0xc67139, 0x6aa7a8, 0xf2c14e, 0xd9667b, 0x8fb0d9, 0x7a8a5e, 0xf4eee3];
   const doorCols = [0x2f5d73, 0xf4eee3, 0x3b793f, 0xf4eee3, 0xcc3f2f, 0xf4eee3, 0x1c7eab];
-  const list = [...projects.slice(0, 6), { name: "To let", line: "Your project could be next. Say hello at the medallion in the strait." }];
+  // toLet: the seventh hut stands to let, as on the portfolio; without it (the race game) a seventh board is shown instead
+  const list = toLet ? [...projects.slice(0, 6), { name: "To let", line: "Your project could be next. Say hello at the medallion in the strait." }] : projects.slice(0, 7);
   // the promenade: a concrete apron with a kerb, stepping down to the shingle at the front
   const conc = std({ map: rep(parasT, 6, 1), color: 0xcfc8ba, rough: 0.95 });
   mesh(box(27.5, 0.5, 6.2), conc, 0, 0.0, 0.4, g);

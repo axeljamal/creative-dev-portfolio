@@ -11,7 +11,8 @@
     "db:migrate:local": "wrangler d1 migrations apply creative-dev-portfolio --local",
     "db:migrate": "wrangler d1 migrations apply creative-dev-portfolio --remote",
     "cf-typegen": "wrangler types --strict-vars=false",
-    "build:ds": "vite build -c vite.lib.config.ts && tsc -p tsconfig.ds.json"
+    "build:ds": "vite build -c vite.lib.config.ts && tsc -p tsconfig.ds.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "jose": "^6.2.13",
@@ -32,6 +33,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
+    "vitest": "^5.1.1",
     "wrangler": "^4.154.0"
   },
   "module": "./dist-ds/index.js",

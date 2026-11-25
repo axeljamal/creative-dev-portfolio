@@ -1,0 +1,1319 @@
+/* Dua Pulau Regatta: a small, typographic HUD over a lit sea, in Dua Pulau's night palette (ink, pearl, temple gold).
+   Everything sits on dark glass so it reads over bright water and white sails at noon. */
+html,
+body {
+  background: #070a12;
+  overscroll-behavior: none;
+}
+.rg {
+  --rg-ink: #0e0c09;
+  --rg-pearl: #f4eee3;
+  --rg-gold: #e0c27e;
+  --rg-gold-deep: #c39b65;
+  --rg-glass: rgba(14, 12, 9, 0.74);
+  --rg-line: rgba(224, 194, 126, 0.32);
+  --rg-gut: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #070a12;
+  color: var(--rg-pearl);
+  font-family: var(--font-sans);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.rg > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  outline: none;
+}
+.rg-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.rg-note {
+  position: absolute;
+  left: 50%;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: calc(100% - 2 * var(--rg-gut));
+  font: 500 12px/1.4 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgba(244, 238, 227, 0.8);
+}
+
+/* ---------- the HUD ---------- */
+.rg-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.rg-label {
+  font: 500 10.5px/1 var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rg-gold);
+}
+.rg-clock,
+.rg-next {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  background: var(--rg-glass);
+  border: 1px solid var(--rg-line);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.rg-clock {
+  left: var(--rg-gut);
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px 9px;
+}
+.rg-time {
+  font: 500 26px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--rg-pearl);
+}
+.rg-next {
+  right: var(--rg-gut);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 8px 8px;
+}
+.rg-arrow {
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+.rg-arrow circle {
+  fill: none;
+  stroke: var(--rg-line);
+  stroke-width: 1.5;
+}
+.rg-arrow path {
+  fill: var(--rg-gold);
+}
+.rg-next-words {
+  display: grid;
+  gap: 6px;
+}
+.rg-side {
+  font: 600 15px/1.1 var(--font-sans);
+  color: var(--rg-pearl);
+}
+
+/* the countdown: one large figure over the bow, the way to steer beneath it */
+.rg-count {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
+}
+.rg-count-n {
+  font: 700 clamp(84px, 16vw, 150px) / 0.9 var(--font-sans);
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--rg-pearl);
+  text-shadow: 0 0 2px rgba(4, 6, 12, 0.9), 0 2px 6px rgba(4, 6, 12, 0.6), 0 4px 32px rgba(4, 6, 12, 0.55);
+}
+.rg-hint {
+  font: 500 11px/1.3 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rg-pearl);
+  background: var(--rg-glass);
+  border: 1px solid var(--rg-line);
+  border-radius: 999px;
+  padding: 7px 14px;
+  white-space: nowrap;
+}
+
+/* ---------- the finish ---------- */
+.rg-results {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100% - 2 * var(--rg-gut)));
+  box-sizing: border-box;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px 24px 26px;
+  text-align: center;
+  background: var(--rg-glass);
+  border: 1px solid var(--rg-line);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: rg-in 0.5s ease both;
+}
+.rg-results > * {
+  margin: 0;
+}
+.rg-results-h {
+  font: 500 44px/1 var(--font-display);
+  color: var(--rg-pearl);
+}
+.rg-results-time {
+  font: 500 34px/1.1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--rg-gold);
+  margin-bottom: 10px;
+}
+.rg-btn {
+  font: 700 15px/1 var(--font-sans);
+  color: var(--rg-ink);
+  background: var(--rg-gold);
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 26px;
+  min-height: 44px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.rg-btn:hover {
+  background: #ecd59c;
+}
+.rg-btn:focus-visible {
+  outline: 2px solid var(--rg-pearl);
+  outline-offset: 3px;
+}
+@keyframes rg-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px));
+  }
+}
+
+@media (max-width: 520px) {
+  .rg-time {
+    font-size: 22px;
+  }
+  .rg-clock {
+    padding: 9px 12px 8px;
+  }
+  .rg-next {
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+  }
+  .rg-arrow {
+    width: 38px;
+    height: 38px;
+  }
+  .rg-side {
+    font-size: 13.5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rg-results {
+    animation: none;
+  }
+}
+
+/* ---------- gap to the best run, best times ---------- */
+.rg-gap-box {
+  position: absolute;
+  left: var(--rg-gut);
+  top: calc(max(16px, env(safe-area-inset-top)) + 70px);
+}
+.rg-gap {
+  display: grid;
+  gap: 5px;
+  padding: 9px 14px;
+  background: var(--rg-glass);
+  border: 1px solid var(--rg-line);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.rg-gap-n,
+.rg-stats dd {
+  margin: 0;
+  font: 500 22px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--rg-pearl);
+}
+.ahead {
+  color: #8fe0b0 !important;
+}
+.behind {
+  color: #f0a58f !important;
+}
+.rg-new {
+  font: 700 13px/1 var(--font-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rg-gold);
+}
+.rg-stats {
+  display: flex;
+  gap: 28px;
+  margin: 0 0 8px;
+}
+.rg-stats > div {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+.rg-stats dt {
+  margin: 0;
+}
+
+/* ---------- Sailing: the wind arrow and the over-early warning ---------- */
+.rg-wind {
+  position: absolute;
+  right: var(--rg-gut);
+  top: calc(max(16px, env(safe-area-inset-top)) + 72px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 8px 8px;
+  background: var(--rg-glass);
+  border: 1px solid var(--rg-line);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.rg-wind-arrow path {
+  fill: none;
+  stroke: var(--rg-pearl);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rg-early-box {
+  position: absolute;
+  left: 50%;
+  bottom: max(18%, calc(env(safe-area-inset-bottom) + 24px));
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 2 * var(--rg-gut));
+}
+.rg-early {
+  display: block;
+  font: 700 15px/1.3 var(--font-sans);
+  text-align: center;
+  color: var(--rg-ink);
+  background: #f0a58f;
+  border-radius: 999px;
+  padding: 10px 18px;
+}
+@media (max-width: 520px) {
+  .rg-wind {
+    top: calc(max(16px, env(safe-area-inset-top)) + 62px);
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+  }
+  .rg-early {
+    font-size: 13.5px;
+  }
+}
+
+/* ---------- the fleet: her place, the standings and the gap to the boat ahead (or behind) ---------- */
+.rg-stand {
+  position: absolute;
+  left: var(--rg-gut);
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 8px;
+  min-width: 168px;
+  padding: 10px 14px 11px;
+  background: var(--rg-glass);
+  border: 1px solid var(--rg-line);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.rg-stand p {
+  margin: 0;
+}
+.rg-place {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+/* with a fleet, her place is the handle that opens and closes the list */
+button.rg-place {
+  pointer-events: auto;
+  appearance: none;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+button.rg-place:hover {
+  background: rgba(244, 238, 227, 0.08);
+}
+button.rg-place:focus-visible {
+  outline: 2px solid var(--rg-gold);
+  outline-offset: 2px;
+}
+.rg-place-fold {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  align-self: center;
+  fill: none;
+  stroke: var(--rg-gold);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(180deg);
+}
+.rg-place-fold.open {
+  transform: none;
+}
+.rg-place-n {
+  font: 700 28px/1 var(--font-sans);
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--rg-pearl);
+}
+.rg-fleet {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  counter-reset: rg-pos;
+}
+.rg-fleet li {
+  counter-increment: rg-pos;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 13.5px/1.2 var(--font-sans);
+  color: rgba(244, 238, 227, 0.82);
+}
+.rg-fleet li::before {
+  content: counter(rg-pos);
+  width: 1ch;
+  font: 500 11px/1 var(--font-mono);
+  color: var(--rg-gold);
+}
+.rg-fleet li.you {
+  font-weight: 700;
+  color: var(--rg-pearl);
+}
+.rg-swatch {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 3px;
+  background: var(--rg-pearl);
+  box-shadow: inset 0 0 0 1px rgba(244, 238, 227, 0.35);
+}
+.rg-fleet li.you .rg-swatch {
+  box-shadow: inset 0 0 0 2px var(--rg-gold);
+}
+.rg-tag {
+  font: 600 9.5px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rg-ink);
+  background: var(--rg-gold);
+  border-radius: 999px;
+  padding: 3px 6px 2px;
+}
+.rg-lead {
+  display: grid;
+  gap: 4px;
+  padding-top: 7px;
+  border-top: 1px solid var(--rg-line);
+}
+.rg-lead-n {
+  font: 500 18px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.rg-of {
+  font: 500 14px/1 var(--font-mono);
+  color: rgba(244, 238, 227, 0.7);
+}
+@media (max-width: 520px) {
+  .rg-stand {
+    min-width: 0;
+    gap: 6px;
+    padding: 8px 11px 9px;
+  }
+  .rg-place-n {
+    font-size: 22px;
+  }
+  .rg-fleet li {
+    font-size: 12.5px;
+  }
+  .rg-lead-n {
+    font-size: 15px;
+  }
+}
+
+/* ---------- the title: a regatta poster over the live sea ----------
+   The name is set large in the display serif, the event word in gold italic beneath, over an ink scrim that leaves the
+   sea clear on the far side. The choices below it read as a race programme: numbered courses, plain rules, no boxes. */
+.rg-title {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 20px;
+  box-sizing: border-box;
+  width: min(560px, 100%);
+  padding: max(36px, env(safe-area-inset-top)) var(--rg-gut) max(20px, env(safe-area-inset-bottom)) max(56px, var(--rg-gut));
+  overflow-y: auto;
+  scrollbar-width: none;
+  user-select: none;
+  isolation: isolate;
+}
+.rg-title::before {
+  /* the scrim: ink at the poster's edge, clearing to the sea */
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(6, 8, 14, 0.9) 0, rgba(6, 8, 14, 0.82) 400px, rgba(6, 8, 14, 0.4) 640px, rgba(6, 8, 14, 0) 860px);
+}
+.rg-mast > * {
+  margin: 0;
+}
+.rg-kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rg-gold);
+}
+.rg-kicker-rule {
+  width: 40px;
+  height: 1px;
+  background: var(--rg-gold);
+}
+.rg-name {
+  display: grid;
+  margin: 18px 0 0 -0.04em;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(60px, min(7.4vw, 12vh), 116px);
+  line-height: 0.84;
+  letter-spacing: -0.02em;
+  color: var(--rg-pearl);
+  text-wrap: balance;
+}
+.rg-name-b {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--rg-gold);
+  padding-left: 0.42em;
+}
+.rg-tagline {
+  margin-top: 18px !important;
+  max-width: 30ch;
+  font: 500 15px/1.45 var(--font-sans);
+  color: rgba(244, 238, 227, 0.78);
+}
+
+.rg-menu {
+  align-self: end;
+  display: grid;
+  gap: 16px;
+  max-width: 440px;
+}
+.rg-menu fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.rg-menu legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+/* radios and checkboxes are real inputs, hidden over their drawn parts so keys and screen readers find them */
+.rg-menu input,
+.rg-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* Race: the one loud thing on the page */
+.rg-race {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "word arrow" "what arrow";
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 4px;
+  width: 100%;
+  padding: 12px 20px 13px 22px;
+  text-align: left;
+  color: var(--rg-ink);
+  background: var(--rg-gold);
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.rg-race:hover {
+  background: #ecd59c;
+}
+.rg-race:focus-visible,
+.rg-cup:focus-visible,
+.rg-by:focus-visible {
+  outline: 2px solid var(--rg-pearl);
+  outline-offset: 3px;
+}
+.rg-race-word {
+  grid-area: word;
+  font: 600 32px/1 var(--font-display);
+  letter-spacing: 0.01em;
+}
+.rg-race-what {
+  grid-area: what;
+  font: 500 11px/1.2 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(14, 12, 9, 0.72);
+}
+.rg-race-arrow {
+  grid-area: arrow;
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rg-loading {
+  margin: -8px 0 0;
+  font: 500 11px/1.3 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(244, 238, 227, 0.78);
+}
+
+/* the courses: a race programme, one rule between each */
+.rg-courses {
+  display: grid;
+}
+.rg-course {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  grid-template-areas: "no name best" "no line best";
+  align-items: baseline;
+  column-gap: 12px;
+  row-gap: 3px;
+  padding: 8px 4px 9px 0;
+  border-top: 1px solid var(--rg-line);
+  cursor: pointer;
+}
+.rg-course:last-child {
+  border-bottom: 1px solid var(--rg-line);
+}
+.rg-course-no {
+  grid-area: no;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  color: rgba(224, 194, 126, 0.6);
+}
+.rg-course-name {
+  grid-area: name;
+  font: 600 24px/1 var(--font-display);
+  color: rgba(244, 238, 227, 0.66);
+  transition: color 0.15s ease;
+}
+.rg-course-line {
+  grid-area: line;
+  font: 500 13px/1.25 var(--font-sans);
+  color: rgba(244, 238, 227, 0.58);
+}
+.rg-course-best {
+  grid-area: best;
+  align-self: center;
+  font: 500 12px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: rgba(244, 238, 227, 0.8);
+}
+.rg-course-best.none {
+  color: rgba(244, 238, 227, 0.5);
+}
+.rg-course:hover .rg-course-name {
+  color: var(--rg-pearl);
+}
+.rg-course:has(input:checked) .rg-course-no {
+  color: var(--rg-gold);
+}
+.rg-course:has(input:checked) .rg-course-name {
+  color: var(--rg-pearl);
+}
+.rg-course:has(input:checked) .rg-course-line {
+  color: rgba(244, 238, 227, 0.82);
+}
+.rg-course:has(input:checked)::before {
+  /* the chosen course: a gold bar at the programme's edge */
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 8px;
+  bottom: 9px;
+  width: 3px;
+  background: var(--rg-gold);
+}
+.rg-course:has(input:focus-visible) {
+  outline: 2px solid var(--rg-pearl);
+  outline-offset: 2px;
+}
+
+/* mode and wind: segmented pairs */
+.rg-sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+}
+.rg-seg-row {
+  display: inline-flex;
+  border: 1px solid rgba(224, 194, 126, 0.5);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.rg-seg-opt {
+  position: relative;
+  cursor: pointer;
+}
+.rg-seg-opt span {
+  display: block;
+  padding: 10px 14px;
+  min-height: 44px;
+  box-sizing: border-box;
+  font: 600 14px/24px var(--font-sans);
+  color: rgba(244, 238, 227, 0.78);
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.rg-seg-opt + .rg-seg-opt span {
+  border-left: 1px solid rgba(224, 194, 126, 0.5);
+}
+.rg-seg-opt:hover span {
+  color: var(--rg-pearl);
+}
+.rg-seg-opt input:checked + span {
+  color: var(--rg-ink);
+  background: var(--rg-pearl);
+}
+.rg-seg-opt input:focus-visible + span {
+  outline: 2px solid var(--rg-gold);
+  outline-offset: -4px;
+}
+.rg-set-line {
+  margin: -6px 0 0;
+  font: 500 13px/1.4 var(--font-sans);
+  color: rgba(244, 238, 227, 0.7);
+}
+
+/* the cup, and the two switches */
+.rg-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+  padding-top: 4px;
+}
+.rg-cup {
+  display: grid;
+  gap: 4px;
+  padding: 10px 16px 11px;
+  min-height: 44px;
+  text-align: left;
+  color: var(--rg-pearl);
+  background: transparent;
+  border: 1px solid var(--rg-gold);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.rg-cup:hover {
+  background: rgba(224, 194, 126, 0.14);
+}
+.rg-cup-word {
+  font: 600 19px/1 var(--font-display);
+  color: var(--rg-gold);
+}
+.rg-cup-line {
+  font: 500 12px/1.2 var(--font-sans);
+  color: rgba(244, 238, 227, 0.72);
+}
+.rg-switches {
+  display: grid;
+  gap: 8px;
+}
+.rg-switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  cursor: pointer;
+}
+.rg-switch-track {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex: none;
+  border: 1px solid rgba(224, 194, 126, 0.6);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+.rg-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(244, 238, 227, 0.6);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.rg-switch input:checked + .rg-switch-track {
+  background: var(--rg-gold);
+  border-color: var(--rg-gold);
+}
+.rg-switch input:checked + .rg-switch-track::after {
+  transform: translateX(14px);
+  background: var(--rg-ink);
+}
+.rg-switch input:focus-visible + .rg-switch-track {
+  outline: 2px solid var(--rg-pearl);
+  outline-offset: 3px;
+}
+.rg-switch-label {
+  font: 500 13px/1.2 var(--font-sans);
+  color: rgba(244, 238, 227, 0.82);
+}
+.rg-by {
+  justify-self: start;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(244, 238, 227, 0.66);
+  text-decoration: none;
+  padding: 6px 0;
+}
+.rg-by:hover {
+  color: var(--rg-gold);
+}
+
+/* a phone held upright: the name at the top over the sky, the programme at the bottom, the sea between */
+@media (max-width: 600px) {
+  .rg-title {
+    width: 100%;
+    gap: 20px;
+    padding: max(28px, env(safe-area-inset-top)) var(--rg-gut) max(16px, env(safe-area-inset-bottom));
+  }
+  .rg-title::before {
+    background:
+      linear-gradient(180deg, rgba(6, 8, 14, 0.78) 0, rgba(6, 8, 14, 0.3) 200px, rgba(6, 8, 14, 0) 260px),
+      linear-gradient(0deg, rgba(6, 8, 14, 0.94) 0, rgba(6, 8, 14, 0.88) 470px, rgba(6, 8, 14, 0) 600px);
+  }
+  .rg-name {
+    margin-top: 12px;
+    font-size: clamp(52px, 15vw, 70px);
+  }
+  .rg-tagline {
+    margin-top: 10px !important;
+    font-size: 14px;
+  }
+  .rg-menu {
+    gap: 14px;
+    max-width: none;
+  }
+  .rg-race {
+    padding: 11px 16px 12px 18px;
+  }
+  .rg-race-word {
+    font-size: 28px;
+  }
+  .rg-course {
+    padding: 8px 0 9px;
+    grid-template-columns: 24px 1fr auto;
+  }
+  .rg-course-name {
+    font-size: 21px;
+  }
+  .rg-course-line {
+    font-size: 12px;
+  }
+  .rg-course:has(input:checked)::before {
+    left: -10px;
+  }
+  .rg-seg-opt span {
+    padding: 10px 12px;
+    font-size: 13.5px;
+  }
+  .rg-sets {
+    gap: 12px;
+  }
+}
+/* low and wide (a phone on its side): name and programme side by side */
+@media (max-height: 560px) and (min-width: 601px) {
+  .rg-title {
+    width: 100%;
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+    padding-top: max(20px, env(safe-area-inset-top));
+  }
+  .rg-name {
+    font-size: clamp(44px, 9vh, 72px);
+  }
+  .rg-title::before {
+    background: linear-gradient(90deg, rgba(6, 8, 14, 0.86), rgba(6, 8, 14, 0.7) 60%, rgba(6, 8, 14, 0.5));
+  }
+}
+
+/* ---------- the pre-race card ---------- */
+.rg-card-veil {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--rg-gut);
+  background: radial-gradient(ellipse at center, rgba(6, 8, 14, 0.42), rgba(6, 8, 14, 0.12) 70%);
+  cursor: pointer;
+}
+.rg-card {
+  width: min(420px, 100%);
+  box-sizing: border-box;
+  display: grid;
+  gap: 16px;
+  padding: 24px 26px 20px;
+  background: var(--rg-glass);
+  /* a full gold hairline frames the card, in place of a bar along one edge */
+  border: 1px solid rgba(224, 194, 126, 0.62);
+  border-radius: 4px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: rg-card-in 0.35s ease both;
+}
+.rg-card > * {
+  margin: 0;
+}
+.rg-card-h {
+  margin-top: -6px;
+  font: 600 46px/0.95 var(--font-display);
+  color: var(--rg-pearl);
+}
+.rg-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px 28px;
+  margin: 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--rg-line);
+}
+.rg-facts > div {
+  display: grid;
+  gap: 6px;
+}
+.rg-facts dt,
+.rg-facts dd {
+  margin: 0;
+}
+.rg-facts dd {
+  font: 600 17px/1.2 var(--font-sans);
+  color: var(--rg-pearl);
+}
+.rg-facts-rival {
+  grid-column: 1 / -1;
+}
+.rg-facts-rival dd {
+  font: italic 500 22px/1.1 var(--font-display);
+  color: var(--rg-gold);
+}
+.rg-controls {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rg-line);
+}
+.rg-controls ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+.rg-controls li {
+  font: 500 14.5px/1.35 var(--font-sans);
+  color: rgba(244, 238, 227, 0.88);
+}
+.rg-card-go {
+  display: grid;
+  gap: 10px;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(244, 238, 227, 0.75);
+}
+.rg-card-fuse {
+  display: block;
+  height: 2px;
+  background: var(--rg-gold);
+  transform-origin: left;
+  animation: rg-fuse linear both;
+}
+@keyframes rg-fuse {
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes rg-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* ---------- the finish, in a cup ---------- */
+.rg-news {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+}
+.rg-beat {
+  font: italic 500 20px/1 var(--font-display);
+  color: var(--rg-pearl);
+}
+.rg-results-h .rg-of {
+  font-size: 18px;
+}
+.rg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.rg-btn-quiet {
+  color: var(--rg-pearl);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--rg-gold);
+}
+.rg-btn-quiet:hover {
+  background: rgba(224, 194, 126, 0.14);
+}
+.rg-results.is-cup {
+  width: min(440px, calc(100% - 2 * var(--rg-gut)));
+  max-height: calc(100% - 2 * var(--rg-gut));
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.rg-cup-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2px 0 6px;
+  font: 500 13.5px/1.2 var(--font-sans);
+  color: rgba(244, 238, 227, 0.85);
+}
+.rg-cup-table caption {
+  text-align: left;
+  padding-bottom: 8px;
+}
+.rg-cup-table th,
+.rg-cup-table td {
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--rg-line);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rg-cup-table thead th {
+  font: 500 9.5px/1.2 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(224, 194, 126, 0.85);
+  vertical-align: bottom;
+}
+.rg-cup-table .rg-cup-pos {
+  width: 1.2em;
+  text-align: left;
+  font: 500 11px/1 var(--font-mono);
+  color: var(--rg-gold);
+}
+.rg-cup-name {
+  text-align: left !important;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.rg-cup-name .rg-swatch {
+  display: inline-block;
+  vertical-align: -1px;
+  margin-right: 8px;
+}
+.rg-cup-table tr.you {
+  color: var(--rg-pearl);
+}
+.rg-cup-table tr.you .rg-cup-name {
+  font-weight: 700;
+}
+.rg-cup-table tr.you .rg-swatch {
+  box-shadow: inset 0 0 0 2px var(--rg-gold);
+}
+.rg-cup-table td.rg-cup-total {
+  font: 600 15px/1 var(--font-mono);
+  color: var(--rg-pearl);
+}
+.rg-cup-best {
+  display: grid;
+  gap: 6px;
+  font: 500 14px/1.2 var(--font-sans);
+  color: var(--rg-pearl);
+}
+@media (max-width: 520px) {
+  .rg-card {
+    padding: 20px 20px 18px;
+    gap: 14px;
+  }
+  .rg-card-h {
+    font-size: 40px;
+  }
+  .rg-cup-table {
+    font-size: 12.5px;
+  }
+  .rg-cup-table thead th {
+    font-size: 8.5px;
+    letter-spacing: 0.06em;
+  }
+  .rg-results.is-cup {
+    padding: 22px 16px 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rg-card {
+    animation: none;
+  }
+  .rg-card-fuse {
+    animation: none;
+  }
+}
+
+/* ---------- the pause button, the course chart and the back-on-course prompt ---------- */
+.rg-pause-btn {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  translate: -50% 0;
+  pointer-events: auto;
+  appearance: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--rg-glass);
+  border: 1px solid var(--rg-line);
+  border-radius: 50%;
+  color: var(--rg-pearl);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.rg-pause-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+.rg-pause-btn:hover {
+  border-color: var(--rg-gold);
+  color: var(--rg-gold);
+}
+.rg-pause-btn:focus-visible,
+.rg-stuck:focus-visible {
+  outline: 2px solid var(--rg-gold);
+  outline-offset: 3px;
+}
+.rg-chart {
+  position: absolute;
+  right: var(--rg-gut);
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 184px;
+  height: 150px;
+  background: var(--rg-glass);
+  border: 1px solid var(--rg-line);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.rg-stuck-box {
+  position: absolute;
+  left: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  translate: -50% 0;
+}
+.rg-stuck {
+  pointer-events: auto;
+  appearance: none;
+  min-height: 44px;
+  padding: 0 20px;
+  font: 600 14px/1 var(--font-sans);
+  color: var(--rg-ink);
+  background: var(--rg-gold);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+}
+@media (max-width: 600px) {
+  /* no room at the top centre between the clock and the next mark: the pause button goes under the clock */
+  .rg-pause-btn {
+    top: calc(max(16px, env(safe-area-inset-top)) + 70px);
+    left: var(--rg-gut);
+    translate: none;
+  }
+  /* and the gap to the best, which stood there, moves down under it */
+  .rg-gap-box {
+    top: calc(max(16px, env(safe-area-inset-top)) + 124px);
+  }
+  .rg-chart {
+    width: 112px;
+    height: 92px;
+    border-radius: 11px;
+  }
+  .rg-stuck-box {
+    bottom: calc(max(16px, env(safe-area-inset-bottom)) + 96px);
+  }
+}
+
+/* ---------- the pause screen, and photo ---------- */
+.rg-pause-veil {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px var(--rg-gut);
+  background: rgba(14, 12, 9, 0.42);
+  overflow: auto;
+}
+.rg-pause {
+  width: min(440px, 100%);
+  box-sizing: border-box;
+  display: grid;
+  gap: 18px;
+  padding: 24px 26px 22px;
+  background: var(--rg-glass);
+  border: 1px solid rgba(224, 194, 126, 0.62);
+  border-radius: 4px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.rg-pause-h {
+  margin: 0;
+  font: 500 38px/1 var(--font-display);
+  color: var(--rg-pearl);
+}
+.rg-pause-acts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.rg-pause-acts .rg-btn:first-child {
+  grid-column: 1 / -1;
+}
+.rg-pause-acts .rg-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.rg-keys {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rg-line);
+}
+.rg-keys p,
+.rg-keys dl,
+.rg-keys dd {
+  margin: 0;
+}
+.rg-keys dl {
+  display: grid;
+  gap: 7px;
+}
+.rg-keys dl > div {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 10px;
+  font: 400 13.5px/1.4 var(--font-sans);
+  color: rgba(244, 238, 227, 0.86);
+}
+.rg-keys dt {
+  font-weight: 600;
+  color: var(--rg-pearl);
+}
+.rg-photo {
+  position: absolute;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  translate: -50% 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: calc(100% - 2 * var(--rg-gut));
+  padding: 10px 12px 10px 18px;
+  background: var(--rg-glass);
+  border: 1px solid var(--rg-line);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.rg-photo-hint {
+  margin: 0;
+  font: 400 13.5px/1.3 var(--font-sans);
+  color: rgba(244, 238, 227, 0.9);
+}
+@media (max-width: 600px) {
+  .rg-photo {
+    border-radius: 18px;
+    padding: 12px;
+  }
+  .rg-photo-hint {
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
+/* in photo the canvas is hers to drag: nothing else on screen */
+.rg.is-photo .rg-hud {
+  display: none;
+}
