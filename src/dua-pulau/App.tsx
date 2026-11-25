@@ -269,6 +269,13 @@ export function App() {
               <button type="button" className="dp-pill" aria-expanded={ships} aria-controls="dp-ships" onClick={() => { setAsking(false); closeLog(); setTools(false); setShips(!ships); }}>Ship</button>
               <button type="button" className="dp-pill dp-logbtn" aria-expanded={menu} aria-controls="dp-log" onClick={() => { setAsking(false); setTools(false); setShips(false); if (menu) closeLog(); else setMenu(true); }}>Log <b>{visited.length}/{PLACES.length}</b></button>
               <button type="button" className="dp-pill" aria-pressed={!muted} onClick={toggleSound}>{muted ? "Sound off" : "Sound on"}</button>
+              {/* on a phone the corner links fold in here too: the way to the race, the other world, the yard */}
+              <nav className="dp-tools-go" aria-label="Elsewhere">
+                <a href={BRICK ? "/bricks/race/" : "/race/"}>Race the regatta →</a>
+                <a href={BRICK ? "/" : "/bricks/"}>{BRICK ? "The real world →" : "In bricks →"}</a>
+                <a href="/yard/">Pinisi Yard →</a>
+                <a href="/portfolio/">Classic portfolio →</a>
+              </nav>
               </div>
             </div>
             {ships && <Ships ship={ship} yardName={YARD ? YARD.name.trim() || "Your boat" : null} yardNote={YARD ? handlingNote(handling(YARD)) : ""} onPick={setShip} onClose={() => setShips(false)} />}

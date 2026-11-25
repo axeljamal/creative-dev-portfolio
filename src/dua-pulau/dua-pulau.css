@@ -404,6 +404,7 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
 /* ---------- the controls: a row on wide screens; on a phone, folded into one floating button ---------- */
 .dp-more { display: none; }
 .dp-tools { display: contents; }
+.dp-tools-go { display: none; } /* wider screens have these as the corner links */
 @media (max-width: 720px) {
   .dp-more {
     position: relative;
@@ -455,6 +456,12 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
   /* the count is a line of text, not a button */
   .dp-hud-tr .dp-tools.is-open span.dp-pill { display: block; background: none; border: 0; box-shadow: none; padding: 4px 6px 2px; }
   .dp-tools.is-open .dp-pill { text-align: left; padding: 11px 14px; }
+  .dp-tools.is-open .dp-tools-go { display: grid; gap: 2px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--dp-line); }
+  .dp-tools-go a { padding: 9px 8px; border-radius: 10px; color: var(--dp-pearl); text-decoration: none; font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+  .dp-tools-go a:hover, .dp-tools-go a:focus-visible { color: var(--dp-gold); background: rgba(224, 194, 126, 0.12); }
+  .dp.is-brick .dp-tools.is-open .dp-tools-go { border-top: 3px solid #1b1b1b; }
+  .dp.is-brick .dp-tools-go a { color: #fff; font: 700 15px/1.2 Fredoka, system-ui, sans-serif; letter-spacing: 0; text-transform: none; }
+  .dp.is-brick .dp-tools-go a:hover { background: #ffcf00; color: #1b1b1b; }
 }
 
 /* ---------- Ask Pip: Pip himself, standing by at the bottom right ---------- */
