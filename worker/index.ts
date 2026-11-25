@@ -2,6 +2,7 @@ import { EmailMessage } from "cloudflare:email";
 import { createMimeMessage, Mailbox } from "mimetext";
 import { requireAdmin } from "./access";
 import { handleAsk } from "./ask";
+import { handleCrew } from "./crew";
 
 // the alert binding is optional until Email Routing is on for the domain (see wrangler.jsonc)
 type EnvWithMail = Env & { ALERTS?: { send(message: EmailMessage): Promise<unknown> }; ADMIN_TOKEN?: string };
@@ -23,6 +24,9 @@ export default {
       }
       if (pathname === "/api/ask" && request.method === "POST") {
         return await handleAsk(request, env);
+      }
+      if (pathname.startsWith("/api/crew/")) {
+        return await handleCrew(request, env, pathname, (token, ip) => verifyTurnstile(token, env.TURNSTILE_SECRET_KEY, ip));
       }
       if (pathname.startsWith("/api/admin/")) {
         const denied = await requireAdmin(request, env);

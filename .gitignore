@@ -12,3 +12,6 @@ ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
 .design-sync/node_modules
+
+# compiled LEGO bricks (npm run crew:bricks)
+src/crew/built/

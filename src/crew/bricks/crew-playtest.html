@@ -1,0 +1,78 @@
+<template>
+  <div class="page">
+  <p class="kicker">Playtest</p>
+  <h2>Try the newest build first</h2>
+  <p class="lead">Each wave is one build of Pinisi Yard. Play it, then tell us two things: what felt good, and what got in the way. Every answer is read.</p>
+
+  <p class="quiet" :if="state.loading">Looking for open builds…</p>
+  <p class="card" :if="!state.loading && !state.waves.length">No build is open right now. We'll post here when the next one is ready.</p>
+
+  <article class="card" :for="w in state.waves">
+    <p class="meta"><span class="tag gold">${w.build}</span> <b>${w.title}</b></p>
+    <p>${w.ask}</p>
+    <p><a class="btn" :href="w.play_url" target="_blank" rel="noopener">Play ${w.build}</a></p>
+
+    <p class="quiet" :if="!state.member"><a href="#/">Join the crew</a> to leave feedback.</p>
+    <p class="ok" :if="state.member && state.given.includes(w.id)">Thanks, your feedback is in. Watch the deck for what changes.</p>
+
+    <form :if="state.member && !state.given.includes(w.id)" @submit="send">
+      <input type="hidden" name="wave" :value="w.id">
+      <fieldset>
+        <legend>How was it, out of 5?</legend>
+        <div class="checks">
+          <label><input type="radio" name="score" value="1"> 1</label>
+          <label><input type="radio" name="score" value="2"> 2</label>
+          <label><input type="radio" name="score" value="3"> 3</label>
+          <label><input type="radio" name="score" value="4"> 4</label>
+          <label><input type="radio" name="score" value="5"> 5</label>
+        </div>
+      </fieldset>
+      <label>What felt good?
+        <textarea name="liked" maxlength="1000"></textarea>
+      </label>
+      <label>What got in the way?
+        <textarea name="blocked" maxlength="1000"></textarea>
+      </label>
+      <p class="error" role="alert" :if="state.error">${state.error}</p>
+      <button type="submit" :disabled="state.busy">Send feedback</button>
+    </form>
+  </article>
+  </div>
+</template>
+
+<script>
+  import { subscribe, set, getState } from "../store.js";
+  import { api } from "../api.js";
+
+  export default class extends Lego {
+    state = { loading: true, member: null, waves: [], given: [], busy: false, error: "" };
+
+    connected() {
+      this.off = subscribe((s) => this.render({ member: s.member, given: s.myFeedback }));
+      api.waves()
+        .then(({ waves }) => this.render({ waves, loading: false }))
+        .catch((err) => this.render({ loading: false, error: err.message }));
+    }
+    disconnected() {
+      this.off?.();
+    }
+    async send(event) {
+      event.preventDefault();
+      const form = new FormData(event.target);
+      const wave = form.get("wave");
+      this.render({ busy: true, error: "" });
+      try {
+        const { quests } = await api.feedback(wave, { score: Number(form.get("score")), liked: form.get("liked"), blocked: form.get("blocked") });
+        set({ quests, myFeedback: [...getState().myFeedback, wave] });
+        this.render({ busy: false });
+      } catch (err) {
+        this.render({ busy: false, error: err.message });
+      }
+    }
+  }
+</script>
+
+<style>
+  .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  form { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+</style>

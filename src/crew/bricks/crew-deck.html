@@ -1,0 +1,96 @@
+<template>
+  <div class="page">
+  <p class="kicker">The deck</p>
+  <h2>Say hello to the crew</h2>
+  <p class="lead">Short posts from the founding crew: boats you're building, ideas for challenges, things you'd love to see.</p>
+
+  <form class="card" :if="state.member" @submit="send">
+    <label>Your post <span class="hint">up to 500 characters</span>
+      <textarea name="body" maxlength="500" required placeholder="What would you build first?"></textarea>
+    </label>
+    <p class="error" role="alert" :if="state.error">${state.error}</p>
+    <button type="submit" :disabled="state.busy">Post to the deck</button>
+  </form>
+  <p class="card" :if="state.loaded && !state.member"><a href="#/">Join the crew</a> to post and report.</p>
+
+  <p class="ok" role="status" :if="state.note">${state.note}</p>
+  <p class="quiet" :if="!state.posts.length">Nothing on the deck yet. Be the first.</p>
+
+  <ul class="posts">
+    <li class="card" :for="p in state.posts">
+      <p class="meta">
+        <b>${p.display_name}</b>
+        <span class="tag gold" :if="p.role === 'creator'">creator</span>
+        <span class="tag" :if="p.is_demo">demo</span>
+        <span class="quiet">${this.when(p.created_at)}</span>
+      </p>
+      <p class="body">${p.body}</p>
+      <div class="report" :if="state.member">
+        <button class="ghost small" :if="state.reporting !== p.id" :value="p.id" @click="startReport">Report</button>
+        <span :if="state.reporting === p.id" class="choose">
+          <span class="quiet">Why?</span>
+          <button class="ghost small" :value="'unkind'" @click="sendReport">Unkind</button>
+          <button class="ghost small" :value="'spam'" @click="sendReport">Spam</button>
+          <button class="ghost small" :value="'unsafe'" @click="sendReport">Unsafe</button>
+          <button class="ghost small" :value="''" @click="sendReport">Cancel</button>
+        </span>
+      </div>
+    </li>
+  </ul>
+  </div>
+</template>
+
+<script>
+  import { subscribe, set } from "../store.js";
+  import { api, ago } from "../api.js";
+
+  export default class extends Lego {
+    state = { loaded: false, member: null, posts: [], busy: false, error: "", note: "", reporting: "" };
+
+    connected() {
+      this.off = subscribe((s) => this.render({ loaded: s.loaded, member: s.member }));
+      api.deck().then(({ posts }) => this.render({ posts })).catch((err) => this.render({ error: err.message }));
+    }
+    disconnected() {
+      this.off?.();
+    }
+    when(iso) {
+      return ago(iso);
+    }
+    async send(event) {
+      event.preventDefault();
+      const form = event.target;
+      this.render({ busy: true, error: "", note: "" });
+      try {
+        const { posts, quests } = await api.post(new FormData(form).get("body"));
+        form.reset();
+        set({ quests });
+        this.render({ posts, busy: false, note: "Posted. Welcome to the deck!" });
+      } catch (err) {
+        this.render({ busy: false, error: err.message });
+      }
+    }
+    startReport(event) {
+      this.render({ reporting: event.currentTarget.value, note: "" });
+    }
+    async sendReport(event) {
+      const reason = event.currentTarget.value;
+      const id = this.state.reporting;
+      if (!reason) return this.render({ reporting: "" });
+      try {
+        await api.report("post", id, reason);
+        this.render({ reporting: "", note: "Thanks. A moderator will take a look." });
+      } catch (err) {
+        this.render({ reporting: "", error: err.message });
+      }
+    }
+  }
+</script>
+
+<style>
+  .posts { list-style: none; padding: 0; margin: 24px 0 0; }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 6px; }
+  .body { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+  .report { margin-top: 12px; }
+  .choose { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+</style>

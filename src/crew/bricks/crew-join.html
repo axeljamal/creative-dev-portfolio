@@ -1,0 +1,101 @@
+<template>
+  <form class="card" @submit="send" novalidate>
+    <h2>Join the founding crew</h2>
+    <label>Crew name <span class="hint">what others see on the deck</span>
+      <input type="text" name="displayName" maxlength="40" autocomplete="nickname" required>
+    </label>
+    <label>Email <span class="hint">optional, only to tell you when a new build is ready</span>
+      <input type="email" name="email" autocomplete="email">
+    </label>
+    <label>What do you play?
+      <input type="text" name="plays" maxlength="200" placeholder="e.g. Sea of Thieves, Stardew Valley">
+    </label>
+    <fieldset>
+      <legend>Where do you hang out?</legend>
+      <div class="checks">
+        <label><input type="checkbox" name="hangouts" value="discord"> Discord</label>
+        <label><input type="checkbox" name="hangouts" value="reddit"> Reddit</label>
+        <label><input type="checkbox" name="hangouts" value="tiktok"> TikTok</label>
+        <label><input type="checkbox" name="hangouts" value="youtube"> YouTube</label>
+        <label><input type="checkbox" name="hangouts" value="twitch"> Twitch</label>
+        <label><input type="checkbox" name="hangouts" value="other"> Elsewhere</label>
+      </div>
+    </fieldset>
+    <label>What's the first boat you'd build?
+      <input type="text" name="wouldBuild" maxlength="200" placeholder="e.g. a fast red racer with batik sails">
+    </label>
+    <label class="inline"><input type="checkbox" name="adult"> I'm 18 or over</label>
+    <div class="honey" aria-hidden="true"><input type="text" name="company" tabindex="-1" autocomplete="off"></div>
+    <div class="check"></div>
+    <p class="error" role="alert" :if="state.error">${state.error}</p>
+    <button type="submit" :disabled="state.busy">${state.busy ? 'Signing you on…' : 'Join the crew'}</button>
+  </form>
+</template>
+
+<script>
+  import { api } from "../api.js";
+  import { load } from "../store.js";
+
+  const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+
+  export default class extends Lego {
+    state = { busy: false, error: "" };
+
+    connected() {
+      this.turnstileToken = "";
+      if (!SITE_KEY) return console.error("VITE_TURNSTILE_SITE_KEY is not set");
+      const draw = () => {
+        const box = this.document.querySelector(".check");
+        if (!box || !window.turnstile) return;
+        this.widget = window.turnstile.render(box, {
+          sitekey: SITE_KEY,
+          theme: "dark",
+          callback: (t) => { this.turnstileToken = t; },
+          "expired-callback": () => { this.turnstileToken = ""; },
+        });
+      };
+      if (window.turnstile) return draw();
+      let script = document.querySelector("script[data-turnstile]");
+      if (!script) {
+        script = Object.assign(document.createElement("script"), { src: "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit", async: true });
+        script.dataset.turnstile = "";
+        document.head.append(script);
+      }
+      script.addEventListener("load", draw, { once: true });
+    }
+    disconnected() {
+      if (this.widget !== undefined) window.turnstile?.remove(this.widget);
+    }
+
+    async send(event) {
+      event.preventDefault();
+      const form = new FormData(event.target);
+      const body = {
+        displayName: form.get("displayName"),
+        email: form.get("email"),
+        plays: form.get("plays"),
+        hangouts: form.getAll("hangouts"),
+        wouldBuild: form.get("wouldBuild"),
+        adult: form.get("adult") === "on",
+        company: form.get("company"),
+        token: this.turnstileToken,
+      };
+      if (!body.adult) return this.render({ error: "The crew is for people aged 18 and over for now." });
+      this.render({ busy: true, error: "" });
+      try {
+        await api.join(body);
+        await load();
+      } catch (err) {
+        this.render({ busy: false, error: err.message });
+        if (this.widget !== undefined) window.turnstile?.reset(this.widget);
+        this.turnstileToken = "";
+      }
+    }
+  }
+</script>
+
+<style>
+  .honey { position: absolute; left: -9999px; }
+  .check { min-height: 70px; margin: 8px 0 12px; }
+  form > .inline { margin: 4px 0 8px; }
+</style>

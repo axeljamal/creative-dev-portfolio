@@ -1,0 +1,82 @@
+<template>
+  <header>
+    <a class="mark" href="#/">
+      <span class="kicker">Pinisi Yard</span>
+      <span class="name">The Crew</span>
+    </a>
+    <nav aria-label="The Crew">
+      <a href="#/" :aria-current="this.here('home')">Home</a>
+      <a href="#/deck" :aria-current="this.here('deck')">Deck</a>
+      <a href="#/playtest" :aria-current="this.here('playtest')">Playtest</a>
+      <a href="#/team" :aria-current="this.here('team')">Team</a>
+    </nav>
+  </header>
+  <main>
+    <crew-home :if="state.route === 'home'"></crew-home>
+    <crew-deck :if="state.route === 'deck'"></crew-deck>
+    <crew-playtest :if="state.route === 'playtest'"></crew-playtest>
+    <crew-team :if="state.route === 'team'"></crew-team>
+  </main>
+  <footer>
+    <p>The Crew is the players' community for <a href="/yard/">Pinisi Yard</a>, a boat-building game I am making in the
+      <a href="/">Dua Pulau</a> world. Built with <a href="https://lego.js.org" rel="noopener">LEGO.js</a> web components
+      on Cloudflare. Members are 18+. Rows marked <b>demo</b> are made up, to show the tools before real players arrive.</p>
+  </footer>
+</template>
+
+<script>
+  import { load } from "../store.js";
+
+  const ROUTES = ["home", "deck", "playtest", "team"];
+  const routeOf = () => {
+    const r = location.hash.replace(/^#\/?/, "").split("/")[0];
+    return ROUTES.includes(r) ? r : "home";
+  };
+
+  export default class extends Lego {
+    state = { route: routeOf() };
+
+    init() {
+      this.onHash = () => {
+        this.render({ route: routeOf() });
+        window.scrollTo({ top: 0 });
+      };
+    }
+    connected() {
+      window.addEventListener("hashchange", this.onHash);
+      load();
+    }
+    disconnected() {
+      window.removeEventListener("hashchange", this.onHash);
+    }
+    here(route) {
+      return this.state.route === route ? "page" : null;
+    }
+  }
+</script>
+
+<style>
+  :host { display: block; min-height: 100vh; }
+  header {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    padding: 14px var(--gut);
+    background: rgba(7, 10, 18, 0.86);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .mark { display: grid; text-decoration: none; color: var(--pearl); line-height: 1.05; }
+  .kicker { font: 500 11px/1.2 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
+  .name { font: 600 26px/1 var(--serif); }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav a {
+    padding: 8px 14px; border-radius: 999px;
+    color: var(--pearl-soft); text-decoration: none; font: 600 14px/1 var(--sans);
+  }
+  nav a:hover { color: var(--pearl); background: rgba(244, 238, 227, 0.06); }
+  nav a[aria-current="page"] { color: var(--ink); background: var(--gold); }
+  main { max-width: 980px; margin: 0 auto; padding: 32px var(--gut) 48px; }
+  footer { max-width: 980px; margin: 0 auto; padding: 24px var(--gut) 48px; border-top: 1px solid var(--line); }
+  footer p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--pearl-soft); }
+  footer a { color: var(--gold); }
+</style>

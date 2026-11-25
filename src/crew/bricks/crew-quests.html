@@ -1,0 +1,65 @@
+<template>
+  <section class="card">
+    <p class="kicker">Quest log</p>
+    <h3>${this.headline}</h3>
+    <ol>
+      <li :for="q in state.quests" :class="q.done ? 'done' : ''">
+        <span class="tick" aria-hidden="true">${q.done ? '✓' : ''}</span>
+        <div>
+          <b>${q.title}</b><span class="sr">${q.done ? ' (done)' : ' (to do)'}</span>
+          <p class="quiet">${q.how}</p>
+          <p class="actions" :if="q.key === 'build' && !q.done">
+            <a class="btn ghost small" href="/yard/" target="_blank" rel="noopener">Open the yard</a>
+            <button class="small" @click="built">I launched a boat</button>
+          </p>
+          <p :if="q.key === 'hello' && !q.done"><a href="#/deck">Go to the deck</a></p>
+          <p :if="q.key === 'feedback' && !q.done"><a href="#/playtest">Go to the playtest</a></p>
+        </div>
+      </li>
+    </ol>
+    <p class="error" :if="state.error">${state.error}</p>
+  </section>
+</template>
+
+<script>
+  import { subscribe, set } from "../store.js";
+  import { api } from "../api.js";
+
+  export default class extends Lego {
+    state = { quests: [], error: "" };
+
+    connected() {
+      this.off = subscribe((s) => this.render({ quests: s.quests }));
+    }
+    disconnected() {
+      this.off?.();
+    }
+    get headline() {
+      const left = this.state.quests.filter((q) => !q.done).length;
+      if (!this.state.quests.length) return "";
+      return left ? `${left} of ${this.state.quests.length} to go` : "All done. You're a full member of the crew.";
+    }
+    async built() {
+      try {
+        const { quests } = await api.tickQuest("build");
+        set({ quests });
+      } catch (err) {
+        this.render({ error: err.message });
+      }
+    }
+  }
+</script>
+
+<style>
+  ol { list-style: none; padding: 0; margin: 0; }
+  li { display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; }
+  .tick {
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    border: 1.5px solid var(--line-strong); color: var(--ink); font-weight: 700;
+  }
+  li.done .tick { background: var(--sea); border-color: var(--sea); }
+  li.done b { color: var(--pearl-soft); text-decoration: line-through; text-decoration-color: var(--pearl-soft); }
+  li p { margin: 4px 0 0; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px !important; }
+</style>

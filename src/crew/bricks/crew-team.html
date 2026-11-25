@@ -1,0 +1,179 @@
+<template>
+  <div class="page">
+  <p class="kicker">Team view</p>
+  <h2>How the crew is doing</h2>
+
+  <form class="card" :if="state.locked" @submit="unlock">
+    <p>The team view is for the people making the game.</p>
+    <label>Team token <input type="text" name="token" autocomplete="off"></label>
+    <p class="error" :if="state.error">${state.error}</p>
+    <button type="submit">Open the team view</button>
+  </form>
+
+  <div :if="!state.locked">
+    <div class="bar">
+      <label class="inline"><input type="checkbox" :checked="state.demo" @change="toggleDemo"> Show the demo crew</label>
+      <span class="tag" :if="state.demo">demo data: made up</span>
+      <span class="tag gold" :if="!state.demo">real players</span>
+    </div>
+    <p class="error" :if="state.error">${state.error}</p>
+
+    <section :if="state.health">
+      <h3>Health</h3>
+      <div class="tiles">
+        <div class="tile"><span class="n">${state.health.members}</span><span>members<br><small>${state.health.joinedThisWeek} joined this week</small></span></div>
+        <div class="tile"><span class="n">${this.pct(state.health.activationRate)}</span><span>activated<br><small>finished every welcome quest</small></span></div>
+        <div class="tile"><span class="n">${this.pct(state.health.returnRate7d)}</span><span>came back<br><small>a week or more after joining</small></span></div>
+        <div class="tile"><span class="n">${state.health.feedbackPerTester ?? '–'}</span><span>feedback per tester<br><small>across all waves</small></span></div>
+        <div class="tile"><span class="n">${state.health.openReports}</span><span>open reports<br><small>${state.health.reportsPer100 ?? '–'} per 100 members</small></span></div>
+      </div>
+      <h3>Where they hang out</h3>
+      <p class="quiet" :if="!state.places.length">No answers yet.</p>
+      <ul class="bars">
+        <li :for="pl in state.places"><span class="label">${pl.name}</span><span class="track"><span class="fill" :style="'width:' + pl.width + '%'"></span></span><span class="count">${pl.count}</span></li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Playtest waves</h3>
+      <p class="quiet" :if="!state.waves.length">No waves yet.</p>
+      <div class="waves">
+        <button :for="w in state.waves" :class="w.id === state.wave ? 'small' : 'ghost small'" :value="w.id" @click="pickWave">${w.build}: ${w.title} (${w.responses})</button>
+      </div>
+
+      <article class="card brief" :if="state.brief">
+        <p class="kicker">One-page brief</p>
+        <p class="sum"><b>${state.brief.responses}</b> response${state.brief.responses === 1 ? '' : 's'} · average <b>${state.brief.averageScore ?? '–'}</b> / 5 ·
+          ${state.brief.moods.positive} happy, ${state.brief.moods.mixed} mixed, ${state.brief.moods.negative} unhappy</p>
+        <p class="quiet" :if="!state.brief.responses">No feedback on this wave yet.</p>
+        <h3 :if="state.brief.fixFirst.length">Fix first</h3>
+        <ol class="fixes">
+          <li :for="fx in state.brief.fixFirst">
+            <b>${fx.label}</b> <span class="quiet">· ${fx.players} player${fx.players === 1 ? '' : 's'}</span>
+            <blockquote :for="qt in fx.quotes">“${qt}”</blockquote>
+          </li>
+        </ol>
+        <h3 :if="state.brief.keep.length">Keep</h3>
+        <ul class="fixes">
+          <li :for="k in state.brief.keep"><b>${k.label}</b> <span class="quiet">· ${k.players}</span>
+            <blockquote :for="qt in k.quotes">“${qt}”</blockquote></li>
+        </ul>
+        <p class="quiet">${state.byModel} of ${state.brief.responses} tagged by the model, the rest by keyword.
+          <button class="ghost small" :if="!state.demo && state.brief.responses" @click="retag" :disabled="state.busy">${state.busy ? 'Tagging…' : 'Tag with the model'}</button></p>
+      </article>
+    </section>
+
+    <section>
+      <h3>Report queue</h3>
+      <p class="quiet" :if="!state.reports.length">Nothing to look at. Calm seas.</p>
+      <article class="card" :for="r in state.reports">
+        <p class="meta"><span class="tag">${r.reason}</span> <span class="tag gold" :if="r.reports > 1">${r.reports} reports</span> <span class="quiet">${r.target_type} by <b>${r.author ?? 'someone who left'}</b> · ${this.when(r.created_at)}</span></p>
+        <p class="body">${r.target_text ?? '(already gone)'}</p>
+        <p class="quiet" :if="r.note">Reporters said: ${r.note}</p>
+        <p class="actions">
+          <button class="ghost small" :value="r.id + ':kept'" @click="decide">Keep it</button>
+          <button class="ghost small" :value="r.id + ':hidden'" @click="decide">Hide it</button>
+          <button class="small" :value="r.id + ':removed'" @click="decide">Hide and remove the author</button>
+        </p>
+      </article>
+    </section>
+  </div>
+  </div>
+</template>
+
+<script>
+  import { api, ApiError, setTeamToken, ago, pct } from "../api.js";
+
+  const NAMES = { discord: "Discord", reddit: "Reddit", tiktok: "TikTok", youtube: "YouTube", twitch: "Twitch", other: "Elsewhere" };
+
+  export default class extends Lego {
+    state = { locked: false, demo: false, error: "", health: null, places: [], waves: [], wave: "", brief: null, byModel: 0, reports: [], busy: false };
+
+    connected() {
+      this.refresh();
+    }
+    pct(v) {
+      return pct(v);
+    }
+    when(iso) {
+      return ago(iso);
+    }
+    async refresh() {
+      const demo = this.state.demo;
+      try {
+        const [{ health, hangouts }, { waves }, { reports }] = await Promise.all([api.team.health(demo), api.team.waves(demo), api.team.reports(demo)]);
+        const most = Math.max(1, ...Object.values(hangouts));
+        const places = Object.entries(hangouts).sort((a, b) => b[1] - a[1]).map(([k, count]) => ({ name: NAMES[k] ?? k, count, width: Math.round((count / most) * 100) }));
+        const wave = waves.some((w) => w.id === this.state.wave) ? this.state.wave : waves[0]?.id ?? "";
+        this.render({ locked: false, error: "", health, places, waves, reports, wave });
+        await this.loadBrief(wave);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) return this.render({ locked: true, error: this.tried ? "That token didn't work." : "" });
+        this.render({ error: err.message });
+      }
+    }
+    async loadBrief(id) {
+      if (!id) return this.render({ brief: null });
+      const { brief, byModel } = await api.team.wave(id);
+      this.render({ brief, byModel });
+    }
+    unlock(event) {
+      event.preventDefault();
+      this.tried = true;
+      setTeamToken(String(new FormData(event.target).get("token") ?? "").trim());
+      this.refresh();
+    }
+    toggleDemo(event) {
+      this.render({ demo: event.currentTarget.checked, wave: "" });
+      this.refresh();
+    }
+    pickWave(event) {
+      const id = event.currentTarget.value;
+      this.render({ wave: id });
+      this.loadBrief(id).catch((err) => this.render({ error: err.message }));
+    }
+    async retag() {
+      this.render({ busy: true });
+      try {
+        await api.team.retag(this.state.wave);
+        await this.loadBrief(this.state.wave);
+      } catch (err) {
+        this.render({ error: err.message });
+      }
+      this.render({ busy: false });
+    }
+    async decide(event) {
+      const [id, action] = event.currentTarget.value.split(":");
+      try {
+        await api.team.decide(id, action);
+        await this.refresh();
+      } catch (err) {
+        this.render({ error: err.message });
+      }
+    }
+  }
+</script>
+
+<style>
+  section { margin: 32px 0 0; }
+  .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0 8px; }
+  .tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  .tile { display: grid; gap: 6px; padding: 18px; border-radius: 14px; background: var(--glass); border: 1px solid var(--line); font-size: 14px; }
+  .tile .n { font: 600 40px/1 var(--serif); color: var(--gold); font-variant-numeric: lining-nums tabular-nums; }
+  .tiles { margin: 0 0 28px; }
+  .tile small { color: var(--pearl-soft); }
+  .bars { list-style: none; padding: 0; margin: 0; max-width: 560px; }
+  .bars li { display: grid; grid-template-columns: 90px 1fr 32px; gap: 10px; align-items: center; margin: 0 0 8px; font-size: 14px; }
+  .track { height: 10px; border-radius: 999px; background: rgba(244, 238, 227, 0.08); overflow: hidden; }
+  .fill { display: block; height: 100%; background: var(--gold); border-radius: 999px; }
+  .count { text-align: right; color: var(--pearl-soft); }
+  .waves { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  .brief .sum { font-size: 15px; font-variant-numeric: lining-nums; }
+  .fixes .quiet { margin-left: 4px; }
+  .fixes { padding-left: 20px; margin: 0 0 16px; }
+  .fixes li { margin: 0 0 12px; }
+  blockquote { margin: 6px 0 0; padding: 6px 12px; border-left: 2px solid var(--gold); color: var(--pearl-soft); font-style: italic; }
+  .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; }
+  .body { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+</style>

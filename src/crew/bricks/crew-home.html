@@ -1,0 +1,81 @@
+<template>
+  <div class="page">
+  <section class="hero">
+    <p class="kicker">Founding crew · now boarding</p>
+    <h1 :if="!state.member">Build the first boats.<br>Shape the game.</h1>
+    <h1 :if="state.member">Welcome aboard, ${state.member ? state.member.displayName : ''}.</h1>
+    <p class="lead" :if="!state.member">Pinisi Yard is a game about building a wooden sailing boat from parts, painting it with batik motifs,
+      and racing it round two islands. It isn't finished. The Crew are the first players: you try each build before
+      anyone else, and what you tell us decides what gets built next.</p>
+    <p class="lead" :if="state.member">Three quests and you're a full member of the crew. Then each new build lands here first.</p>
+  </section>
+
+  <div :if="!state.loaded" class="quiet">Checking the manifest…</div>
+
+  <div class="two" :if="state.loaded && !state.member">
+    <section>
+      <h2>What the crew does</h2>
+      <ul class="points">
+        <li><b>Playtest each build</b> before it goes public, and say what felt good and what got in the way.</li>
+        <li><b>Build and share boats</b>, and enter crew challenges like the best batik sail.</li>
+        <li><b>See your feedback land.</b> Every wave ends with a short note on what we changed because of you.</li>
+      </ul>
+      <p class="quiet">No password: this device stays signed in. You can leave at any time, and your posts and feedback leave with you.</p>
+    </section>
+    <crew-join></crew-join>
+  </div>
+
+  <div class="two" :if="state.member">
+    <crew-quests></crew-quests>
+    <section class="card">
+      <h3>Next on deck</h3>
+      <p><a href="#/playtest">Playtest Pinisi Yard 0.1</a>: build a boat and tell us how it went.</p>
+      <p><a href="#/deck">Say hello on the deck</a>: tell the crew what you'd build.</p>
+      <p class="quiet">Signed in as ${state.member ? state.member.displayName : ''}.
+        <button class="ghost small" @click="leave">Leave the crew</button></p>
+      <p class="error" :if="state.error">${state.error}</p>
+    </section>
+  </div>
+  </div>
+</template>
+
+<script>
+  import { subscribe, set } from "../store.js";
+  import { api } from "../api.js";
+
+  export default class extends Lego {
+    state = { loaded: false, member: null, error: "" };
+
+    connected() {
+      this.off = subscribe((s) => this.render({ loaded: s.loaded, member: s.member }));
+    }
+    disconnected() {
+      this.off?.();
+    }
+    async leave() {
+      if (!this.confirming) {
+        this.confirming = true;
+        this.render({ error: "Press again to leave. Your posts and feedback will be deleted." });
+        return;
+      }
+      try {
+        await api.leave();
+        set({ member: null, quests: [], myFeedback: [] });
+        this.render({ error: "" });
+      } catch (err) {
+        this.render({ error: err.message });
+      } finally {
+        this.confirming = false;
+      }
+    }
+  }
+</script>
+
+<style>
+  .hero { margin: 8px 0 32px; }
+  .two { display: grid; gap: 24px; grid-template-columns: 1fr; }
+  @media (min-width: 800px) { .two { grid-template-columns: 1fr 1.1fr; align-items: start; } }
+  .points { padding-left: 20px; margin: 0 0 16px; }
+  .points li { margin: 0 0 10px; }
+  .points b { color: var(--gold); }
+</style>
