@@ -92,6 +92,8 @@ export const skillGroups: { area: string; skills: Skill[] }[] = [
     area: "Design",
     skills: [
       { name: "Generative pattern design", icon: LuShapes, where: "Marea Dvīpa's Pattern Studio rebuilds repeats and Fibonacci flows from my own motifs." },
+      { name: "Claude Design", icon: SiClaude, where: "Windfall's prototype, designed in Claude Design before the app was built." },
+      { name: "Figma", icon: FaFigma, where: "Bootcamp Connect's screens and design system, designed in Figma." },
       { name: "Design systems", icon: LuPalette, where: "Bootcamp Connect's design system, and Windfall's written design rules." },
       { name: "Accessibility (WCAG 2.2 AA)", icon: LuAccessibility, where: "Bootcamp Connect was built to WCAG 2.2 AA and Apple's Human Interface Guidelines." },
       { name: "Blender (Python scripting)", icon: SiBlender, where: "Python scripts that build the 3D characters for Jam Studio's live puppets." },
@@ -111,6 +113,7 @@ export const skillGroups: { area: string; skills: Skill[] }[] = [
     area: "AI",
     skills: [
       { name: "Claude Code on the command line", icon: LuSparkles, where: "Every project here, from spec and plan to tests and deploy." },
+      { name: "MCP", icon: LuPlug, where: "MCP servers in Claude Code for Supabase, Figma, Canva and Playwright, used to build, design and test this work." },
       { name: "LLM features in production", icon: LuSparkles, where: "Bootcamp Connect's CV and LinkedIn import, Ask Pip in Windfall and here, and The Crew's feedback tagging." },
       { name: "Prompt engineering", icon: LuMessageSquareText, where: "Pip's brief, and The Crew's tagging prompt, whose answers are checked against fixed lists." },
       { name: "Spec-first AI-assisted development", icon: LuFileCheck, where: "Bootcamp Connect's 51 logged decisions; Windfall's decision log and fix log." },
