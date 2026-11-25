@@ -14,7 +14,8 @@
     "build:ds": "vite build -c vite.lib.config.ts && tsc -p tsconfig.ds.json",
     "test": "vitest run",
     "crew:bricks": "lego",
-    "crew:watch": "lego -w"
+    "crew:watch": "lego -w",
+    "yard:parts": "node scripts/pack-ldraw.mjs"
   },
   "dependencies": {
     "jose": "^6.2.13",

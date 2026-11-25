@@ -4,6 +4,7 @@
 // Proportions follow the classic system: a brick is 1.2 pitches tall, a plate a third of that, a stud 0.6 pitch across.
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { partGeometry, partsReady, type PartId } from "./parts";
 
 export type Kind = "brick" | "tile" | "plate" | "round";
 type Cell = { x: number; y: number; z: number; color: string; kind: Kind };
@@ -49,7 +50,7 @@ export class Bricks {
 
   build(mat: THREE.Material = plastic()): THREE.Group {
     const p = this.pitch, h = this.height, gap = 0.018;
-    const boxes: { pos: THREE.Vector3; scale: THREE.Vector3; color: string }[] = [];
+    const boxes: { pos: THREE.Vector3; scale: THREE.Vector3; color: string; part: PartId; top: THREE.Vector3 }[] = [];
     const rounds: { pos: THREE.Vector3; scale: THREE.Vector3; color: string }[] = [];
     const studs: { pos: THREE.Vector3; color: string }[] = [];
     const tall = (k: Kind) => (k === "plate" ? h / 3 : h);
@@ -79,11 +80,13 @@ export class Bricks {
           if (c.x !== first.x + n || c.color !== first.color || c.kind !== first.kind) break;
           n++;
         }
-        const t = tall(first.kind);
+        const t = tall(first.kind), cx = (first.x + (n - 1) / 2) * p;
         boxes.push({
-          pos: new THREE.Vector3((first.x + (n - 1) / 2) * p, first.y * h + t / 2, first.z * p),
+          pos: new THREE.Vector3(cx, first.y * h + t / 2, first.z * p),
           scale: new THREE.Vector3(n * p - gap, t - gap, p - gap),
           color: first.color,
+          part: `${first.kind}-1x${n}` as PartId,
+          top: new THREE.Vector3(cx, first.y * h + t, first.z * p),
         });
         i += n;
       }
@@ -102,6 +105,22 @@ export class Bricks {
       mesh.computeBoundingSphere();
       group.add(mesh);
     };
+    if (partsReady()) {
+      // real parts: one instanced mesh per part, placed by its top face, a hairline narrower so seams show
+      const byPart = new Map<PartId, { pos: THREE.Vector3; scale: THREE.Vector3; color: string }[]>();
+      const shrink = (len: number) => (len * p - gap) / (len * p);
+      for (const b of boxes) {
+        const n = Number(b.part.slice(-1));
+        const list = byPart.get(b.part) ?? byPart.set(b.part, []).get(b.part)!;
+        list.push({ pos: b.top, scale: new THREE.Vector3(p * shrink(n), p * (1 - gap / h), p * shrink(1)), color: b.color });
+      }
+      for (const r of rounds) {
+        const list = byPart.get("round-1x1") ?? byPart.set("round-1x1", []).get("round-1x1")!;
+        list.push({ pos: r.pos.clone().setY(r.pos.y + h / 2), scale: new THREE.Vector3(p, p * (1 - gap / h), p), color: r.color });
+      }
+      for (const [id, list] of byPart) make(partGeometry(id)!, list);
+      return group;
+    }
     make(BOX, boxes);
     make(ROUND, rounds);
     make(STUD, studs, new THREE.Vector3(p, 0.18 * h, p));

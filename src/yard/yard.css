@@ -327,7 +327,20 @@ body {
 .yd-quiet { margin: 0; font-size: 14px; }
 .yd-quiet a { color: var(--blue); font-weight: 600; }
 
+.yd-credit {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: 8px;
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+}
+.yd-credit a { color: var(--blue); }
+
 @media (max-width: 720px), (max-aspect-ratio: 4/5) {
+  .yd-credit { bottom: auto; top: 76px; font-size: 11px; max-width: calc(100% - 24px); }
   .yd-title { font-size: 22px; }
   .yd-links a { padding: 6px 11px; font-size: 14px; }
   .yd-panel {

@@ -82,8 +82,12 @@ export function App() {
   useEffect(() => {
     let alive = true;
     let made: Yard | null = null;
-    import("./scene")
-      .then(({ createYard }) => {
+    // the yard and its brick parts load together; if the parts cannot load, the yard builds with simple shapes
+    Promise.all([import("./scene"), Promise.race([
+      import("./parts").then((m) => m.loadParts()),
+      new Promise((done) => setTimeout(done, 6000)), // never let slow parts hold the yard back
+    ]).catch(() => undefined)])
+      .then(([{ createYard }]) => {
         if (!alive || !canvas.current) return;
         made = createYard(canvas.current, { reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches });
         made.onPhase(setPhase);
@@ -236,6 +240,10 @@ export function App() {
           </div>
         )}
       </aside>
+      <p className="yd-credit">
+        Brick shapes from the <a href="https://library.ldraw.org" target="_blank" rel="noreferrer">LDraw parts library</a>,{" "}
+        <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noreferrer">CC BY 2.0</a>. Not affiliated with any toy maker.
+      </p>
     </div>
   );
 }
