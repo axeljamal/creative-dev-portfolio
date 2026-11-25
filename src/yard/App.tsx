@@ -229,9 +229,14 @@ export function App() {
             {phase === "launching" && <p className="yd-big">Down the slip…</p>}
             {crewNote && <p className="yd-ok">{crewNote}</p>}
             {phase === "afloat" && (
+              <>
               <a className="yd-race" href={`/bricks/race/?boat=${encode(design)}`}>
                 Race her in the Regatta →
               </a>
+              <a className="yd-race yd-sail" href={`/bricks/?ship=yard&boat=${encode(design)}`}>
+                Sail her round Dua Pulau →
+              </a>
+              </>
             )}
             <div className="yd-actions">
               <button type="button" className="yd-go" onClick={() => yard.current?.reset()} disabled={phase === "launching"}>

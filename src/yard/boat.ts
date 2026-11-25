@@ -5,6 +5,7 @@
 import * as THREE from "three";
 import { Bricks, plastic } from "./bricks";
 import { HULLS, MOTIFS, PAINTS, SAILS, RIGS, type Design } from "./design";
+import type { Built } from "../dua-pulau/world/vessel";
 
 const PI = Math.PI;
 export const PITCH = 0.5;
@@ -291,4 +292,40 @@ export function buildBoat(d: Design, onAsset: () => void): Boat {
       });
     },
   };
+}
+
+// ---------- the yard's boat sailing elsewhere: the Regatta and Dua Pulau ----------
+/** the length the Regatta's and Dua Pulau's hull shape is drawn for, in metres (beamAt runs −14 … +14) */
+const SAIL_LENGTH = 28;
+
+/** a yard design as a vessel's boat: the model with bow along +x, scaled to 28 m so she handles like any other; her
+ *  sails and a pennant; and the places Dua Pulau sets her lamp and Pip (at the bow, and up on the stern) */
+export function buildYardPinisi(d: Design): Built & { lampAt: THREE.Group; pipBow: THREE.Group; pipStern: THREE.Group } {
+  const built = buildBoat(d, () => {});
+  const s = SAIL_LENGTH / HULLS[d.hull].length, h = hullLines(d);
+  const boat = new THREE.Group();
+  built.group.scale.setScalar(s);
+  boat.add(built.group);
+  // the vessel streams a pennant by turning it half round (it expects one that flies forward at rest); the yard's
+  // flag flies aft, so it is hung in a pivot that turns it back
+  const flag = new THREE.Group();
+  flag.position.copy(built.flag.position);
+  built.flag.position.set(0, 0, 0);
+  built.flag.rotation.y = Math.PI;
+  flag.add(built.flag);
+  built.group.add(flag);
+  const foreFlag = new THREE.Object3D(); // she has one flag; the vessel's second pennant is a stand-in
+  built.group.add(foreFlag);
+  // her deck at u along her (0 stern … 1 bow), in the outer group's metres: the top of the bricks under her sheer
+  const deckAt = (u: number) => new THREE.Vector3((u - 0.5) * h.L * s, (Math.ceil(h.sheer(u) / BH) * BH) * s, 0);
+  const at = (p: THREE.Vector3) => {
+    const g = new THREE.Group();
+    g.position.copy(p);
+    boat.add(g);
+    return g;
+  };
+  const lampAt = at(deckAt(0.86));
+  const pipBow = at(deckAt(0.82).add(new THREE.Vector3(0, 0, Math.min(0.55, h.half(0.82) * s - 0.6))));
+  const pipStern = at(deckAt(0.16).add(new THREE.Vector3(0, BH * 2 * s, 0))); // up where the camera astern can see him
+  return { boat, sails: built.sails, flag, foreFlag, lampAt, pipBow, pipStern };
 }

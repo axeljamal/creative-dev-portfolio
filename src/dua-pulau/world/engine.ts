@@ -11,7 +11,8 @@ import { buildLamp, buildPip, type PipMood } from "./models";
 import { pilot, type PilotMem } from "./pilot";
 import { AZ0, DAY, DAY_S, NIGHT, NIGHT_S, clamp, createStage, reduce, wrap } from "./stage";
 import { ISLANDS, heightAt, smooth } from "./terrain";
-import { createVessel, stepHull } from "./vessel";
+import { createVessel, stepHull, type Built, type Vessel } from "./vessel";
+import type { Design } from "../../yard/design";
 
 export type WorldEvents = {
   /** the boat is close enough to moor at this place, or has left it */
@@ -31,6 +32,10 @@ export type WorldEvents = {
 };
 /** where the camera follows her from: off the stern quarter, or broadside from either side */
 export type BoatView = "astern" | "starboard" | "port";
+/** the ship she sails: today's pinisi, the two before it (as the Regatta's rivals sail them), or a boat from Pinisi Yard */
+export type ShipId = "today" | "first" | "cruising" | "yard";
+/** what a ship must carry for this world: her lamp's place, and Pip's at the bow and up astern */
+type Ship = Built & { lampAt: THREE.Object3D; pipBow: THREE.Object3D; pipStern: THREE.Object3D; cabinGlass?: THREE.MeshStandardMaterial };
 export type DayPart = "First light" | "Morning" | "Midday" | "Afternoon" | "Golden hour" | "Dusk" | "Night";
 /** what a chart of these waters needs: each island's shoreline and where each place lies (x east, z south) */
 export type Chart = { isles: { id: "md" | "wf"; shore: [number, number][] }[]; places: { id: PlaceId; island: "md" | "wf" | "strait"; x: number; z: number }[] };
@@ -48,6 +53,8 @@ export type World = {
   pipTalking: (on: boolean) => void;
   /** follow her from astern, or from her starboard or port side */
   setView: (v: BoatView) => void;
+  /** change the ship she sails, where she is (yard: the design to build) */
+  setShip: (id: ShipId, design?: Design | null) => Promise<void>;
   /** filming only: hold the camera at a fixed point looking at another while she sails past (null: follow again) */
   filmCam: (c: { pos: [number, number, number]; look: [number, number, number]; track?: boolean } | null) => void;
   /** moored: hide the panel's room and let the camera have the whole screen */
@@ -79,7 +86,8 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   const { site } = isles, SITES = isles.sites, { bale, placed, out } = isles.parts;
 
   // ---------- the pinisi (her model, helm and wake are the vessel's) and her lamp ----------
-  const vessel = createVessel(scene), { pinisi } = vessel;
+  // she can be changed for another design at any time (setShip): `vessel` and `pinisi` are whichever boat is sailing
+  let vessel = createVessel(scene) as Vessel<Ship>, pinisi: Ship = vessel.pinisi;
   const lamp = buildLamp();
   lamp.lamp.position.y = 0.6;
   lamp.lamp.rotation.y = -0.5;
@@ -364,7 +372,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
   }
 
   // ---------- the loop ----------
-  let raf = 0, last = performance.now(), disposed = false, toyAt = 0;
+  let raf = 0, last = performance.now(), disposed = false, toyAt = 0, shipAsk = 0;
   function frame(now: number) {
     if (disposed) return;
     raf = requestAnimationFrame(frame);
@@ -409,7 +417,7 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
     const life = isles.update(t, dt, { bob, dusk, weather, found, camPos, moored: moored?.id ?? null, near });
     if (life.loom && moored?.id === "guesthouse") audio.loom();
     if (life.lighthouse > 0.2 && !weatherAsked) askWeather();
-    pinisi.cabinGlass.emissiveIntensity = smooth(0.35, 0.9, dusk) * 0.9; // her cabins light up as the day goes
+    if (pinisi.cabinGlass) pinisi.cabinGlass.emissiveIntensity = smooth(0.35, 0.9, dusk) * 0.9; // her cabins light up as the day goes
     {
       const cheering = t - cheerAt < 2.6, night = dusk > 0.85 && !moored && !talking && !cheering;
       const mood: PipMood = phase === "dark" ? "sleep" : talking ? "wave" : cheering ? "cheer" : t - litAt < 4.5 ? "wave" : night ? "sleep" : moored ? "wave" : "look";
@@ -514,6 +522,28 @@ export function createWorld(canvas: HTMLCanvasElement, ev: WorldEvents, seen: Pl
       places: SITES.map((s) => ({ id: s.id, island: s.island, x: s.x, z: s.z })),
     }),
     boat: () => ({ x: st.x, z: st.z, yaw: st.yaw }),
+    async setShip(id, design) {
+      // the other designs load only when chosen: the older pinisi from the Regatta, a yard boat from the yard's builder
+      const ask = ++shipAsk;
+      let build: (() => Ship) | undefined;
+      if (id === "first" || id === "cruising") {
+        const m = await import("../../race/boats");
+        build = () => (id === "first" ? m.buildOriginalPinisi() : m.buildCruisingPinisi()) as Ship;
+      } else if (id === "yard" && design) {
+        const m = await import("../../yard/boat");
+        build = () => m.buildYardPinisi(design);
+      }
+      if (disposed || ask !== shipAsk) return; // gone, or another ship was asked for meanwhile
+      // the new boat takes over her state (where she is, her heading and way); her lamp and Pip step across
+      const next = createVessel(scene, { st, build }) as unknown as Vessel<Ship>;
+      const astern = crew.group.parent === pinisi.pipStern;
+      next.pinisi.lampAt.add(lamp.lamp);
+      (astern ? next.pinisi.pipStern : next.pinisi.pipBow).add(crew.group);
+      vessel.dispose();
+      vessel = next;
+      pinisi = next.pinisi;
+      toyAt = 0; // in bricks, the new boat gets the toy finish on the next frame
+    },
     dispose() {
       disposed = true;
       cancelAnimationFrame(raf);

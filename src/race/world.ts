@@ -5,8 +5,8 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { buildIsles, type Isles } from "../dua-pulau/world/isles";
 import { plasticize } from "../dua-pulau/world/brick";
-import { HULLS, type Design } from "../yard/design";
-import { buildBoat } from "../yard/boat";
+import type { Design } from "../yard/design";
+import { buildYardPinisi } from "../yard/boat";
 import { buildBuoy, type HutProject } from "../dua-pulau/world/models";
 import { DAY_S, clamp, createStage, reduce, wrap, type Quality } from "../dua-pulau/world/stage";
 import { heightAt } from "../dua-pulau/world/terrain";
@@ -601,25 +601,4 @@ export function createRaceWorld(canvas: HTMLCanvasElement, opts: { quality: Qual
       stage.dispose();
     },
   };
-}
-
-/** the racing pinisi's length over all, in metres (beamAt runs −14 … +14) */
-const RACE_LENGTH = 28;
-/** her design as the race's vessel wants it: the model with bow along +x, the sails, and two pennants */
-export function buildYardPinisi(d: Design): Built {
-  const built = buildBoat(d, () => {});
-  const boat = new THREE.Group();
-  built.group.scale.setScalar(RACE_LENGTH / HULLS[d.hull].length);
-  boat.add(built.group);
-  // the vessel streams a pennant by turning it half round (it expects one that flies forward at rest); the yard's
-  // flag flies aft, so it is hung in a pivot that turns it back
-  const flag = new THREE.Group();
-  flag.position.copy(built.flag.position);
-  built.flag.position.set(0, 0, 0);
-  built.flag.rotation.y = Math.PI;
-  flag.add(built.flag);
-  built.group.add(flag);
-  const foreFlag = new THREE.Object3D(); // she has one flag; the vessel's second pennant is a stand-in
-  built.group.add(foreFlag);
-  return { boat, sails: built.sails, flag, foreFlag };
 }

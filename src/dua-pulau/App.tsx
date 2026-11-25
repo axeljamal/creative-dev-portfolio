@@ -6,10 +6,11 @@ import { earlierWork } from "../content/work";
 import { profile } from "../content/profile";
 import { ISLAND_NAME, PLACES, place, type Island, type Place, type PlaceId } from "./places";
 import { Chart } from "./Chart";
-import { Log, TALK, Talk } from "./Log";
+import { Log, Ships, TALK, Talk } from "./Log";
+import { yardDesign } from "../race/brick";
 import { Ask, type AskLine } from "./Ask";
 import { PipCorner } from "./PipCorner";
-import type { BoatView, DayPart, Weather, World } from "./world/engine";
+import type { BoatView, DayPart, ShipId, Weather, World } from "./world/engine";
 
 const VIEW_NEXT: Record<BoatView, BoatView> = { astern: "starboard", starboard: "port", port: "astern" };
 const VIEW_NAME: Record<BoatView, string> = { astern: "Astern", starboard: "Starboard side", port: "Port side" };
@@ -40,6 +41,21 @@ const WATERS = { md: "Marea Dvīpa waters", wf: "Windfall waters", strait: "The 
 /** Dua Pulau in bricks: the same world and the same work, served at /bricks/ */
 const BRICK = typeof location !== "undefined" && location.pathname.startsWith("/bricks");
 
+/** the boat from Pinisi Yard, if one was built on this device or shared in the link (?boat=) */
+const YARD = yardDesign();
+const SHIP_KEY = "dua-pulau-ship";
+/** the ship chosen last time, or asked for in the link (?ship=yard, from the yard's "Sail her" button) */
+function firstShip(): ShipId {
+  const asked = new URLSearchParams(location.search).get("ship");
+  let id = asked;
+  try {
+    id ??= localStorage.getItem(SHIP_KEY);
+  } catch {
+    /* no storage */
+  }
+  return id === "first" || id === "cruising" || (id === "yard" && YARD) ? id : "today";
+}
+
 export function App() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const world = useRef<World | null>(null);
@@ -66,6 +82,8 @@ export function App() {
   const [talk, setTalk] = useState<number | null>(null); // which line of Pip's welcome is showing
   const [firstLog, setFirstLog] = useState(false); // the log as it opens straight after the welcome
   const [asking, setAsking] = useState(false); // Pip's question panel
+  const [ship, setShip] = useState<ShipId>(firstShip);
+  const [ships, setShips] = useState(false); // the ship chooser is open
   const [tools, setTools] = useState(false); // phone: the controls unfolded from their floating button
   const [askThread, setAskThread] = useState<AskLine[]>([]); // kept while the panel is shut, so a conversation picks up again
 
@@ -135,6 +153,16 @@ export function App() {
       world.current = null;
     };
   }, [moor]);
+  // the ship she sails: built once the world is up, and again whenever another is chosen (and kept for next time)
+  useEffect(() => {
+    if (state !== "ready") return;
+    void world.current?.setShip(ship, YARD);
+    try {
+      localStorage.setItem(SHIP_KEY, ship);
+    } catch {
+      /* no storage */
+    }
+  }, [ship, state]);
   // Pip on deck stays awake and faces the visitor while his questions are open
   useEffect(() => world.current?.pipTalking(asking), [asking, state]);
 
@@ -231,14 +259,16 @@ export function App() {
               {sailing && (
                 <button type="button" className="dp-pill" onClick={() => { const v = VIEW_NEXT[boatView]; setBoatView(v); world.current?.setView(v); }} aria-label={`View: ${VIEW_NAME[boatView]}. Change to ${VIEW_NAME[VIEW_NEXT[boatView]]}`} title="Change the view (V)">{VIEW_NAME[boatView]}</button>
               )}
-              <button type="button" className="dp-pill dp-logbtn" aria-expanded={menu} aria-controls="dp-log" onClick={() => { setAsking(false); setTools(false); if (menu) closeLog(); else setMenu(true); }}>Log <b>{visited.length}/{PLACES.length}</b></button>
+              <button type="button" className="dp-pill" aria-expanded={ships} aria-controls="dp-ships" onClick={() => { setAsking(false); closeLog(); setTools(false); setShips(!ships); }}>Ship</button>
+              <button type="button" className="dp-pill dp-logbtn" aria-expanded={menu} aria-controls="dp-log" onClick={() => { setAsking(false); setTools(false); setShips(false); if (menu) closeLog(); else setMenu(true); }}>Log <b>{visited.length}/{PLACES.length}</b></button>
               <button type="button" className="dp-pill" aria-pressed={!muted} onClick={toggleSound}>{muted ? "Sound off" : "Sound on"}</button>
               </div>
             </div>
+            {ships && <Ships ship={ship} yardName={YARD ? YARD.name.trim() || "Your boat" : null} onPick={setShip} onClose={() => setShips(false)} />}
             {menu && <Log visited={visited} first={firstLog} onSail={sailTo} onClose={closeLog} brick={BRICK} />}
             {asking && <Ask thread={askThread} setThread={setAskThread} onSail={sailTo} onClose={() => setAsking(false)} />}
             {sailing && world.current && <Chart world={world.current} found={found} bound={bound} onSail={sailTo} />}
-            <PipCorner away={!sailing || asking || !!open || menu || tools || talk !== null} onAsk={() => { closeLog(); setTools(false); setAsking(true); }} />
+            <PipCorner away={!sailing || asking || !!open || menu || tools || ships || talk !== null} onAsk={() => { closeLog(); setTools(false); setShips(false); setAsking(true); }} />
             {!open && (
               <div className="dp-foot" aria-live="polite">
                 {talk !== null ? (

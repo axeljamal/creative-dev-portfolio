@@ -23,8 +23,8 @@ const CREAM = [0.93, 0.89, 0.8];
 
 /** tint: a colour for her topsides in place of the cream (today's design only). ghost: every material translucent, no
  *  shadow, no wake. wake: false leaves the wake out (default true). build: another design (default buildPinisi). */
-export function createVessel<P extends Built = ReturnType<typeof buildPinisi>>(scene: THREE.Scene, opts: { tint?: number; ghost?: boolean; wake?: boolean; build?: () => P } = {}): Vessel<P> {
-  const st: Hull = { x: 0, z: 0, yaw: 0, v: 0, roll: 0 };
+export function createVessel<P extends Built = ReturnType<typeof buildPinisi>>(scene: THREE.Scene, opts: { tint?: number; ghost?: boolean; wake?: boolean; build?: () => P; /** her state, shared: a new boat taking over where the last one was */ st?: Hull } = {}): Vessel<P> {
+  const st: Hull = opts.st ?? { x: 0, z: 0, yaw: 0, v: 0, roll: 0 };
   const pinisi = (opts.build ?? (buildPinisi as unknown as () => P))();
   const helm = new THREE.Group(); // turns to the heading; the boat inside it heels and pitches
   helm.add(pinisi.boat);
