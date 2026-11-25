@@ -316,16 +316,30 @@ export function buildYardPinisi(d: Design): Built & { lampAt: THREE.Group; pipBo
   built.group.add(flag);
   const foreFlag = new THREE.Object3D(); // she has one flag; the vessel's second pennant is a stand-in
   built.group.add(foreFlag);
-  // her deck at u along her (0 stern … 1 bow), in the outer group's metres: the top of the bricks under her sheer
-  const deckAt = (u: number) => new THREE.Vector3((u - 0.5) * h.L * s, (Math.ceil(h.sheer(u) / BH) * BH) * s, 0);
+  // where the lamp and Pip stand: found by dropping a ray onto her bricks (the hull, cabin, rails and masts; not the
+  // sails, spars or flag), so they sit on whatever is there for any design: deck, cabin roof or the raised bow. In
+  // the outer group's metres (her group is already scaled, so the hit is in metres as it comes).
+  const bricks = built.group.children[0];
+  boat.updateMatrixWorld(true);
+  const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
+  const surfaceAt = (u: number, z: number) => {
+    const x = (u - 0.5) * h.L * s;
+    ray.set(new THREE.Vector3(x, 500, z * s), down);
+    const hit = ray.intersectObject(bricks, true).find((i) => !i.face || i.face.normal.y > 0.5);
+    const y = hit ? hit.point.y : Math.ceil(h.sheer(u) / BH) * BH * s; // no hit: the top of the bricks under her sheer
+    return new THREE.Vector3(x, y, z * s);
+  };
   const at = (p: THREE.Vector3) => {
     const g = new THREE.Group();
     g.position.copy(p);
     boat.add(g);
     return g;
   };
-  const lampAt = at(deckAt(0.86));
-  const pipBow = at(deckAt(0.82).add(new THREE.Vector3(0, 0, Math.min(0.55, h.half(0.82) * s - 0.6))));
-  const pipStern = at(deckAt(0.16).add(new THREE.Vector3(0, BH * 2 * s, 0))); // up where the camera astern can see him
+  // the lamp on her bow, ahead of the foremast; Pip beside it, inside the rail; and astern on the cabin roof (or the
+  // deck when she has none), where the camera behind her can see him. Masts stand on her centreline, so the bow
+  // spots sit a little off it.
+  const lampAt = at(surfaceAt(0.88, PITCH));
+  const pipBow = at(surfaceAt(0.82, -Math.min(h.half(0.82) * 0.45, PITCH * 3)));
+  const pipStern = at(surfaceAt(d.cabin === "none" ? 0.16 : 0.33, PITCH));
   return { boat, sails: built.sails, flag, foreFlag, lampAt, pipBow, pipStern };
 }
