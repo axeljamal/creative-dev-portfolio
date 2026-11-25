@@ -2,7 +2,7 @@
 // case studies, profile and skills the page shows, so a change to the work reaches Pip with no second copy.
 // No React and no DOM here: the Worker imports this file.
 import { profile } from "../content/profile";
-import { skills, workingWithClaude } from "../content/skills";
+import { skillGroups, workingWithClaude } from "../content/skills";
 import { earlierWork } from "../content/work";
 import { ISLAND_NAME, PLACES, type PlaceId } from "./places";
 
@@ -18,7 +18,7 @@ const facts = () => {
     `ABOUT AXEL: ${profile.name}, ${profile.title}, ${profile.location}.`,
     profile.intro,
     ...profile.bio,
-    `SKILLS AND TOOLS, in the order of Axel's CV: ${skills.map((k) => k.name).join(", ")}.`,
+    `SKILLS AND TOOLS, by area, each with where it is shown:\n${skillGroups.map((g) => `${g.area}: ${g.skills.map((k) => `${k.name} (${k.where})`).join("; ")}`).join("\n")}`,
     `HOW AXEL WORKS: ${workingWithClaude}`,
     ...profile.latest.now.map((n) => `${n.label}: ${n.text}`),
     `Contact: ${profile.email}. GitHub ${profile.links.github}. LinkedIn ${profile.links.linkedin}.`,

@@ -3,6 +3,7 @@ import { FaCss3Alt, FaFigma, FaGithub, FaHtml5, FaJs, FaNodeJs, FaReact, FaVuejs
 import {
   LuAccessibility,
   LuAudioWaveform,
+  LuBlocks,
   LuDatabase,
   LuFileCheck,
   LuFlaskConical,
@@ -21,6 +22,7 @@ import {
   SiBlender,
   SiClaude,
   SiCloudflare,
+  SiDotnet,
   SiLinux,
   SiNextdotjs,
   SiPython,
@@ -65,6 +67,72 @@ export const skills: { name: string; icon: IconType }[] = [
   { name: "Customer service and customer experience", icon: LuHeartHandshake },
   { name: "Team leadership", icon: LuUsers },
   { name: "Marketing and PR", icon: LuMegaphone },
+];
+
+export type Skill = { name: string; icon: IconType; where: string };
+
+// The portfolio's skills, by area, each with where it can be seen in Axel's own work. Only skills a project here
+// shows are listed; the flat list above keeps the CV's order for the welcome film.
+export const skillGroups: { area: string; skills: Skill[] }[] = [
+  {
+    area: "Front end",
+    skills: [
+      { name: "React and TypeScript", icon: FaReact, where: "This portfolio and Dua Pulau; Windfall is written in TypeScript." },
+      { name: "React Native (Expo)", icon: LuSmartphone, where: "Windfall, built with Expo Router and live on the web and at windfall.expo.app." },
+      { name: "Three.js", icon: SiThreedotjs, where: "Dua Pulau, Pinisi Yard, the Regatta, the Weather Dashboard's live sky and the 3D product demo." },
+      { name: "Canvas and Web Audio", icon: LuAudioWaveform, where: "Marea Dvīpa's live pattern engine and its gamelan scores, synthesized in the browser." },
+      { name: "JavaScript, HTML and CSS", icon: FaJs, where: "The Weather Dashboard in plain JavaScript, and the Marea Dvīpa client sites." },
+      { name: "Tailwind CSS", icon: FaCss3Alt, where: "This portfolio and Bootcamp Connect." },
+      { name: "Vue", icon: FaVuejs, where: "The 3D product demo, with Vue 3, Vite and Three.js." },
+      { name: "Vite and PWAs", icon: SiVite, where: "Marea Dvīpa installs and works offline; Bootcamp Connect installs too." },
+      { name: "Web components", icon: LuBlocks, where: "The Crew, built from LEGO.js bricks." },
+    ],
+  },
+  {
+    area: "Design",
+    skills: [
+      { name: "Generative pattern design", icon: LuShapes, where: "Marea Dvīpa's Pattern Studio rebuilds repeats and Fibonacci flows from my own motifs." },
+      { name: "Design systems", icon: LuPalette, where: "Bootcamp Connect's design system, and Windfall's written design rules." },
+      { name: "Accessibility (WCAG 2.2 AA)", icon: LuAccessibility, where: "Bootcamp Connect was built to WCAG 2.2 AA and Apple's Human Interface Guidelines." },
+      { name: "Blender (Python scripting)", icon: SiBlender, where: "Python scripts that build the 3D characters for Jam Studio's live puppets." },
+    ],
+  },
+  {
+    area: "Back end and data",
+    skills: [
+      { name: "Supabase (Postgres, RLS, Edge Functions)", icon: LuDatabase, where: "Windfall's safety rules live in the database and are tested in CI; its Edge Functions run the address finder, notifications and Ask Pip." },
+      { name: "Cloudflare Workers and D1", icon: SiCloudflare, where: "This portfolio's Worker and database run The Crew and its inbox; Marea Dvīpa and Windfall's web app are hosted on Cloudflare." },
+      { name: "Python", icon: SiPython, where: "Marea Dvīpa's motif pipeline, Windfall's picture and video pipeline, and Pinisi Yard's brick-part packer." },
+      { name: "Node.js", icon: FaNodeJs, where: "Build and content scripts for Windfall and this portfolio." },
+      { name: "C# and .NET", icon: SiDotnet, where: "Windfall Suppers API, a .NET 10 API on GitHub." },
+    ],
+  },
+  {
+    area: "AI",
+    skills: [
+      { name: "Claude Code on the command line", icon: LuSparkles, where: "Every project here, from spec and plan to tests and deploy." },
+      { name: "LLM features in production", icon: LuSparkles, where: "Bootcamp Connect's CV and LinkedIn import, Ask Pip in Windfall and here, and The Crew's feedback tagging." },
+      { name: "Prompt engineering", icon: LuMessageSquareText, where: "Pip's brief, and The Crew's tagging prompt, whose answers are checked against fixed lists." },
+      { name: "Spec-first AI-assisted development", icon: LuFileCheck, where: "Bootcamp Connect's 51 logged decisions; Windfall's decision log and fix log." },
+    ],
+  },
+  {
+    area: "Testing and delivery",
+    skills: [
+      { name: "Playwright and testing", icon: LuFlaskConical, where: "Bootcamp Connect's browser tests, Windfall's app and database tests, and this portfolio's unit tests." },
+      { name: "CI/CD", icon: LuWorkflow, where: "Windfall and Bootcamp Connect run their checks in GitHub Actions on every change." },
+      { name: "Linux and the command line", icon: SiLinux, where: "Builds, tests and deploys run from the terminal, with Wrangler and EAS." },
+      { name: "GitHub", icon: FaGithub, where: "Public work at github.com/axeljamal." },
+    ],
+  },
+  {
+    area: "People",
+    skills: [
+      { name: "Customer service and customer experience", icon: LuHeartHandshake, where: "Six years in hospitality, which shaped Windfall's host and guest journeys." },
+      { name: "Team leadership", icon: LuUsers, where: "Team leader at The Feathers; Windfall and Bootcamp Connect were team projects." },
+      { name: "Marketing and PR", icon: LuMegaphone, where: "Guardian and Times reviews at Supawan; Windfall's launch posts and videos." },
+    ],
+  },
 ];
 
 // How Axel works with Claude Code; Pip's brief quotes it so visitors can ask.

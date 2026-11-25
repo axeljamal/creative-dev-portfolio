@@ -1,12 +1,11 @@
 import { FaLinkedin } from "react-icons/fa6";
 import { LuFileText } from "react-icons/lu";
 import { Button } from "../components/Button";
-import { Chip } from "../components/Chip";
 import { GlassPanel } from "../components/GlassPanel";
 import { Reveal, Section } from "../components/Section";
 import { Tilt } from "../components/Tilt";
 import { profile } from "../content/profile";
-import { skills } from "../content/skills";
+import { skillGroups } from "../content/skills";
 import portrait from "../assets/portrait.jpg";
 
 export function About() {
@@ -50,20 +49,38 @@ export function About() {
                 </Button>
               </div>
 
-              <h3 className="mt-auto pt-10 font-mono text-xs font-medium tracking-[0.14em] text-accent-solid uppercase">
-                Skills
-              </h3>
-              <ul className="mt-4 flex flex-wrap gap-2">
-                {skills.map(({ name, icon: Icon }) => (
-                  <Chip key={name} as="li" variant="glass" size="md" icon={<Icon />}>
-                    {name}
-                  </Chip>
-                ))}
-              </ul>
             </div>
           </GlassPanel>
         </Reveal>
       </div>
+
+      <Reveal>
+        <GlassPanel material="strong" className="mt-6 rounded-[2rem] p-6 sm:rounded-[2.5rem] sm:p-10 lg:mt-8">
+          <h3 className="font-mono text-xs font-medium tracking-[0.14em] text-accent-solid uppercase">
+            Skills, and where to see them
+          </h3>
+          <div className="mt-6 grid gap-x-10 gap-y-8 md:grid-cols-2 xl:grid-cols-3">
+            {skillGroups.map(({ area, skills }) => (
+              <section key={area} aria-labelledby={`skills-${area}`}>
+                <h4 id={`skills-${area}`} className="text-lg font-semibold">
+                  {area}
+                </h4>
+                <ul className="mt-3 space-y-3">
+                  {skills.map(({ name, icon: Icon, where }) => (
+                    <li key={name} className="flex gap-3">
+                      <Icon aria-hidden="true" className="mt-1 size-4 shrink-0 text-accent-solid" />
+                      <div>
+                        <p className="font-medium leading-snug">{name}</p>
+                        <p className="text-sm leading-snug opacity-75">{where}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </GlassPanel>
+      </Reveal>
     </Section>
   );
 }
