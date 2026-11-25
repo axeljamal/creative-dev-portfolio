@@ -19,6 +19,7 @@ import type { CourseId, Helm, Mode, WindSet } from "./rules/types";
 import { effectiveWind } from "./rules/wind";
 import type { CardView, Finish, Session } from "./session";
 import { Title } from "./Title";
+import { BRICK, yardDesign } from "./brick";
 import type { Weather } from "./weather";
 import type { RaceWorld } from "./world";
 
@@ -39,6 +40,9 @@ const localDay = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
+
+/** in bricks, the player races the boat built in Pinisi Yard (read once: the yard keeps it on this device) */
+const YARD = BRICK ? yardDesign() : null;
 
 export function App() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -190,7 +194,7 @@ export function App() {
         if (gone || !canvas.current) return;
         // the beach huts' boards: the three courses with their shapes, and the three boats racing today
         const huts = [...CUP_ORDER.map((id) => ({ name: COURSES[id].name, line: copy.shapes[id] })), ...RIVALS.map((r) => ({ name: r.name, line: copy.racingToday }))];
-        const w = (world = createRaceWorld(canvas.current, { quality, huts }));
+        const w = (world = createRaceWorld(canvas.current, { quality, huts, brick: BRICK, yard: YARD }));
         const s = createSession(w, store, { hud: setHud, finish: (f) => finishRef.current(f), weather: setWeather });
         session.current = s;
         s.preview(prefsRef.current.course);
@@ -309,10 +313,23 @@ export function App() {
   const bests = screen === "title" ? (Object.fromEntries(CUP_ORDER.map((id) => [id, store.best(id, slot)?.time ?? null])) as Record<CourseId, number | null>) : null;
 
   return (
-    <main className={`rg is-${screen}${photo ? " is-photo" : ""}`}>
+    <main className={`rg is-${screen}${photo ? " is-photo" : ""}${BRICK ? " is-brick" : ""}`}>
       <canvas ref={canvas} aria-label="The sea round two islands, and your pinisi" />
       {screen !== "title" && <h1 className="rg-sr">{copy.title}</h1>}
       {state === "failed" && <p className="rg-note" role="alert">{copy.failed}</p>}
+      {BRICK && screen === "title" && (
+        <p className="rg-yard">
+          {YARD ? (
+            <>
+              Racing <b>{YARD.name.trim() || "your boat"}</b>, built in Pinisi Yard. <a href="/yard/">Rebuild her →</a>
+            </>
+          ) : (
+            <>
+              Racing the yard's pinisi. <a href="/yard/">Build your own in Pinisi Yard →</a>
+            </>
+          )}
+        </p>
+      )}
       {bests && state !== "failed" && <Title prefs={prefs} bests={bests} loading={waiting} onChange={change} onRace={() => go(prefs.course)} onCup={startCup} />}
       {screen === "card" && card && <Card v={card} cup={cup.current ? { race: cup.current.places.length + 1, of: CUP_ORDER.length } : null} onBegin={begin} />}
       {screen === "race" && hud && <Hud v={hud} paused={paused} course={COURSES[racing.course]} chart={() => session.current!.chart()} onPause={() => pause(true)} onRecover={() => session.current?.recover()} />}

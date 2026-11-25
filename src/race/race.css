@@ -1317,3 +1317,60 @@ button.rg-place:focus-visible {
 .rg.is-photo .rg-hud {
   display: none;
 }
+
+/* ---------- the Regatta in bricks (/bricks/race/): the same screens as toy signage. A blue board down the left, one
+   rounded face, yellow for the thing to press, thick dark outlines sitting on a hard shadow ---------- */
+.rg.is-brick {
+  --rg-gold: #ffcf00;
+  --rg-gold-deep: #f2cd37;
+  --rg-glass: rgba(0, 85, 191, 0.95);
+  --rg-line: #1b1b1b;
+  --font-display: Fredoka, "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-sans: Fredoka, "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-mono: Fredoka, "Arial Rounded MT Bold", system-ui, sans-serif;
+  background: #9fd0f5;
+}
+.rg.is-brick .rg-title::before {
+  background: linear-gradient(90deg, rgba(0, 62, 140, 0.94) 0, rgba(0, 72, 163, 0.88) 420px, rgba(0, 85, 191, 0.35) 640px, rgba(0, 85, 191, 0) 860px);
+}
+.rg.is-brick .rg-name { font-weight: 700; letter-spacing: 0; line-height: 0.9; text-shadow: 0 5px 0 #1b1b1b; }
+.rg.is-brick .rg-name-b { font-style: normal; font-weight: 700; }
+.rg.is-brick .rg-race,
+.rg.is-brick .rg-btn,
+.rg.is-brick .rg-cup {
+  border: 3px solid #1b1b1b;
+  border-radius: 14px;
+  box-shadow: 0 5px 0 #1b1b1b;
+}
+.rg.is-brick .rg-race:active,
+.rg.is-brick .rg-btn:active,
+.rg.is-brick .rg-cup:active { translate: 0 3px; box-shadow: 0 2px 0 #1b1b1b; }
+.rg.is-brick .rg-seg-opt { border-radius: 10px; }
+.rg.is-brick .rg-card,
+.rg.is-brick .rg-results,
+.rg.is-brick .rg-pause {
+  border: 3px solid #1b1b1b;
+  border-radius: 20px;
+  box-shadow: 0 6px 0 #1b1b1b;
+}
+/* the boat she races: a white tag with a link back to the yard */
+.rg-yard {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  max-width: min(420px, calc(100% - 32px));
+  margin: 0;
+  padding: 10px 14px;
+  color: #1b1b1b;
+  background: #fff;
+  border: 3px solid #1b1b1b;
+  border-radius: 14px;
+  box-shadow: 0 5px 0 #1b1b1b;
+  font: 500 15px/1.35 Fredoka, system-ui, sans-serif;
+  z-index: 2;
+}
+.rg-yard a { color: #0055bf; font-weight: 700; }
+@media (max-width: 720px) {
+  .rg-yard { top: max(12px, env(safe-area-inset-top)); bottom: auto; font-size: 13px; }
+  .rg.is-brick .rg-title { padding-top: max(76px, calc(env(safe-area-inset-top) + 64px)); }
+}

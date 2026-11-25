@@ -151,7 +151,7 @@ export function App() {
         </a>
         <nav className="yd-links">
           <a href="/crew/">The Crew</a>
-          <a href="/race/">Regatta</a>
+          <a href="/bricks/race/">Regatta</a>
         </nav>
       </header>
 
@@ -211,7 +211,7 @@ export function App() {
               {tab === "name" && (
                 <label className="yd-field">
                   <span>Her name, painted on the transom</span>
-                  <input value={design.name} maxLength={NAME_MAX} onChange={(e) => set("name", e.target.value.replace(/[<>]/g, ""))} placeholder="Bintang Laut" />
+                  <input value={design.name} maxLength={NAME_MAX} onChange={(e) => set("name", e.target.value.replace(/[<>]/g, ""))} placeholder="Bintang Kecil" />
                 </label>
               )}
             </div>
@@ -228,6 +228,11 @@ export function App() {
             {phase === "afloat" && <p className="yd-big">She floats! Sailing a circle at her own speed.</p>}
             {phase === "launching" && <p className="yd-big">Down the slip…</p>}
             {crewNote && <p className="yd-ok">{crewNote}</p>}
+            {phase === "afloat" && (
+              <a className="yd-race" href={`/bricks/race/?boat=${encode(design)}`}>
+                Race her in the Regatta →
+              </a>
+            )}
             <div className="yd-actions">
               <button type="button" className="yd-go" onClick={() => yard.current?.reset()} disabled={phase === "launching"}>
                 {phase === "capsized" ? "Back to the yard and fix her" : "Back to the yard"}

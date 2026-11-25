@@ -68,7 +68,7 @@ export type Design = {
 };
 
 export const DEFAULT_DESIGN: Design = {
-  hull: "trader", rig: "gaff", masts: 2, cabin: "low", paint: "red", stripe: "cream", sail: "cream", motif: "ketupat", name: "Bintang Laut",
+  hull: "trader", rig: "gaff", masts: 2, cabin: "low", paint: "red", stripe: "cream", sail: "cream", motif: "ketupat", name: "Bintang Kecil",
 };
 
 export const NAME_MAX = 24;

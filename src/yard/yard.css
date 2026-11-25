@@ -309,6 +309,19 @@ body {
 .yd-go:disabled { opacity: 0.55; cursor: default; }
 .yd button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .yd-after { display: grid; gap: 12px; }
+.yd-race {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 14px;
+  padding: 12px 20px;
+  border: var(--edge);
+  background: var(--blue);
+  color: #fff;
+  font: 700 18px/1 Fredoka, sans-serif;
+  box-shadow: 0 5px 0 var(--ink);
+}
+.yd-race:active { translate: 0 4px; box-shadow: 0 1px 0 var(--ink); }
 .yd-big {
   margin: 0;
   font-size: 24px;

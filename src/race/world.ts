@@ -4,6 +4,9 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { buildIsles, type Isles } from "../dua-pulau/world/isles";
+import { plasticize } from "../dua-pulau/world/brick";
+import { HULLS, type Design } from "../yard/design";
+import { buildBoat } from "../yard/boat";
 import { buildBuoy, type HutProject } from "../dua-pulau/world/models";
 import { DAY_S, clamp, createStage, reduce, wrap, type Quality } from "../dua-pulau/world/stage";
 import { heightAt } from "../dua-pulau/world/terrain";
@@ -48,15 +51,15 @@ export type RaceWorld = {
 
 const GOLD = 0xe0c27e;
 
-export function createRaceWorld(canvas: HTMLCanvasElement, opts: { quality: Quality; huts: HutProject[] }): RaceWorld {
-  const stage = createStage(canvas, { quality: opts.quality });
+export function createRaceWorld(canvas: HTMLCanvasElement, opts: { quality: Quality; huts: HutProject[]; /** the brick world (/bricks/race/) */ brick?: boolean; /** the player's boat from Pinisi Yard, in place of the pinisi */ yard?: Design | null }): RaceWorld {
+  const stage = createStage(canvas, { quality: opts.quality, brick: opts.brick });
   const { scene, camera } = stage;
   // a fixed mid-afternoon (0.72 of the day: the sun 45° up in the west-south-west). At late morning (0.42) it stood high
   // in the south-south-east, over the camera's shoulder on the opening legs, and lit the white hull and sails flat-on, so she
   // read as a glow with no form; from the afternoon side she is shaded and modelled, and buoys and water read well.
   const sun = stage.sunAt(0.72 * DAY_S);
   stage.setSun(sun.elev, sun.az, true);
-  const isles = buildIsles(stage, { huts: opts.huts, markers: false, toLet: false });
+  const isles = buildIsles(stage, { huts: opts.huts, markers: false, toLet: false, brick: opts.brick });
   if (import.meta.env.DEV) Object.assign(window, { __raceStage: stage }); // dev only: for comparing the look with the home page
 
   // ---------- the fleet ----------
@@ -486,11 +489,17 @@ export function createRaceWorld(canvas: HTMLCanvasElement, opts: { quality: Qual
   let cb: ((dt: number, t: number) => void) | null = null, paused = false;
   let raf = 0, last = performance.now(), disposed = false;
   const env = { bob: reduce ? 0 : 1, dusk: 0, weather: null, found: new Set<never>(), camPos, moored: null, near: null };
+  let toyAt = 0;
   function loop(now: number) {
     if (disposed) return;
     raf = requestAnimationFrame(loop);
     if (!stage.inView() || document.hidden) return void (last = now);
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)), t = now / 1000;
+    // in bricks, every model gets the toy finish, and again now and then for boats that join later
+    if (opts.brick && t > toyAt) {
+      plasticize(scene);
+      toyAt = t + 2;
+    }
     last = now;
     if (!paused) cb?.(dt, t);
     fleet.forEach((v) => {
@@ -520,8 +529,10 @@ export function createRaceWorld(canvas: HTMLCanvasElement, opts: { quality: Qual
       if (!v) {
         const { design = "current", tint, ghost, rival = false } = o, wake = !rival;
         // today's design is tinted by the vessel, which finds its cream; the older ones paint their own topsides
+        const yard = opts.yard;
         v =
-          design === "original" ? createVessel<Built>(scene, { ghost, wake, build: () => buildOriginalPinisi(tint) })
+          id === "you" && yard ? createVessel<Built>(scene, { wake, build: () => buildYardPinisi(yard) })
+          : design === "original" ? createVessel<Built>(scene, { ghost, wake, build: () => buildOriginalPinisi(tint) })
           : design === "cruising" ? createVessel<Built>(scene, { ghost, wake, build: () => buildCruisingPinisi(tint) })
           : (createVessel(scene, { tint, ghost, wake }) as Vessel<Built>);
         if (rival) lighten(v.pinisi), others.add(v);
@@ -590,4 +601,25 @@ export function createRaceWorld(canvas: HTMLCanvasElement, opts: { quality: Qual
       stage.dispose();
     },
   };
+}
+
+/** the racing pinisi's length over all, in metres (beamAt runs −14 … +14) */
+const RACE_LENGTH = 28;
+/** her design as the race's vessel wants it: the model with bow along +x, the sails, and two pennants */
+export function buildYardPinisi(d: Design): Built {
+  const built = buildBoat(d, () => {});
+  const boat = new THREE.Group();
+  built.group.scale.setScalar(RACE_LENGTH / HULLS[d.hull].length);
+  boat.add(built.group);
+  // the vessel streams a pennant by turning it half round (it expects one that flies forward at rest); the yard's
+  // flag flies aft, so it is hung in a pivot that turns it back
+  const flag = new THREE.Group();
+  flag.position.copy(built.flag.position);
+  built.flag.position.set(0, 0, 0);
+  built.flag.rotation.y = Math.PI;
+  flag.add(built.flag);
+  built.group.add(flag);
+  const foreFlag = new THREE.Object3D(); // she has one flag; the vessel's second pennant is a stand-in
+  built.group.add(foreFlag);
+  return { boat, sails: built.sails, flag, foreFlag };
 }
