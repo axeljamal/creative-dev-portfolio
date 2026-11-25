@@ -49,7 +49,7 @@
         if (!box || !window.turnstile) return;
         this.widget = window.turnstile.render(box, {
           sitekey: SITE_KEY,
-          theme: "dark",
+          theme: "light",
           callback: (t) => { this.turnstileToken = t; },
           "expired-callback": () => { this.turnstileToken = ""; },
         });
