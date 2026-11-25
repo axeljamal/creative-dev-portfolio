@@ -158,21 +158,21 @@
   section { margin: 32px 0 0; }
   .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0 8px; }
   .tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-  .tile { display: grid; gap: 6px; padding: 18px; border-radius: 14px; background: var(--glass); border: 1px solid var(--line); font-size: 14px; }
-  .tile .n { font: 600 40px/1 var(--serif); color: var(--gold); font-variant-numeric: lining-nums tabular-nums; }
+  .tile { display: grid; gap: 6px; padding: 18px; border-radius: 14px; background: var(--glass); border: var(--edge); box-shadow: 0 5px 0 var(--ink); font-size: 14px; }
+  .tile .n { font: 700 40px/1 var(--serif); color: var(--blue); font-variant-numeric: lining-nums tabular-nums; }
   .tiles { margin: 0 0 28px; }
   .tile small { color: var(--pearl-soft); }
   .bars { list-style: none; padding: 0; margin: 0; max-width: 560px; }
   .bars li { display: grid; grid-template-columns: 90px 1fr 32px; gap: 10px; align-items: center; margin: 0 0 8px; font-size: 14px; }
-  .track { height: 10px; border-radius: 999px; background: rgba(244, 238, 227, 0.08); overflow: hidden; }
-  .fill { display: block; height: 100%; background: var(--gold); border-radius: 999px; }
+  .track { height: 10px; border-radius: 999px; background: var(--mist); border: 2px solid var(--ink); overflow: hidden; }
+  .fill { display: block; height: 100%; background: var(--sea); border-radius: 999px; }
   .count { text-align: right; color: var(--pearl-soft); }
   .waves { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
   .brief .sum { font-size: 15px; font-variant-numeric: lining-nums; }
   .fixes .quiet { margin-left: 4px; }
   .fixes { padding-left: 20px; margin: 0 0 16px; }
   .fixes li { margin: 0 0 12px; }
-  blockquote { margin: 6px 0 0; padding: 6px 12px; border-left: 2px solid var(--gold); color: var(--pearl-soft); font-style: italic; }
+  blockquote { margin: 6px 0 0; padding: 6px 12px; border-left: 4px solid var(--blue); color: var(--pearl-soft); font-style: italic; }
   .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; }
   .body { white-space: pre-wrap; overflow-wrap: anywhere; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }

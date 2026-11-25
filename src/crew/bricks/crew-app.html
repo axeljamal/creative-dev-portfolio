@@ -18,9 +18,15 @@
     <crew-team :if="state.route === 'team'"></crew-team>
   </main>
   <footer>
+    <nav class="play" aria-label="Play">
+      <a href="/yard/">Build a boat</a>
+      <a href="/bricks/race/">Race her</a>
+      <a href="/bricks/">Sail Dua Pulau in bricks</a>
+    </nav>
     <p>The Crew is the players' community for <a href="/yard/">Pinisi Yard</a>, a boat-building game I am making in the
-      <a href="/">Dua Pulau</a> world. Built with <a href="https://lego.js.org" rel="noopener">LEGO.js</a> web components
-      on Cloudflare. Members are 18+. Rows marked <b>demo</b> are made up, to show the tools before real players arrive.</p>
+      <a href="/bricks/">Dua Pulau</a> world. Built with <a href="https://lego.js.org" rel="noopener">LEGO.js</a> web components
+      on Cloudflare. Members are 18+. Rows marked <b>demo</b> are made up, to show the tools before real players arrive.
+      Plain studs, generic bricks: not affiliated with any toy maker.</p>
   </footer>
 </template>
 
@@ -57,26 +63,41 @@
 
 <style>
   :host { display: block; min-height: 100vh; }
+  /* the header: the yard's yellow sign, studs along its top, and the pages as blue brick tabs */
   header {
     position: sticky; top: 0; z-index: 2;
     display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-    padding: 14px var(--gut);
-    background: rgba(7, 10, 18, 0.86);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--line);
+    padding: 18px var(--gut) 14px;
+    background: #9fd0f5;
+    border-bottom: var(--edge);
   }
-  .mark { display: grid; text-decoration: none; color: var(--pearl); line-height: 1.05; }
-  .kicker { font: 500 11px/1.2 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
-  .name { font: 600 26px/1 var(--serif); }
-  nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  .mark {
+    position: relative; display: grid; text-decoration: none; color: var(--ink); line-height: 1;
+    padding: 7px 16px 8px; background: var(--gold); border: var(--edge); border-radius: 14px;
+    box-shadow: 0 5px 0 var(--ink); rotate: -2deg;
+  }
+  .mark::before {
+    content: ""; position: absolute; left: 12px; right: 12px; top: -9px; height: 9px;
+    background: radial-gradient(circle at 50% 100%, var(--gold) 0 5.5px, var(--ink) 6px 8px, transparent 8.5px) 0 0 / 22px 18px repeat-x;
+  }
+  .kicker { font: 600 11px/1.2 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--red); }
+  .name { font: 700 26px/1 var(--serif); }
+  nav { display: flex; gap: 8px; flex-wrap: wrap; }
   nav a {
-    padding: 8px 14px; border-radius: 999px;
-    color: var(--pearl-soft); text-decoration: none; font: 600 14px/1 var(--sans);
+    padding: 8px 14px; border-radius: 12px; border: var(--edge); box-shadow: 0 4px 0 var(--ink);
+    background: var(--blue); color: #fff; text-decoration: none; font: 600 15px/1 var(--sans);
   }
-  nav a:hover { color: var(--pearl); background: rgba(244, 238, 227, 0.06); }
+  nav a:hover { background: #1a6ad6; }
+  nav a:active { translate: 0 3px; box-shadow: 0 1px 0 var(--ink); }
   nav a[aria-current="page"] { color: var(--ink); background: var(--gold); }
   main { max-width: 980px; margin: 0 auto; padding: 32px var(--gut) 48px; }
-  footer { max-width: 980px; margin: 0 auto; padding: 24px var(--gut) 48px; border-top: 1px solid var(--line); }
-  footer p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--pearl-soft); }
-  footer a { color: var(--gold); }
+  footer { max-width: 980px; margin: 0 auto; padding: 24px var(--gut) 48px; border-top: var(--edge); }
+  footer .play { margin: 0 0 16px; }
+  footer .play a { background: var(--red); }
+  footer p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--pearl-soft); }
+  footer p a { color: var(--blue); }
+  @media (max-width: 560px) {
+    .name { font-size: 22px; }
+    nav a { padding: 7px 11px; font-size: 14px; }
+  }
 </style>
