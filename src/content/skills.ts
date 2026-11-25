@@ -78,6 +78,7 @@ export const skillGroups: { area: string; skills: Skill[] }[] = [
     area: "Front end",
     skills: [
       { name: "React and TypeScript", icon: FaReact, where: "This portfolio and Dua Pulau; Windfall is written in TypeScript." },
+      { name: "Next.js", icon: SiNextdotjs, where: "Windfall Impact, a dashboard of the pilot's numbers; The Crew's team view on server components; a hospitality site template, one file per venue." },
       { name: "React Native (Expo)", icon: LuSmartphone, where: "Windfall, built with Expo Router and live on the web and at windfall.expo.app." },
       { name: "Three.js", icon: SiThreedotjs, where: "Dua Pulau, Pinisi Yard, the Regatta, the Weather Dashboard's live sky and the 3D product demo." },
       { name: "Canvas and Web Audio", icon: LuAudioWaveform, where: "Marea Dvīpa's live pattern engine and its gamelan scores, synthesized in the browser." },
