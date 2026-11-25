@@ -385,3 +385,109 @@ button.dp-pill:hover, button.dp-pill[aria-expanded="true"] { border-color: var(-
 .dp.is-brick .dp-log-foot { background: #003e8c; border-top: 3px solid #1b1b1b; }
 .dp.is-brick .dp-panel { background: rgba(0, 72, 163, 0.97); }
 .dp.is-brick .dp-panel .dp-btn-line { background: #003e8c; border-color: #1b1b1b; }
+
+/* ---------- the controls: a row on wide screens; on a phone, folded into one floating button ---------- */
+.dp-more { display: none; }
+.dp-tools { display: contents; }
+@media (max-width: 720px) {
+  .dp-more {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    color: var(--dp-pearl);
+    background: var(--dp-glass);
+    border: 1px solid var(--dp-line);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    cursor: pointer;
+  }
+  .dp-more svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+  .dp-more-n {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 21px;
+    height: 21px;
+    padding: 0 5px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    font: 700 11px/1 var(--font-sans);
+    color: var(--dp-ink);
+    background: var(--dp-gold);
+  }
+  .dp-tools { display: none; }
+  .dp-tools.is-open {
+    position: absolute;
+    top: 56px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 176px;
+    padding: 10px;
+    border-radius: 18px;
+    background: var(--dp-glass);
+    border: 1px solid var(--dp-line);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    animation: dp-rise 0.25s ease both;
+  }
+  /* the count is a line of text, not a button */
+  .dp-hud-tr .dp-tools.is-open span.dp-pill { display: block; background: none; border: 0; box-shadow: none; padding: 4px 6px 2px; }
+  .dp-tools.is-open .dp-pill { text-align: left; padding: 11px 14px; }
+}
+
+/* ---------- Ask Pip: Pip himself, standing by at the bottom right ---------- */
+.dp-pip {
+  position: absolute;
+  right: clamp(8px, 2vw, 26px);
+  bottom: clamp(12px, 2.4vw, 26px);
+  width: 108px;
+  height: 128px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: opacity 0.25s ease, translate 0.25s ease, visibility 0s;
+}
+.dp-pip canvas { position: relative; display: block; width: 108px; height: 108px; transition: scale 0.2s ease; }
+.dp-pip:hover canvas { scale: 1.05; }
+.dp-pip-shadow { position: absolute; left: 32%; right: 32%; top: 96px; height: 9px; border-radius: 50%; background: rgba(0, 0, 0, 0.3); filter: blur(2px); }
+.dp-pip-tag {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  white-space: nowrap;
+  font: 500 12px/1 var(--font-mono);
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: var(--dp-pearl);
+  background: var(--dp-glass);
+  border: 1px solid var(--dp-line);
+}
+.dp-pip:hover .dp-pip-tag, .dp-pip:focus-visible .dp-pip-tag { border-color: var(--dp-gold); color: var(--dp-gold); }
+.dp-pip.is-away { opacity: 0; translate: 0 18px; visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, translate 0.25s ease, visibility 0s 0.25s; }
+@media (max-width: 720px) {
+  .dp-pip { width: 88px; height: 106px; bottom: 56px; right: 6px; } /* clear of the steering hint along the foot */
+  .dp-pip canvas { width: 88px; height: 88px; }
+  .dp-pip-shadow { top: 78px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dp-pip, .dp-pip.is-away, .dp-pip canvas { transition: none; }
+  .dp-tools.is-open { animation: none; }
+}
+
+/* the same in bricks: a blue brick button, a board for the controls, a yellow tag for Pip */
+.dp.is-brick .dp-more { background: #0055bf; color: #fff; border: 3px solid #1b1b1b; box-shadow: 0 4px 0 #1b1b1b; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.dp.is-brick .dp-more:active { translate: 0 3px; box-shadow: 0 1px 0 #1b1b1b; }
+.dp.is-brick .dp-more-n { color: #1b1b1b; border: 2px solid #1b1b1b; }
+.dp.is-brick .dp-tools.is-open { border: 3px solid #1b1b1b; box-shadow: 0 5px 0 #1b1b1b; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.dp.is-brick .dp-tools.is-open button.dp-pill { box-shadow: 0 3px 0 #1b1b1b; }
+.dp.is-brick .dp-pip-tag { font: 600 13px/1 var(--font-sans); color: #1b1b1b; background: #ffcf00; border: 2px solid #1b1b1b; box-shadow: 0 3px 0 #1b1b1b; }
+.dp.is-brick .dp-pip:hover .dp-pip-tag { color: #1b1b1b; background: #ffe066; }

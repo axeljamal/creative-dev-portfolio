@@ -8,6 +8,7 @@ import { ISLAND_NAME, PLACES, place, type Island, type Place, type PlaceId } fro
 import { Chart } from "./Chart";
 import { Log, TALK, Talk } from "./Log";
 import { Ask, type AskLine } from "./Ask";
+import { PipCorner } from "./PipCorner";
 import type { BoatView, DayPart, Weather, World } from "./world/engine";
 
 const VIEW_NEXT: Record<BoatView, BoatView> = { astern: "starboard", starboard: "port", port: "astern" };
@@ -65,6 +66,7 @@ export function App() {
   const [talk, setTalk] = useState<number | null>(null); // which line of Pip's welcome is showing
   const [firstLog, setFirstLog] = useState(false); // the log as it opens straight after the welcome
   const [asking, setAsking] = useState(false); // Pip's question panel
+  const [tools, setTools] = useState(false); // phone: the controls unfolded from their floating button
   const [askThread, setAskThread] = useState<AskLine[]>([]); // kept while the panel is shut, so a conversation picks up again
 
   const look = useCallback((on: boolean) => {
@@ -218,20 +220,25 @@ export function App() {
               <span>{WATERS[waters]}</span>
             </div>
             <div className="dp-hud-tr">
+              {/* on a phone the controls fold into one floating button; on wider screens it is hidden and they show as a row */}
+              <button type="button" className="dp-more" aria-expanded={tools} aria-controls="dp-tools" aria-label={tools ? "Close the controls" : `Controls: ${dayPart}, ${visited.length} of ${PLACES.length} logged`} onClick={() => setTools(!tools)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">{tools ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}</svg>
+                {!tools && <b className="dp-more-n">{visited.length}</b>}
+              </button>
+              <div id="dp-tools" className={`dp-tools${tools ? " is-open" : ""}`}>
               <span className="dp-pill" aria-live="polite">{found.length} / {PLACES.length} found</span>
               <button type="button" className="dp-pill dp-time" onClick={() => world.current?.skipTime()} aria-label={`Time of day: ${dayPart}. Move on to the next part of the day`} title="Move the day on">{dayPart}</button>
               {sailing && (
                 <button type="button" className="dp-pill" onClick={() => { const v = VIEW_NEXT[boatView]; setBoatView(v); world.current?.setView(v); }} aria-label={`View: ${VIEW_NAME[boatView]}. Change to ${VIEW_NAME[VIEW_NEXT[boatView]]}`} title="Change the view (V)">{VIEW_NAME[boatView]}</button>
               )}
-              {sailing && (
-                <button type="button" className="dp-pill" aria-expanded={asking} aria-controls="dp-ask" onClick={() => { closeLog(); setAsking(!asking); }}>Ask Pip</button>
-              )}
-              <button type="button" className="dp-pill dp-logbtn" aria-expanded={menu} aria-controls="dp-log" onClick={() => { setAsking(false); if (menu) closeLog(); else setMenu(true); }}>Log <b>{visited.length}/{PLACES.length}</b></button>
+              <button type="button" className="dp-pill dp-logbtn" aria-expanded={menu} aria-controls="dp-log" onClick={() => { setAsking(false); setTools(false); if (menu) closeLog(); else setMenu(true); }}>Log <b>{visited.length}/{PLACES.length}</b></button>
               <button type="button" className="dp-pill" aria-pressed={!muted} onClick={toggleSound}>{muted ? "Sound off" : "Sound on"}</button>
+              </div>
             </div>
             {menu && <Log visited={visited} first={firstLog} onSail={sailTo} onClose={closeLog} />}
             {asking && <Ask thread={askThread} setThread={setAskThread} onSail={sailTo} onClose={() => setAsking(false)} />}
             {sailing && world.current && <Chart world={world.current} found={found} bound={bound} onSail={sailTo} />}
+            <PipCorner away={!sailing || asking || !!open || menu || tools || talk !== null} onAsk={() => { closeLog(); setTools(false); setAsking(true); }} />
             {!open && (
               <div className="dp-foot" aria-live="polite">
                 {talk !== null ? (
