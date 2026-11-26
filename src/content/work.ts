@@ -7,7 +7,8 @@ import mediaLab from "../assets/media-lab.jpg";
 import mareaStage from "../assets/marea-stage.jpg";
 
 // Marea Dvīpa's stage, live on its cards; the local copy while developing, so a change there shows here too
-const MAREA = import.meta.env.DEV ? "http://localhost:5299" : "https://marea-dvipa.uk";
+// (read loosely: the Worker's type-check reads this file too, without Vite's types)
+const MAREA = (import.meta as { env?: { DEV?: boolean } }).env?.DEV ? "http://localhost:5299" : "https://marea-dvipa.uk";
 import regatta from "../assets/regatta.jpg";
 import weatherDashboard from "../assets/weather-dashboard.jpg";
 import windfall from "../assets/windfall.jpg";
