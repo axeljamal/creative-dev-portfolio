@@ -4,7 +4,6 @@ import crewTeam from "../assets/crew-team.jpg";
 import hospitalityNext from "../assets/hospitality-next.jpg";
 import mareaDvipa from "../assets/marea-studio.jpg";
 import mediaLab from "../assets/media-lab.jpg";
-import mareaStage from "../assets/marea-stage.jpg";
 
 // Marea Dvīpa's stage, live on its cards; the local copy while developing, so a change there shows here too
 // (read loosely: the Worker's type-check reads this file too, without Vite's types)
@@ -37,6 +36,8 @@ export type CaseStudy = {
   live?: string;
   /** the card's own picture, when it should differ from the case study's (a still of what the live card plays) */
   cardImage?: string;
+  /** a scene drawn in the page in place of the card's picture */
+  cardScene?: "patterns";
   /** more places to go, beside View and Source */
   links?: { label: string; href: string }[];
 };
@@ -78,8 +79,8 @@ export const caseStudies: CaseStudy[] = [
   },
   {
     name: "Marea Dvīpa Pattern Studio",
-    live: `${MAREA}/?card=marea&x=0.51#marea`,
-    cardImage: mareaStage,
+    /** the card plays the motifs as patterns, live in the page: see components/PatternStage */
+    cardScene: "patterns",
     sound: true,
     image: mareaDvipa,
     role: "Current project, 2026. Original motifs and generative pattern design",

@@ -4,6 +4,7 @@ import { LuArrowUpRight, LuChevronLeft, LuChevronRight, LuPause, LuPlay, LuX } f
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
 import { CardLive, CardVideo, CoverFlow, SoundButton } from "../components/CoverFlow";
+import { PatternStage } from "../components/PatternStage";
 import { Section } from "../components/Section";
 import { caseStudies, earlierWork, type CaseStudy } from "../content/work";
 import { profile } from "../content/profile";
@@ -36,7 +37,7 @@ const work: Work[] = [
 ];
 
 // each card's line under its name: who and when, from the start of its role ("Team project, 2026")
-const flow = work.map((c) => ({ name: c.name, image: c.cardImage ?? c.image, video: c.video, live: c.live, sound: c.sound, kicker: c.role.split(". ")[0], open: c.earlier ? "Open the project" : undefined, fit: c.earlier }));
+const flow = work.map((c) => ({ name: c.name, image: c.cardImage ?? c.image, video: c.video, live: c.live, sound: c.sound, scene: c.cardScene === "patterns" ? (active: boolean) => <PatternStage active={active} /> : undefined, kicker: c.role.split(". ")[0], open: c.earlier ? "Open the project" : undefined, fit: c.earlier }));
 
 export function Work() {
   const [pick, setPick] = useState(0);
@@ -221,7 +222,15 @@ function ProjectView({
         onPointerCancel={() => (swipe.current = null)}
       >
         <div ref={card} className={`project-view-card${dir ? (dir > 0 ? " from-right" : " from-left") : ""}`} key={study.name}>
-          {study.image ? <img src={study.cardImage ?? study.image} alt="" /> : <span className="coverflow-blank" aria-hidden="true" />}
+          {study.cardScene === "patterns" ? (
+            <div className="coverflow-body">
+              <PatternStage active />
+            </div>
+          ) : study.image ? (
+            <img src={study.cardImage ?? study.image} alt="" />
+          ) : (
+            <span className="coverflow-blank" aria-hidden="true" />
+          )}
           {study.video && <CardVideo src={study.video} live={sound && !!study.sound} label={`${study.name}, playing`} />}
           {study.live && <CardLive src={study.live} live={sound && !!study.sound} label={`${study.name}, live`} onSound={onSound} />}
           {study.video && !study.live && study.sound && <SoundButton on={sound} onToggle={() => onSound(!sound)} />}

@@ -15,6 +15,9 @@ export type FlowItem = {
   open?: string;
   /** a wide screenshot shown whole, as a window over a blurred copy of itself, rather than cropped to the card */
   fit?: boolean;
+  /** a scene of its own in place of the picture (the Pattern Studio's patterns), told whether it is the middle card on
+   * screen with no project open; the name and button stay over it */
+  scene?: (centre: boolean) => ReactNode;
   /** a card with its own face (the About cards): drawn in place of a picture and caption; centre says whether it is the
    * middle card, the only one whose links and buttons can be reached */
   body?: (centre: boolean) => ReactNode;
@@ -211,6 +214,8 @@ export function CoverFlow({
             >
               {item.body ? (
                 <div className="coverflow-body">{item.body(centre)}</div>
+              ) : item.scene ? (
+                <div className="coverflow-body">{item.scene(centre && !open && onScreen)}</div>
               ) : item.image && item.fit ? (
                 <span className="coverflow-fit" aria-hidden="true">
                   <img className="coverflow-fit-back" src={item.image} alt="" loading="lazy" draggable={false} />

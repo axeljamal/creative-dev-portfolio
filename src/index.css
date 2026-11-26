@@ -1122,3 +1122,111 @@ button.coverflow-cta:focus-visible {
     bottom: 0;
   }
 }
+/* the Pattern Studio's card: a motif repeating on a ground that changes when touched, with motifs floating in 3D */
+.pattern-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background-color 0.7s ease;
+}
+.pattern-cloth {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -234px 0 0 -150px;
+  transform-origin: 50% 50%;
+  animation: pattern-in 1.2s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.coverflow-card .pattern-cloth img {
+  position: absolute;
+  inset: auto;
+  object-fit: contain;
+  opacity: 0.92;
+  animation: pattern-motif 0.7s ease both;
+}
+.pattern-lines {
+  position: absolute;
+  inset: 0;
+  fill: none;
+  stroke: #e3c48c;
+  stroke-width: 1.2;
+  opacity: 0.4;
+}
+@keyframes pattern-in {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+@keyframes pattern-motif {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+.pattern-depth {
+  position: absolute;
+  inset: 0;
+  perspective: 700px;
+  pointer-events: none;
+}
+.pattern-scene {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+.coverflow-card .pattern-scene .pattern-float {
+  position: absolute;
+  inset: 0 auto auto 0;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 18px rgb(0 0 0 / 0.45));
+  transition: opacity 0.6s ease;
+}
+.pattern-name {
+  position: absolute;
+  top: 2.6rem;
+  inset-inline: 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e3c48c;
+  animation: pattern-name 0.8s ease both;
+  pointer-events: none;
+}
+@keyframes pattern-name {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.pattern-ripple {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 2px solid #e3c48c;
+  animation: mf-ring 0.9s ease-out forwards;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pattern-cloth,
+  .coverflow-card .pattern-cloth img,
+  .pattern-name {
+    animation: none;
+  }
+}
+/* the card number stays over a scene of its own */
+.coverflow-card .coverflow-num {
+  z-index: 4;
+}
+.pattern-depth {
+  z-index: 1;
+}
+.pattern-name {
+  z-index: 3;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.7);
+}
