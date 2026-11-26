@@ -1,133 +1,292 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { FaGithub } from "react-icons/fa6";
-import { LuArrowUpRight, LuPause, LuPlay } from "react-icons/lu";
+import { LuArrowUpRight, LuChevronLeft, LuChevronRight, LuPause, LuPlay, LuX } from "react-icons/lu";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
-import { Reveal, Section } from "../components/Section";
-import { Tilt } from "../components/Tilt";
+import { CardLive, CardVideo, CoverFlow, SoundButton } from "../components/CoverFlow";
+import { Section } from "../components/Section";
 import { caseStudies, earlierWork, type CaseStudy } from "../content/work";
+import { profile } from "../content/profile";
 import { CubeDemo, ImageExplorer, LivePreview, PREVIEWS_RUN, type ReelMessage } from "../components/LivePreview";
 
 // three.js and the models arrive with this card, not with the page
 const ModelStage = lazy(() => import("../three/ModelStage"));
 
-export function Work() {
-  return (
-    <Section id="work" eyebrow="Case studies" title="Selected work">
-      {/* the same work as a place to visit: a 3D world, on its own page so it never slows this one */}
-      <p className="mb-8 text-[17px] leading-relaxed text-ink-2">
-        Or sail to it.{" "}
-        <a href="/" className="font-bold text-ink underline decoration-accent decoration-2 underline-offset-4">
-          Dua Pulau
-        </a>{" "}
-        is all of this as a world of two islands, with a pinisi to cross between them. And on the same sea there is a game:{" "}
-        <a href="/race/" className="font-bold text-ink underline decoration-accent decoration-2 underline-offset-4">
-          Dua Pulau Regatta
-        </a>
-        , a sailing race round both islands.
-      </p>
-      <div className="flex flex-col gap-6 sm:gap-10">
-        {caseStudies.map((study, i) => (
-          <Reveal key={study.name}>
-            {/* the big cards stay flat, to read and to use; only the light moves across them */}
-            <Tilt lean={0} className="rounded-[2rem] sm:rounded-[2.5rem]">
-              <CaseStudyCard study={study} flip={i % 2 === 1} />
-            </Tilt>
-          </Reveal>
-        ))}
-      </div>
+// all the work on one ring, which wraps round: Windfall first, in the middle when the page opens, with the latest
+// work on both sides of it. The ring's last cards sit to Windfall's left, so the two games close the ring, after the
+// earlier bootcamp projects (which open the same way)
+type Work = CaseStudy & { earlier?: boolean };
+const CLOSE_THE_RING = ["Dua Pulau in Bricks", "Dua Pulau Regatta"];
+const work: Work[] = [
+  ...caseStudies.filter((c) => !CLOSE_THE_RING.includes(c.name)),
+  ...earlierWork.map((p) => ({
+    name: p.name,
+    image: p.image,
+    role: "Bootcamp project, 2023. Earlier work",
+    stack: [],
+    problem: "",
+    approach: p.details,
+    result: "",
+    pageLink: p.pageLink,
+    sourceLink: p.sourceLink,
+    preview: { url: p.pageLink, frame: "desktop" as const },
+    earlier: true,
+  })),
+  ...CLOSE_THE_RING.map((name) => caseStudies.find((c) => c.name === name)).filter((c): c is CaseStudy => !!c),
+];
 
-      <h3 className="mt-20 mb-6 font-display text-3xl font-semibold sm:text-4xl">Earlier work</h3>
-      {/* swipeable rail on phones, grid on larger screens */}
-      <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-6 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
-        {earlierWork.map((project) => (
-          <li key={project.name} className="w-[82%] shrink-0 snap-center sm:w-auto">
-            <Tilt className="h-full rounded-[1.75rem]">
-            <article className="glass flex h-full flex-col rounded-[1.75rem] p-2.5">
-              <div className="relative z-2 overflow-hidden rounded-[1.25rem]">
-                <LivePreview name={project.name} image={project.image} url={project.pageLink} frame="desktop" />
-              </div>
-              <div className="relative z-2 flex flex-1 flex-col p-3.5">
-                <h4 className="font-display text-2xl font-semibold">{project.name}</h4>
-                <p className="mt-1.5 flex-1 text-[15px] leading-relaxed text-ink-2">
-                  {project.details}
-                </p>
-                <div className="mt-4 flex gap-2">
-                  <Button href={project.pageLink} external icon={<LuArrowUpRight />}>
-                    View
-                  </Button>
-                  <Button href={project.sourceLink} external icon={<FaGithub />}>
-                    Source
-                  </Button>
-                </div>
-              </div>
-            </article>
-            </Tilt>
-          </li>
-        ))}
-      </ul>
+// each card's line under its name: who and when, from the start of its role ("Team project, 2026")
+const flow = work.map((c) => ({ name: c.name, image: c.cardImage ?? c.image, video: c.video, live: c.live, sound: c.sound, kicker: c.role.split(". ")[0], open: c.earlier ? "Open the project" : undefined, fit: c.earlier }));
+
+export function Work() {
+  const [pick, setPick] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [sound, setSound] = useState(false); // off until the visitor asks: one switch for the cards and the open project
+  const earlier = !!work[pick].earlier;
+  return (
+    <Section id="work" eyebrow="Case studies" title="Selected work" ownHeading>
+      {/* the heading sits over the cards, and says which part of the ring is in the middle */}
+      <header className="work-heading">
+        <p className="font-mono text-xs font-medium tracking-[0.14em] text-accent-solid uppercase">
+          {earlier ? "Bootcamp projects" : "Case studies"}
+        </p>
+        <h2 id="work-title" className="title-3d mt-2 font-display text-5xl font-semibold sm:text-6xl" aria-live="polite">
+          <span key={earlier ? "earlier" : "selected"} className="work-heading-title">
+            {earlier ? "Earlier work" : "Selected work"}
+          </span>
+        </h2>
+        {/* the same work as a place to visit: a 3D world, on its own page so it never slows this one */}
+        <p className="work-sail">
+          Sail to this work in{" "}
+          <a href="/">Dua Pulau</a>, or race round its islands in the{" "}
+          <a href="/race/">Regatta</a>.
+        </p>
+      </header>
+      <CoverFlow
+        items={flow}
+        index={pick}
+        onIndex={setPick}
+        open={open}
+        onOpen={() => setOpen(true)}
+        sound={sound}
+        onSound={setSound}
+      />
+      {open && <ProjectView index={pick} onIndex={setPick} onClose={() => setOpen(false)} sound={sound} onSound={setSound} />}
+
     </Section>
   );
 }
 
-function CaseStudyCard({ study, flip }: { study: CaseStudy; flip: boolean }) {
+// a project's live preview: tabs of live pages, one live page, a picture to explore, or the 3D model
+function StudyPreview({ study }: { study: CaseStudy }) {
   return (
-    <article className="glass-strong grid gap-2 rounded-[2rem] p-2.5 sm:rounded-[2.5rem] sm:p-3 lg:grid-cols-12">
-      <div
-        className={`relative z-2 self-center overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] lg:col-span-7 ${flip ? "lg:order-2" : ""}`}
-      >
+    <>
         {study.previews && study.image ? (
-          <PreviewTabs study={study} />
-        ) : study.preview && study.image ? (
-          <LivePreview name={study.name} image={study.image} url={study.preview.url} frame={study.preview.frame} />
-        ) : study.image ? (
-          <ImageExplorer name={study.name} image={study.image} />
-        ) : (
-          <Suspense fallback={<div className="aspect-[16/10] w-full bg-[#0e0c09]" />}>
-            <ModelStage name={study.name} fallback={<CubeDemo name={study.name} />} />
-          </Suspense>
-        )}
+        <PreviewTabs study={study} />
+      ) : study.preview && study.image ? (
+        <LivePreview name={study.name} image={study.image} url={study.preview.url} frame={study.preview.frame} />
+      ) : study.image ? (
+        <ImageExplorer name={study.name} image={study.image} />
+      ) : (
+        <Suspense fallback={<div className="aspect-[16/10] w-full bg-[#0e0c09]" />}>
+          <ModelStage name={study.name} fallback={<CubeDemo name={study.name} />} />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
+// the open project, as on the album page it is modelled on: the card slides from the middle of the carousel to the
+// left and grows, the case study fills the right, and a bar at the foot holds the live project and the way to the next
+function ProjectView({
+  index,
+  onIndex,
+  onClose,
+  sound,
+  onSound,
+}: {
+  index: number;
+  onIndex: (i: number) => void;
+  onClose: () => void;
+  sound: boolean;
+  onSound: (on: boolean) => void;
+}) {
+  const study = work[index];
+  const n = work.length;
+  const card = useRef<HTMLDivElement>(null);
+  const closeBtn = useRef<HTMLButtonElement>(null);
+  const [shut, setShut] = useState(false);
+  const [dir, setDir] = useState(0); // which way the last change went, so the new card slides in from that side
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const step = useCallback(
+    (by: number) => {
+      setDir(by);
+      onIndex((index + by + n) % n);
+    },
+    [index, n, onIndex],
+  );
+  const reduce = typeof window !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // slide: start the big card where the carousel's middle card is, then let it travel to its place
+  useEffect(() => {
+    const from = document.querySelector(".coverflow-card.is-centre")?.getBoundingClientRect();
+    const el = card.current;
+    if (el && from && !reduce) {
+      const to = el.getBoundingClientRect();
+      el.animate(
+        [
+          { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`, borderRadius: "22px" },
+          { transform: "none" },
+        ],
+        { duration: 650, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+      );
+    }
+    closeBtn.current?.focus({ preventScroll: true });
+    const back = document.activeElement;
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = "";
+      (document.querySelector(".coverflow-cta") as HTMLElement | null)?.focus({ preventScroll: true });
+      void back;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const close = useCallback(() => {
+    if (reduce) return onClose();
+    setShut(true);
+    setTimeout(onClose, 320);
+  }, [onClose, reduce]);
+
+  // a sideways trackpad swipe moves to the next project or the one before, one per swipe
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = body.current;
+    if (!el) return;
+    let acc = 0;
+    let quiet = 0;
+    let fired = false;
+    const wheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      acc += e.deltaX;
+      if (!fired && Math.abs(acc) > 60) {
+        fired = true;
+        step(acc > 0 ? 1 : -1);
+      }
+      clearTimeout(quiet);
+      quiet = window.setTimeout(() => ((acc = 0), (fired = false)), 180);
+    };
+    el.addEventListener("wheel", wheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", wheel);
+      clearTimeout(quiet);
+    };
+  }, [step]);
+
+  useEffect(() => {
+    const key = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") close();
+      else if (e.key === "ArrowRight") step(1);
+      else if (e.key === "ArrowLeft") step(-1);
+    };
+    addEventListener("keydown", key);
+    return () => removeEventListener("keydown", key);
+  }, [close, step]);
+
+  const pad = (k: number) => String(k).padStart(2, "0");
+  return (
+    <div className={`project-view${shut ? " is-shut" : ""}`} role="dialog" aria-modal="true" aria-labelledby="project-view-title">
+      <div className="project-view-top">
+        <p>
+          <b>{profile.name}</b> · Selected work
+        </p>
+        <button ref={closeBtn} type="button" className="project-view-close" onClick={close}>
+          Close <LuX aria-hidden="true" />
+        </button>
       </div>
 
-      <div className="relative z-2 flex flex-col p-4 sm:p-6 lg:col-span-5">
-        <h3 className="font-display text-4xl font-semibold">{study.name}</h3>
-        <p className="mt-2 text-[15px] leading-relaxed text-ink-2">{study.role}</p>
-        <ul aria-label="Tools" className="mt-4 flex flex-wrap gap-1.5">
-          {study.stack.map((tool) => (
-            <Chip key={tool} as="li">
-              {tool}
-            </Chip>
-          ))}
-        </ul>
-        <dl className="mt-6 space-y-4 text-[15px] leading-relaxed">
-          {(["problem", "approach", "result"] as const).map((key) => (
-            <div key={key}>
-              <dt className="font-semibold capitalize">{key}</dt>
-              <dd className="mt-0.5 text-ink-2">{study[key]}</dd>
-            </div>
-          ))}
-        </dl>
-        {(study.pageLink || study.sourceLink) && (
-          <div className="mt-6 flex gap-2">
-            {study.pageLink && (
-              <Button href={study.pageLink} external variant="primary" icon={<LuArrowUpRight />}>
-                View
-              </Button>
-            )}
-            {study.sourceLink && (
-              <Button href={study.sourceLink} external icon={<FaGithub />}>
-                Source
-              </Button>
-            )}
-            {study.links?.map((l) => (
-              <Button key={l.label} href={l.href} external icon={<LuArrowUpRight />}>
-                {l.label}
-              </Button>
+      {/* swipe sideways anywhere on the project to go to the next or the one before */}
+      <div
+        ref={body}
+        className="project-view-body"
+        onPointerDown={(e) => (swipe.current = { x: e.clientX, y: e.clientY })}
+        onPointerUp={(e) => {
+          const s0 = swipe.current;
+          swipe.current = null;
+          if (!s0 || (e.target as HTMLElement).closest("iframe, a, button")) return;
+          const dx = e.clientX - s0.x, dy = e.clientY - s0.y;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+        }}
+        onPointerCancel={() => (swipe.current = null)}
+      >
+        <div ref={card} className={`project-view-card${dir ? (dir > 0 ? " from-right" : " from-left") : ""}`} key={study.name}>
+          {study.image ? <img src={study.cardImage ?? study.image} alt="" /> : <span className="coverflow-blank" aria-hidden="true" />}
+          {study.video && <CardVideo src={study.video} live={sound && !!study.sound} label={`${study.name}, playing`} />}
+          {study.live && <CardLive src={study.live} live={sound && !!study.sound} label={`${study.name}, live`} onSound={onSound} />}
+          {study.video && !study.live && study.sound && <SoundButton on={sound} onToggle={() => onSound(!sound)} />}
+        </div>
+
+        <div className="project-view-text" key={study.name + "-text"}>
+          <p className="project-view-eyebrow">
+            Project {pad(index + 1)} of {pad(n)}
+          </p>
+          <h3 id="project-view-title" className="font-display text-5xl font-semibold sm:text-6xl">
+            {study.name}
+          </h3>
+          <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{study.role}</p>
+          {study.stack.length > 0 && <ul aria-label="Tools" className="mt-4 flex flex-wrap gap-1.5">
+            {study.stack.map((tool) => (
+              <Chip key={tool} as="li">
+                {tool}
+              </Chip>
             ))}
+          </ul>}
+          <dl className="mt-8 space-y-6">
+            {(study.earlier
+              ? [["about", study.approach]]
+              : (["problem", "approach", "result"] as const).map((key) => [key, study[key]])
+            ).map(([key, text]) => (
+              <div key={key}>
+                <dt className="font-mono text-xs font-medium tracking-[0.14em] text-accent-solid uppercase">{key}</dt>
+                <dd className="mt-1.5 text-lg leading-relaxed">{text}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="mt-10 overflow-hidden rounded-[1.5rem]">
+            <StudyPreview study={study} />
           </div>
-        )}
+        </div>
       </div>
-    </article>
+
+      <div className="project-view-bar">
+        <div className="project-view-links">
+          {study.pageLink && (
+            <Button href={study.pageLink} external variant="primary" icon={<LuArrowUpRight />}>
+              View live
+            </Button>
+          )}
+          {study.sourceLink && (
+            <Button href={study.sourceLink} external icon={<FaGithub />}>
+              Source
+            </Button>
+          )}
+          {study.links?.map((l) => (
+            <Button key={l.label} href={l.href} external icon={<LuArrowUpRight />}>
+              {l.label}
+            </Button>
+          ))}
+        </div>
+        <div className="project-view-steps">
+          <button type="button" onClick={() => step(-1)} aria-label="Previous project">
+            <LuChevronLeft aria-hidden="true" />
+          </button>
+          <button type="button" onClick={() => step(1)} aria-label="Next project">
+            <LuChevronRight aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

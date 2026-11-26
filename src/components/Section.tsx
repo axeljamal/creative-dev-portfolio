@@ -6,12 +6,14 @@ type Props = {
   eyebrow: string;
   title: string;
   children: ReactNode;
+  /** the section draws its own heading (with the id `${id}-title`), somewhere in its children */
+  ownHeading?: boolean;
 };
 
-export function Section({ id, eyebrow, title, children }: Props) {
+export function Section({ id, eyebrow, title, children, ownHeading }: Props) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24 py-16 sm:py-24">
-      <motion.header
+      {!ownHeading && <motion.header
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
@@ -39,7 +41,7 @@ export function Section({ id, eyebrow, title, children }: Props) {
             </Fragment>
           ))}
         </h2>
-      </motion.header>
+      </motion.header>}
       {children}
     </section>
   );

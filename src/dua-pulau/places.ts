@@ -40,7 +40,7 @@ export const PLACES: Place[] = [
     holds: "Marea Dvīpa",
     quest: "See the Pattern Studio",
     blurb: "The studio's mark, a pavilion by the sea, built solid: five roofs of black thatch over the Pattern Studio.",
-    study: study("Marea Dvīpa"),
+    study: study("Marea Dvīpa Pattern Studio"),
     links: [],
   },
   {
@@ -48,6 +48,7 @@ export const PLACES: Place[] = [
     island: "md",
     name: "Gong Perdamaian",
     holds: "Media Lab",
+    study: study("Marea Dvīpa Media Lab"),
     quest: "Hear the gamelan play a motif",
     blurb: "Gong Perdamaian, the peace gong on the hill above Palu, Central Sulawesi, where I come from, with Tugu Perdamaian, the white peace monument, across the plaza. Seven gamelan kettles are set before the gong. The Media Lab shows how each motif was made and scores it for this ensemble, synthesized in the browser. The music you hear in these waters is played on the same instruments.",
     links: [

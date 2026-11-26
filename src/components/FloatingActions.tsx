@@ -25,7 +25,7 @@ export function FloatingActions() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 24, scale: 0.9 }}
           transition={{ type: "spring", stiffness: 380, damping: 30 }}
-          className="fixed right-4 bottom-[calc(max(env(safe-area-inset-bottom),12px)+5.5rem)] z-40 flex flex-col items-end gap-2 md:right-6 md:bottom-6"
+          className="fixed right-4 bottom-[max(env(safe-area-inset-bottom),16px)] z-40 flex flex-col items-end gap-2 md:right-6 md:bottom-6"
         >
           <div className="floating-bob flex flex-col items-end gap-2">
             <a href="#contact" onClick={go("collaborate")} className={`${buttonClass("primary")} shadow-lg`}>

@@ -115,7 +115,7 @@
 @keyframes w-tap { from { opacity: 0; transform: translate(-50%, -100%); } 20% { opacity: 1; } to { opacity: 0; transform: translate(-50%, -220%); } }
 
 .w-sound-cta {
-  position: absolute; left: 50%; top: max(18px, env(safe-area-inset-top, 0px)); transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 18px; border-radius: 21px;
+  position: absolute; left: 50%; top: calc(max(18px, env(safe-area-inset-top, 0px)) + 68px); /* under the site menu */ transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 18px; border-radius: 21px;
   border: 1px solid var(--w-gold); background: var(--w-glass-2); color: var(--w-gold); font: 600 14px var(--type-body); cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); z-index: 3;
 }
 .w-sound-cta svg { width: 18px; height: 18px; fill: currentColor; }

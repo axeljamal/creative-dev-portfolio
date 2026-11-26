@@ -113,7 +113,11 @@ export const skillGroups: { area: string; skills: Skill[] }[] = [
   {
     area: "AI",
     skills: [
-      { name: "Claude Code on the command line", icon: LuSparkles, where: "Every project here, from spec and plan to tests and deploy." },
+      {
+        name: "Claude as design partner, and agents on the command line",
+        icon: LuSparkles,
+        where: "I lead projects into production with them, from spec and plan to tests and deploy.",
+      },
       { name: "MCP", icon: LuPlug, where: "MCP servers in Claude Code for Supabase, Figma, Canva and Playwright, used to build, design and test this work." },
       { name: "LLM features in production", icon: LuSparkles, where: "Bootcamp Connect's CV and LinkedIn import, Ask Pip in Windfall and here, and The Crew's feedback tagging." },
       { name: "Prompt engineering", icon: LuMessageSquareText, where: "Pip's brief, and The Crew's tagging prompt, whose answers are checked against fixed lists." },
